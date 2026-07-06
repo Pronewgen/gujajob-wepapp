@@ -129,6 +129,21 @@
             <path d="M10 4v16"/>
         </symbol>
 
+        <symbol id="icon-material-list" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M9 3v18"/>
+            <path d="M13 8h5"/>
+            <path d="M13 12h5"/>
+            <path d="M13 16h4"/>
+        </symbol>
+
+        <symbol id="icon-edit-form" viewBox="0 0 24 24">
+            <path d="M12 20h9"/>
+            <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L8 18l-4 1 1-4Z"/>
+            <path d="m15 5 3 3"/>
+            <path d="M4 22h16"/>
+        </symbol>
+
         <symbol id="icon-success" viewBox="0 0 24 24">
             <path d="M20 6 9 17l-5-5"/>
         </symbol>
@@ -144,6 +159,60 @@
         <symbol id="icon-square-pen" viewBox="0 0 24 24">
             <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
             <path d="M18.375 2.625a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4Z"/>
+        </symbol>
+
+        <symbol id="icon-report-file" viewBox="0 0 24 24">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/>
+            <path d="M14 2v6h6"/>
+            <path d="M9 15h6"/>
+            <path d="M9 18h6"/>
+            <path d="M9 12h2"/>
+        </symbol>
+
+        <symbol id="icon-report-chart" viewBox="0 0 24 24">
+            <path d="M3 3v18h18"/>
+            <path d="M8 17V9"/>
+            <path d="M13 17V5"/>
+            <path d="M18 17v-4"/>
+        </symbol>
+
+        <symbol id="icon-report-receipt" viewBox="0 0 24 24">
+            <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2Z"/>
+            <path d="M8 7h8"/>
+            <path d="M8 11h8"/>
+            <path d="M8 15h5"/>
+        </symbol>
+
+        <symbol id="icon-filter-report" viewBox="0 0 24 24">
+            <path d="M3 5h18"/>
+            <path d="M6 12h12"/>
+            <path d="M10 19h4"/>
+        </symbol>
+
+        <symbol id="icon-download-report" viewBox="0 0 24 24">
+            <path d="M12 3v12"/>
+            <path d="m7 10 5 5 5-5"/>
+            <path d="M5 21h14"/>
+        </symbol>
+
+        <symbol id="icon-file-text" viewBox="0 0 24 24">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <path d="M14 2v6h6"/>
+            <path d="M16 13H8"/>
+            <path d="M16 17H8"/>
+            <path d="M10 9H8"/>
+        </symbol>
+
+        <symbol id="icon-alert-triangle" viewBox="0 0 24 24">
+            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/>
+            <path d="M12 9v4"/>
+            <path d="M12 17h.01"/>
+        </symbol>
+
+        <symbol id="icon-search-filter" viewBox="0 0 24 24">
+            <path d="M3 5h18"/>
+            <path d="M6 12h12"/>
+            <path d="M10 19h4"/>
         </symbol>
 
     </svg>
@@ -228,7 +297,7 @@
                             <span>จัดการทะเบียนครุภัณฑ์</span>
                         </a>
 
-                        <a class="menu-item disabled-link" href="#">
+                        <a class="menu-item {{ request()->routeIs('asset.assignments.*') ? 'active' : '' }}" href="{{ route('asset.assignments.index') }}">
                             <svg class="menu-icon"><use href="#icon-upload"></use></svg>
                             <span>จัดสรรครุภัณฑ์ให้หน่วยงาน</span>
                         </a>
@@ -254,64 +323,7 @@
                         </a>
 
                         <a class="menu-item disabled-link" href="#">
-                            <svg class="menu-icon"><use href="#icon-printer"></use>
-        <symbol id="icon-report-file" viewBox="0 0 24 24">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/>
-            <path d="M14 2v6h6"/>
-            <path d="M9 15h6"/>
-            <path d="M9 18h6"/>
-            <path d="M9 12h2"/>
-        </symbol>
-
-        <symbol id="icon-report-chart" viewBox="0 0 24 24">
-            <path d="M3 3v18h18"/>
-            <path d="M8 17V9"/>
-            <path d="M13 17V5"/>
-            <path d="M18 17v-4"/>
-        </symbol>
-
-        <symbol id="icon-report-receipt" viewBox="0 0 24 24">
-            <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2Z"/>
-            <path d="M8 7h8"/>
-            <path d="M8 11h8"/>
-            <path d="M8 15h5"/>
-        </symbol>
-
-        <symbol id="icon-filter-report" viewBox="0 0 24 24">
-            <path d="M3 5h18"/>
-            <path d="M6 12h12"/>
-            <path d="M10 19h4"/>
-        </symbol>
-
-        <symbol id="icon-download-report" viewBox="0 0 24 24">
-            <path d="M12 3v12"/>
-            <path d="m7 10 5 5 5-5"/>
-            <path d="M5 21h14"/>
-        </symbol>
-
-    
-        <symbol id="icon-alert-triangle" viewBox="0 0 24 24">
-            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/>
-            <path d="M12 9v4"/>
-            <path d="M12 17h.01"/>
-        </symbol>
-
-    
-        <symbol id="icon-file-text" viewBox="0 0 24 24">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <path d="M14 2v6h6"/>
-            <path d="M16 13H8"/>
-            <path d="M16 17H8"/>
-            <path d="M10 9H8"/>
-        </symbol>
-
-        <symbol id="icon-search-filter" viewBox="0 0 24 24">
-            <path d="M3 5h18"/>
-            <path d="M6 12h12"/>
-            <path d="M10 19h4"/>
-        </symbol>
-
-    </svg>
+                            <svg class="menu-icon"><use href="#icon-printer"></use></svg>
                             <span>จัดพิมพ์รายงาน</span>
                         </a>
                     </div>

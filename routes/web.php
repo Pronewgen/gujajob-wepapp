@@ -426,6 +426,51 @@ if (! function_exists('gujajob_asset_registration_records')) {
     }
 }
 
+if (! function_exists('gujajob_find_asset_registration_record')) {
+    function gujajob_find_asset_registration_record(string $assetCode): array
+    {
+        foreach (gujajob_asset_registration_records() as $asset) {
+            if ($asset['asset_code'] === $assetCode) {
+                return $asset;
+            }
+        }
+
+        abort(404);
+    }
+}
+
+if (! function_exists('gujajob_asset_assignment_records')) {
+    function gujajob_asset_assignment_records(): array
+    {
+        return [
+            [
+                'sequence' => 1,
+                'assign_date' => '18/04/2568',
+                'department' => 'กองคลังพัสดุ',
+                'group' => 'กลุ่มจัดซื้อ',
+                'quantity' => 2,
+                'assigner' => 'สมชาย ใจดี',
+            ],
+            [
+                'sequence' => 2,
+                'assign_date' => '15/04/2568',
+                'department' => 'สำนักบริหาร',
+                'group' => 'กลุ่มงานบุคคล',
+                'quantity' => 1,
+                'assigner' => 'สมชาย ใจดี',
+            ],
+            [
+                'sequence' => 3,
+                'assign_date' => '10/04/2568',
+                'department' => 'สนง.ภูมิภาค ภาคเหนือ',
+                'group' => 'ฝ่ายคลัง',
+                'quantity' => 3,
+                'assigner' => 'มาลี รักดี',
+            ],
+        ];
+    }
+}
+
 Route::get('/', function () {
     return redirect('/material/MAT-001-manage-material-items');
 });
@@ -671,4 +716,199 @@ Route::get('/asset/ASS-003-manage-asset-registration', function () {
         'assets' => gujajob_asset_registration_records(),
     ]);
 })->name('asset.registrations.index');
+
+Route::get('/asset/ASS-003-manage-asset-registration/create', function () {
+    return view('asset.ASS-003-manage-asset-registration.create', [
+        'pageTitle' => 'จัดการทะเบียนครุภัณฑ์',
+    ]);
+})->name('asset.registrations.create');
+
+Route::get('/asset/ASS-003-manage-asset-registration/{assetCode}', function (string $assetCode) {
+    return view('asset.ASS-003-manage-asset-registration.show', [
+        'pageTitle' => 'จัดการทะเบียนครุภัณฑ์',
+        'asset' => gujajob_find_asset_registration_record($assetCode),
+    ]);
+})->name('asset.registrations.show');
+
+Route::get('/asset/ASS-003-manage-asset-registration/{assetCode}/edit', function (string $assetCode) {
+    return view('asset.ASS-003-manage-asset-registration.edit', [
+        'pageTitle' => 'จัดการทะเบียนครุภัณฑ์',
+        'asset' => gujajob_find_asset_registration_record($assetCode),
+    ]);
+})->name('asset.registrations.edit');
+
+Route::get('/asset/ASS-004-assign-asset-to-department', function () {
+    return view('asset.ASS-004-assign-asset-to-department.index', [
+        'pageTitle' => 'จัดสรรครุภัณฑ์ให้หน่วยงาน',
+        'assignmentRecords' => gujajob_asset_assignment_records(),
+    ]);
+})->name('asset.assignments.index');
+
+Route::get('/asset/ASS-004-assign-asset-to-department/create', function () {
+    $availableAssets = [
+        [
+            'asset_code' => '7440-001-0001',
+            'asset_name' => 'HP LaserJet Pro M404dn',
+            'category' => 'คอมพิวเตอร์และอุปกรณ์',
+            'value' => '8,900.00',
+            'check_date' => '25/06/2565',
+        ],
+        [
+            'asset_code' => '7440-003-0001',
+            'asset_name' => 'Toyota Hilux Revo',
+            'category' => 'ยานพาหนะ',
+            'value' => '750,000.00',
+            'check_date' => '15/08/2564',
+        ],
+        [
+            'asset_code' => '7440-004-0001',
+            'asset_name' => 'Canon iR2525',
+            'category' => 'เครื่องถ่ายสำนักงาน',
+            'value' => '45,000.00',
+            'check_date' => '05/10/2563',
+        ],
+        [
+            'asset_code' => '7110-002-0004',
+            'asset_name' => 'โต๊ะทำงานผู้บริหาร',
+            'category' => 'เฟอร์นิเจอร์สำนักงาน',
+            'value' => '15,000.00',
+            'check_date' => '05/01/2566',
+        ],
+    ];
+
+    return view('asset.ASS-004-assign-asset-to-department.create', [
+        'pageTitle' => 'จัดสรรครุภัณฑ์ให้หน่วยงาน',
+        'availableAssets' => $availableAssets,
+        'defaultSelectedAssetCodes' => ['7440-001-0001', '7440-003-0001'],
+    ]);
+})->name('asset.assignments.create');
+
+Route::get('/asset/ASS-004-assign-asset-to-department/{sequence}', function (int $sequence) {
+    $assignmentDetails = [
+        1 => [
+            'requesting_department' => 'Auto filled ตามผู้ใช้ login',
+            'target_department' => 'หน่วยงาน ก.',
+            'items' => [
+                [
+                    'asset_code' => '7440-001-0001',
+                    'sub_code' => '',
+                    'asset_name' => 'HP LaserJet Pro M404dn',
+                    'category' => 'คอมพิวเตอร์และอุปกรณ์',
+                    'value' => '8,900.00',
+                    'receive_status' => 'ยังไม่ได้การยืนยัน',
+                    'receive_status_type' => 'pending',
+                ],
+                [
+                    'asset_code' => '7440-003-0001',
+                    'sub_code' => '03/001/69',
+                    'asset_name' => 'Toyota Hilux Revo',
+                    'category' => 'ยานพาหนะ',
+                    'value' => '750,000.00',
+                    'receive_status' => 'ยืนยันแล้ว',
+                    'receive_status_type' => 'confirmed',
+                ],
+            ],
+        ],
+        2 => [
+            'requesting_department' => 'Auto filled ตามผู้ใช้ login',
+            'target_department' => 'หน่วยงาน ข.',
+            'items' => [
+                [
+                    'asset_code' => '7440-004-0001',
+                    'sub_code' => '',
+                    'asset_name' => 'Canon iR2525',
+                    'category' => 'เครื่องถ่ายสำนักงาน',
+                    'value' => '45,000.00',
+                    'receive_status' => 'ยืนยันแล้ว',
+                    'receive_status_type' => 'confirmed',
+                ],
+            ],
+        ],
+        3 => [
+            'requesting_department' => 'Auto filled ตามผู้ใช้ login',
+            'target_department' => 'หน่วยงาน ค.',
+            'items' => [
+                [
+                    'asset_code' => '7110-002-0004',
+                    'sub_code' => '',
+                    'asset_name' => 'โต๊ะทำงานผู้บริหาร',
+                    'category' => 'เฟอร์นิเจอร์สำนักงาน',
+                    'value' => '15,000.00',
+                    'receive_status' => 'ยังไม่ได้การยืนยัน',
+                    'receive_status_type' => 'pending',
+                ],
+            ],
+        ],
+    ];
+
+    if (! array_key_exists($sequence, $assignmentDetails)) {
+        abort(404);
+    }
+
+    return view('asset.ASS-004-assign-asset-to-department.show', [
+        'pageTitle' => 'จัดสรรครุภัณฑ์ให้หน่วยงาน',
+        'assignmentSequence' => $sequence,
+        'assignmentDetail' => $assignmentDetails[$sequence],
+    ]);
+})->name('asset.assignments.show');
+
+Route::get('/asset/ASS-004-assign-asset-to-department/{sequence}/edit', function (int $sequence) {
+    $availableAssets = [
+        [
+            'asset_code' => '7440-001-0001',
+            'asset_name' => 'HP LaserJet Pro M404dn',
+            'category' => 'คอมพิวเตอร์และอุปกรณ์',
+            'value' => '8,900.00',
+            'check_date' => '25/06/2565',
+        ],
+        [
+            'asset_code' => '7440-003-0001',
+            'asset_name' => 'Toyota Hilux Revo',
+            'category' => 'ยานพาหนะ',
+            'value' => '750,000.00',
+            'check_date' => '15/08/2564',
+        ],
+        [
+            'asset_code' => '7440-004-0001',
+            'asset_name' => 'Canon iR2525',
+            'category' => 'เครื่องถ่ายสำนักงาน',
+            'value' => '45,000.00',
+            'check_date' => '05/10/2563',
+        ],
+        [
+            'asset_code' => '7110-002-0004',
+            'asset_name' => 'โต๊ะทำงานผู้บริหาร',
+            'category' => 'เฟอร์นิเจอร์สำนักงาน',
+            'value' => '15,000.00',
+            'check_date' => '05/01/2566',
+        ],
+    ];
+
+    $assignmentDetails = [
+        1 => [
+            'target_department' => 'หน่วยงาน ก.',
+            'selected_codes' => ['7440-001-0001', '7440-003-0001'],
+        ],
+        2 => [
+            'target_department' => 'หน่วยงาน ข.',
+            'selected_codes' => ['7440-004-0001'],
+        ],
+        3 => [
+            'target_department' => 'หน่วยงาน ค.',
+            'selected_codes' => ['7110-002-0004'],
+        ],
+    ];
+
+    if (! array_key_exists($sequence, $assignmentDetails)) {
+        abort(404);
+    }
+
+    return view('asset.ASS-004-assign-asset-to-department.edit', [
+        'pageTitle' => 'จัดสรรครุภัณฑ์ให้หน่วยงาน',
+        'assignmentSequence' => $sequence,
+        'availableAssets' => $availableAssets,
+        'defaultSelectedAssetCodes' => $assignmentDetails[$sequence]['selected_codes'],
+        'targetDepartment' => $assignmentDetails[$sequence]['target_department'],
+    ]);
+})->name('asset.assignments.edit');
 

@@ -54,7 +54,7 @@
                     พยากรณ์งบประมาณทดแทน
                 </button>
 
-                <button class="create-btn" type="button" id="createAssetRegistrationButton">
+                <button class="create-btn" type="button" id="createAssetRegistrationButton" data-create-url="{{ route('asset.registrations.create') }}">
                     บันทึกทะเบียนใหม่
                 </button>
             </div>
@@ -119,13 +119,12 @@
                                 </td>
 
                                 <td class="action-column">
-                                    <button
-                                        class="detail-btn"
-                                        type="button"
-                                        data-asset-code="{{ $asset['asset_code'] }}"
+                                    <a
+                                        class="detail-btn link-button"
+                                        href="{{ route('asset.registrations.show', $asset['asset_code']) }}"
                                     >
                                         ดูรายละเอียด
-                                    </button>
+                                    </a>
                                 </td>
                             </tr>
                         @endforeach

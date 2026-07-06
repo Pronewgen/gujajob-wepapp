@@ -180,17 +180,18 @@ function initializeAssetRegistrationSearch() {
         }
     });
 
-    document.querySelectorAll('.detail-btn').forEach((button) => {
-        button.addEventListener('click', () => {
-            alert(`รายละเอียดทะเบียนครุภัณฑ์\nรหัสครุภัณฑ์: ${button.dataset.assetCode}`);
-        });
-    });
-
     const createButton = document.getElementById('createAssetRegistrationButton');
 
     if (createButton) {
         createButton.addEventListener('click', () => {
-            alert('ปุ่มนี้เตรียมไว้สำหรับหน้าบันทึกทะเบียนใหม่');
+            const createUrl = createButton.dataset.createUrl;
+
+            if (createUrl) {
+                window.location.href = createUrl;
+                return;
+            }
+
+            alert('ไม่พบเส้นทางหน้าบันทึกทะเบียนใหม่');
         });
     }
 
