@@ -112,6 +112,35 @@ function initializeAssignmentCreate() {
     const saveLabel = saveButton.dataset.saveLabel || 'บันทึกการจัดสรร';
     const confirmMessageText = saveButton.dataset.confirmMessage || '';
 
+    function clearInlineValidationError() {
+        const oldError = document.querySelector('.assignment-inline-validation-error');
+
+        if (oldError) {
+            oldError.remove();
+        }
+    }
+
+    function showInlineValidationError(message) {
+        clearInlineValidationError();
+
+        const form = document.querySelector('.assignment-form');
+        const card = document.querySelector('.assignment-create-card');
+        const alert = document.createElement('div');
+
+        alert.className = 'assignment-inline-validation-error';
+        alert.setAttribute('role', 'alert');
+        alert.textContent = message;
+
+        if (form) {
+            form.insertAdjacentElement('afterbegin', alert);
+            return;
+        }
+
+        if (card) {
+            card.prepend(alert);
+        }
+    }
+
     function getCheckedAssets() {
         return sourceRows
             .filter((row) => {
@@ -199,6 +228,7 @@ function initializeAssignmentCreate() {
         }
 
         checkbox.addEventListener('change', () => {
+            clearInlineValidationError();
             row.classList.toggle('is-selected', checkbox.checked);
             renderSelectedAssets();
         });
@@ -247,9 +277,11 @@ function initializeAssignmentCreate() {
         const selectedAssets = getCheckedAssets();
 
         if (selectedAssets.length === 0) {
-            alert('กรุณาเลือกรายการครุภัณฑ์ก่อนบันทึกการจัดสรร');
+            showInlineValidationError('กรุณาเลือกรายการครุภัณฑ์ก่อนบันทึกการจัดสรร');
             return;
         }
+
+        clearInlineValidationError();
 
         if (confirmMessage) {
             if (confirmMessageText) {
@@ -282,9 +314,11 @@ function initializeAssignmentCreate() {
 
             if (selectedAssets.length === 0) {
                 closeOverlay(saveOverlay);
-                alert('กรุณาเลือกรายการครุภัณฑ์ก่อนบันทึกการจัดสรร');
+                showInlineValidationError('กรุณาเลือกรายการครุภัณฑ์ก่อนบันทึกการจัดสรร');
                 return;
             }
+
+            clearInlineValidationError();
 
             closeOverlay(saveOverlay);
 

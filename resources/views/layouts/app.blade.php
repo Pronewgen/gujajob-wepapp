@@ -302,12 +302,12 @@
                             <span>จัดสรรครุภัณฑ์ให้หน่วยงาน</span>
                         </a>
 
-                        <a class="menu-item disabled-link" href="#">
+                        <a class="menu-item {{ request()->routeIs('asset.department-receiving.*') ? 'active' : '' }}" href="{{ route('asset.department-receiving.index') }}">
                             <svg class="menu-icon"><use href="#icon-users"></use></svg>
                             <span>รับครุภัณฑ์ลงทะเบียนหน่วยงาน</span>
                         </a>
 
-                        <a class="menu-item disabled-link" href="#">
+                        <a class="menu-item {{ request()->routeIs('asset.disposals.*') ? 'active' : '' }}" href="{{ route('asset.disposals.index') }}">
                             <svg class="menu-icon"><use href="#icon-bell"></use></svg>
                             <span>แจ้งขอจำหน่ายครุภัณฑ์</span>
                         </a>

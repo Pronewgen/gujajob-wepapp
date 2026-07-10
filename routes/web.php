@@ -471,6 +471,117 @@ if (! function_exists('gujajob_asset_assignment_records')) {
     }
 }
 
+if (! function_exists('gujajob_asset_department_receiving_records')) {
+    function gujajob_asset_department_receiving_records(): array
+    {
+        return [
+            [
+                'asset_code' => '7440-001-0001',
+                'sub_code' => '',
+                'asset_name' => 'Dell OptiPlex 3090',
+                'category' => 'คอมพิวเตอร์และอุปกรณ์',
+                'value' => '32,500.00',
+                'receive_date' => null,
+                'model_name' => 'Dell OptiPlex 3090 SFF',
+                'serial_no' => 'DL2023-00124',
+                'storage_name' => 'คลังอ้อมกลาง',
+                'assigned_department' => 'กองคลังพัสดุ',
+                'receiver_name' => '-',
+                'receive_remark' => '-',
+                'receive_subunit' => '-',
+            ],
+            [
+                'asset_code' => '7110-002-0004',
+                'sub_code' => '',
+                'asset_name' => 'โต๊ะทำงานผู้บริหาร',
+                'category' => 'เฟอร์นิเจอร์สำนักงาน',
+                'value' => '15,000.00',
+                'receive_date' => null,
+                'model_name' => 'โต๊ะทำงานผู้บริหาร',
+                'serial_no' => '-',
+                'storage_name' => 'คลังอ้อมกลาง',
+                'assigned_department' => 'กองคลังพัสดุ',
+                'receiver_name' => '-',
+                'receive_remark' => '-',
+                'receive_subunit' => '-',
+            ],
+            [
+                'asset_code' => '7440-003-0001',
+                'sub_code' => '03/001/68',
+                'asset_name' => 'Toyota Hilux Revo',
+                'category' => 'ยานพาหนะ',
+                'value' => '750,000.00',
+                'receive_date' => '18/04/2568',
+                'model_name' => 'Toyota Hilux Revo',
+                'serial_no' => 'THR-2024-0098',
+                'storage_name' => 'คลังอ้อมกลาง',
+                'assigned_department' => 'กองคลังพัสดุ',
+                'receiver_name' => '-',
+                'receive_remark' => '-',
+                'receive_subunit' => 'ห้องทอง บ.',
+            ],
+        ];
+    }
+}
+
+if (! function_exists('gujajob_find_asset_department_receiving_record')) {
+    function gujajob_find_asset_department_receiving_record(string $assetCode): array
+    {
+        foreach (gujajob_asset_department_receiving_records() as $record) {
+            if ($record['asset_code'] === $assetCode) {
+                return $record;
+            }
+        }
+
+        abort(404);
+    }
+}
+
+if (! function_exists('gujajob_asset_disposal_request_records')) {
+    function gujajob_asset_disposal_request_records(): array
+    {
+        return [
+            [
+                'request_no' => 'SL2567001',
+                'request_date' => '05/15/2024',
+                'request_department' => 'xxxxxxxxxx',
+                'reason' => 'ชำรุด',
+                'approval_status' => 'รอการอนุมัติ',
+                'approval_status_type' => 'pending',
+                'asset_code' => '7440-001-002',
+                'asset_name' => 'HP LaserJet Pro M404dn',
+                'requested_by' => 'xxxxxxxxxx',
+                'remark' => '-',
+            ],
+            [
+                'request_no' => 'SL2567002',
+                'request_date' => '05/15/2024',
+                'request_department' => 'xxxxxxxxxx',
+                'reason' => 'หมดความจำเป็นใช้งาน',
+                'approval_status' => 'อนุมัติ',
+                'approval_status_type' => 'approved',
+                'asset_code' => '7440-004-0001',
+                'asset_name' => 'Toyota Hilux Revo',
+                'requested_by' => 'xxxxxxxxxx',
+                'remark' => '-',
+            ],
+        ];
+    }
+}
+
+if (! function_exists('gujajob_find_asset_disposal_request_record')) {
+    function gujajob_find_asset_disposal_request_record(string $requestNo): array
+    {
+        foreach (gujajob_asset_disposal_request_records() as $record) {
+            if ($record['request_no'] === $requestNo) {
+                return $record;
+            }
+        }
+
+        abort(404);
+    }
+}
+
 Route::get('/', function () {
     return redirect('/material/MAT-001-manage-material-items');
 });
@@ -911,4 +1022,54 @@ Route::get('/asset/ASS-004-assign-asset-to-department/{sequence}/edit', function
         'targetDepartment' => $assignmentDetails[$sequence]['target_department'],
     ]);
 })->name('asset.assignments.edit');
+
+Route::get('/asset/ASS-006-request-asset-disposal', function () {
+    return view('asset.ASS-006-request-asset-disposal.index', [
+        'pageTitle' => 'แจ้งขอจำหน่ายครุภัณฑ์',
+        'disposalRequests' => gujajob_asset_disposal_request_records(),
+    ]);
+})->name('asset.disposals.index');
+
+Route::get('/asset/ASS-006-request-asset-disposal/create', function () {
+    return view('asset.ASS-006-request-asset-disposal.create', [
+        'pageTitle' => 'แจ้งขอจำหน่ายครุภัณฑ์',
+        'nextRequestNo' => 'SL2567003',
+        'assets' => gujajob_asset_registration_records(),
+    ]);
+})->name('asset.disposals.create');
+
+Route::get('/asset/ASS-006-request-asset-disposal/{requestNo}', function (string $requestNo) {
+    return view('asset.ASS-006-request-asset-disposal.show', [
+        'pageTitle' => 'แจ้งขอจำหน่ายครุภัณฑ์',
+        'request' => gujajob_find_asset_disposal_request_record($requestNo),
+    ]);
+})->name('asset.disposals.show');
+
+Route::get('/asset/ASS-006-request-asset-disposal/{requestNo}/edit', function (string $requestNo) {
+    return view('asset.ASS-006-request-asset-disposal.edit', [
+        'pageTitle' => 'แจ้งขอจำหน่ายครุภัณฑ์',
+        'request' => gujajob_find_asset_disposal_request_record($requestNo),
+    ]);
+})->name('asset.disposals.edit');
+
+Route::get('/asset/ASS-005-receive-department-registered-asset', function () {
+    return view('asset.ASS-005-receive-department-registered-asset.index', [
+        'pageTitle' => 'รับครุภัณฑ์ลงทะเบียนหน่วยงาน',
+        'receivingRecords' => gujajob_asset_department_receiving_records(),
+    ]);
+})->name('asset.department-receiving.index');
+
+Route::get('/asset/ASS-005-receive-department-registered-asset/{assetCode}', function (string $assetCode) {
+    return view('asset.ASS-005-receive-department-registered-asset.show', [
+        'pageTitle' => 'รับครุภัณฑ์ลงทะเบียนหน่วยงาน',
+        'record' => gujajob_find_asset_department_receiving_record($assetCode),
+    ]);
+})->name('asset.department-receiving.show');
+
+Route::get('/asset/ASS-005-receive-department-registered-asset/{assetCode}/receive', function (string $assetCode) {
+    return view('asset.ASS-005-receive-department-registered-asset.receive', [
+        'pageTitle' => 'รับครุภัณฑ์ลงทะเบียนหน่วยงาน',
+        'record' => gujajob_find_asset_department_receiving_record($assetCode),
+    ]);
+})->name('asset.department-receiving.receive');
 
