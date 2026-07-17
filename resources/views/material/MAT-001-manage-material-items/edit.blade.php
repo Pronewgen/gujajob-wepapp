@@ -19,49 +19,51 @@
                 <span>ฟอร์มบันทึกข้อมูลวัสดุ</span>
             </div>
 
-            <form id="materialEditForm" class="material-form" autocomplete="off">
+            <form id="materialEditForm" class="material-form" autocomplete="off" action="{{ route('material.items.update', $material->mat_code) }}" method="POST">
+                @csrf
+                @method('PUT')
                 <div class="form-grid two-column">
                     <div class="form-field">
                         <label for="materialCode">รหัสวัสดุ <span class="required">*</span></label>
-                        <input id="materialCode" type="text" value="{{ $material['code'] }}" readonly>
+                        <input id="materialCode" type="text" value="{{ $material->mat_code }}" readonly>
                     </div>
 
                     <div class="form-field">
                         <label for="materialName">ชื่อวัสดุ<span class="required">*</span></label>
-                        <input id="materialName" type="text" value="{{ $material['name'] }}" required>
+                        <input id="materialName" name="MAT_NAME" type="text" value="{{ old('MAT_NAME', $material->mat_name) }}" required>
                     </div>
                 </div>
 
                 <div class="form-field full-width">
                     <label for="materialDescription">คุณลักษณะเฉพาะ:</label>
-                    <textarea id="materialDescription" rows="3">{{ $material['description'] }}</textarea>
+                    <textarea id="materialDescription" name="MAT_DESC" rows="3">{{ old('MAT_DESC', $material->mat_desc) }}</textarea>
                 </div>
 
                 <div class="form-grid three-column">
                     <div class="form-field">
                         <label for="materialUnit">หน่วยนับ <span class="required">*</span></label>
-                        <select id="materialUnit" required>
-                            <option value="รีม" {{ $material['unit'] === 'รีม' ? 'selected' : '' }}>รีม</option>
-                            <option value="กล่อง" {{ $material['unit'] === 'กล่อง' ? 'selected' : '' }}>กล่อง</option>
-                            <option value="ชิ้น" {{ $material['unit'] === 'ชิ้น' ? 'selected' : '' }}>ชิ้น</option>
-                            <option value="แพ็ค" {{ $material['unit'] === 'แพ็ค' ? 'selected' : '' }}>แพ็ค</option>
-                            <option value="ขวด" {{ $material['unit'] === 'ขวด' ? 'selected' : '' }}>ขวด</option>
+                        <select id="materialUnit" name="UNIT" required>
+                            <option value="รีม" {{ old('UNIT', $material->unit) === 'รีม' ? 'selected' : '' }}>รีม</option>
+                            <option value="กล่อง" {{ old('UNIT', $material->unit) === 'กล่อง' ? 'selected' : '' }}>กล่อง</option>
+                            <option value="ชิ้น" {{ old('UNIT', $material->unit) === 'ชิ้น' ? 'selected' : '' }}>ชิ้น</option>
+                            <option value="แพ็ค" {{ old('UNIT', $material->unit) === 'แพ็ค' ? 'selected' : '' }}>แพ็ค</option>
+                            <option value="ขวด" {{ old('UNIT', $material->unit) === 'ขวด' ? 'selected' : '' }}>ขวด</option>
                         </select>
                     </div>
 
                     <div class="form-field">
                         <label for="materialMin">จำนวนคงเหลือต่ำสุด</label>
-                        <input id="materialMin" type="number" min="0" value="{{ $material['balance'] }}">
+                        <input id="materialMin" name="MIN_AMT" type="number" min="0" value="{{ old('MIN_AMT', $material->min_amt) }}">
                     </div>
 
                     <div class="form-field">
                         <label for="materialMax">จำนวนคงเหลือสูงสุด</label>
-                        <input id="materialMax" type="number" min="0" value="{{ $material['max'] }}">
+                        <input id="materialMax" name="MAX_AMT" type="number" min="0" value="{{ old('MAX_AMT', $material->max_amt) }}">
                     </div>
                 </div>
 
                 <div class="form-actions">
-                    <a class="cancel-btn" href="{{ route('material.items.show', $material['code']) }}">ยกเลิก</a>
+                    <a class="cancel-btn" href="{{ route('material.items.show', $material->mat_code) }}">ยกเลิก</a>
                     <button class="submit-btn edit-submit-btn" type="submit">บันทึกการแก้ไข</button>
                 </div>
             </form>
@@ -76,7 +78,7 @@
 
             <h3>ยืนยันการแก้ไขข้อมูล</h3>
             <p>
-                คุณแน่ใจหรือไม่ว่าต้องการแก้ไขข้อมูลวัสดุ '{{ $material['code'] }}'<br>
+                คุณแน่ใจหรือไม่ว่าต้องการแก้ไขข้อมูลวัสดุ '{{ $material->mat_code }}'<br>
                 การดำเนินการนี้ไม่สามารถเรียกคืนได้
             </p>
 

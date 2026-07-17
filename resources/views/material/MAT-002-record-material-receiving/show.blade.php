@@ -6,7 +6,7 @@
 
 @section('content')
     @php
-        $totalQuantity = collect($record['items'])->sum('quantity');
+        $totalQuantity = $record->details->sum('mat_amt');
     @endphp
 
     <div class="page-container receiving-create-page">
@@ -23,45 +23,54 @@
                 <span>ข้อมูลเอกสารการรับวัสดุ</span>
             </div>
 
-            <div class="document-grid">
-                <div class="form-field">
+            <div class="mat002-document-grid">
+                <div class="mat002-field">
                     <label>เลขที่ใบรับวัสดุ</label>
-                    <input type="text" value="{{ $record['receipt_no'] }}" readonly>
+                    <input type="text" value="{{ $record->mat_pro_code }}" readonly>
                 </div>
 
-                <div class="form-field">
+                <div class="mat002-field">
                     <label>วันที่รับวัสดุ</label>
-                    <input type="text" value="{{ $record['received_date'] }}" readonly>
+                    <input type="text" value="{{ optional($record->mat_pro_date)->format('d/m/Y') }}" readonly>
                 </div>
 
-                <div class="form-field">
+                <div class="mat002-field">
                     <label>หน่วยงานที่รับเข้า</label>
-                    <input type="text" value="{{ $record['department'] }}" readonly>
+                    <input type="text" value="{{ $record->organization?->org_name ?? '-' }}" readonly>
                 </div>
 
-                <div class="form-field">
+                <div class="mat002-field">
                     <label>ผู้ประกอบการ</label>
-                    <input type="text" value="{{ $record['vendor'] }}" readonly>
+                    @php
+                        $dealerLabel = collect($dealerOptions)
+                            ->firstWhere('value', (int) $record->dealer_id);
+                    @endphp
+                    <input type="text" value="{{ $dealerLabel['label'] ?? ($record->dealer?->dealer_name ?? '-') }}" readonly>
                 </div>
 
-                <div class="form-field">
+                <div class="mat002-field">
+                    <label>ผู้บันทึก</label>
+                    <input type="text" value="{{ $record->created_by ?? '-' }}" readonly>
+                </div>
+
+                <div class="mat002-field">
                     <label>เลขที่สัญญา</label>
-                    <input type="text" value="{{ $record['contract_no'] }}" readonly>
+                    <input type="text" value="{{ $record->mat_pro_contact_no ?? '-' }}" readonly>
                 </div>
 
-                <div class="form-field">
+                <div class="mat002-field">
                     <label>วิธีการจัดซื้อจัดจ้าง</label>
-                    <input type="text" value="{{ $record['procurement_method'] }}" readonly>
+                    <input type="text" value="{{ $methodOptions[(int) ($record->mat_pro_method ?? 0)] ?? '-' }}" readonly>
                 </div>
 
-                <div class="form-field">
+                <div class="mat002-field">
                     <label>หมายเลขใบเสนอราคา</label>
-                    <input type="text" value="{{ $record['quotation_no'] }}" readonly>
+                    <input type="text" value="{{ $record->mat_pro_quotation ?? '-' }}" readonly>
                 </div>
 
-                <div class="form-field">
+                <div class="mat002-field">
                     <label>วันที่ของสัญญา</label>
-                    <input type="text" value="{{ $record['contract_date'] }}" readonly>
+                    <input type="text" value="{{ optional($record->mat_pro_contact_date)->format('d/m/Y') }}" readonly>
                 </div>
             </div>
 
@@ -71,18 +80,18 @@
 
                     <label class="radio-label">
                         <input type="radio" checked disabled>
-                        <span>{{ $record['vat_mode'] }}</span>
+                        <span>{{ $vatOptions[(int) ($record->vat_type ?? 0)] ?? '-' }}</span>
                     </label>
 
                     <label class="radio-label">
                         <input type="radio" disabled>
-                        <span>ไม่รวม VAT</span>
+                        <span>-</span>
                     </label>
                 </div>
 
                 <div class="vat-rate">
                     <label>อัตราภาษี :</label>
-                    <input type="number" value="{{ $record['vat_rate'] }}" readonly>
+                    <input type="number" value="{{ $record->vat_rate !== null ? $record->vat_rate : '' }}" readonly>
                     <span>%</span>
                 </div>
             </div>
@@ -108,16 +117,20 @@
                     </thead>
 
                     <tbody>
-                        @foreach ($record['items'] as $index => $item)
+                        @forelse ($record->details as $index => $item)
                             <tr>
                                 <td>{{ $index + 1 }}</td>
-                                <td><span class="material-code">{{ $item['code'] }}</span></td>
-                                <td>{{ $item['name'] }}</td>
-                                <td>{{ $item['quantity'] }}</td>
-                                <td>{{ $item['unit'] }}</td>
-                                <td>{{ $item['unit_price'] }}</td>
+                                <td><span class="material-code">{{ $item->material?->mat_code ?? '-' }}</span></td>
+                                <td>{{ $item->material?->mat_name ?? '-' }}</td>
+                                <td>{{ $item->mat_amt }}</td>
+                                <td>{{ $item->material?->unit ?? '-' }}</td>
+                                <td>{{ number_format((float) $item->mat_price, 2, '.', '') }}</td>
                             </tr>
-                        @endforeach
+                        @empty
+                            <tr>
+                                <td colspan="6" class="no-data">ยังไม่มีรายการวัสดุ</td>
+                            </tr>
+                        @endforelse
                     </tbody>
 
                     <tfoot>
@@ -133,29 +146,11 @@
 
             <div class="form-actions">
                 <a class="cancel-btn" href="{{ route('material.receiving.index') }}">ยกเลิก</a>
-                <button class="delete-receiving-btn" type="button" id="openDeleteReceivingModal">ลบข้อมูลการรับวัสดุ</button>
-                <a class="edit-receiving-btn link-button" href="{{ route('material.receiving.edit', $record['receipt_no']) }}">
+                <a class="edit-receiving-btn link-button" href="{{ route('material.receiving.edit', $record->mat_pro_code) }}">
                     แก้ไขข้อมูลการรับวัสดุ
                 </a>
             </div>
         </section>
-    </div>
-
-    <div class="confirm-overlay" id="deleteReceivingOverlay" aria-hidden="true">
-        <div class="confirm-modal" role="dialog" aria-modal="true">
-            <div class="confirm-icon danger-confirm-icon">!</div>
-
-            <h3>ยืนยันการลบข้อมูล</h3>
-            <p>
-                คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลการรับวัสดุ<br>
-                เลขที่ใบรับวัสดุ '{{ $record['receipt_no'] }}'
-            </p>
-
-            <div class="confirm-actions">
-                <button class="modal-cancel-btn" type="button" id="cancelDeleteReceivingButton">ยกเลิก</button>
-                <button class="modal-confirm-btn danger-confirm-btn" type="button" id="confirmDeleteReceivingButton">ยืนยันการลบ</button>
-            </div>
-        </div>
     </div>
 @endsection
 

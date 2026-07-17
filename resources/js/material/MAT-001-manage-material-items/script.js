@@ -206,7 +206,7 @@ function initializeCreateForm() {
 
     confirmButton.addEventListener('click', () => {
         closeOverlay(overlay);
-        window.location.href = '/material/MAT-001-manage-material-items';
+        form.submit();
     });
 }
 
@@ -241,7 +241,7 @@ function initializeEditForm() {
 
     confirmButton.addEventListener('click', () => {
         closeOverlay(overlay);
-        window.location.href = '/material/MAT-001-manage-material-items';
+        form.submit();
     });
 }
 
@@ -269,7 +269,10 @@ function initializeDeleteModal() {
 
     confirmButton.addEventListener('click', () => {
         closeOverlay(overlay);
-        window.location.href = '/material/MAT-001-manage-material-items';
+        const deleteForm = document.getElementById('deleteForm');
+        if (deleteForm) {
+            deleteForm.submit();
+        }
     });
 }
 

@@ -14,8 +14,19 @@
         </header>
 
         <section class="receiving-card">
-            <div class="card-title">
-                <span>ประวัติการรับวัสดุเข้าคลัง</span>
+            @if (session('success'))
+                <div class="form-success-box">{{ session('success') }}</div>
+            @endif
+
+            @if (session('error'))
+                <div class="form-error-box">{{ session('error') }}</div>
+            @endif
+
+            <div class="card-header">
+                <div class="card-title">
+                    <svg class="card-title-icon"><use href="#icon-material-list"></use></svg>
+                    <span>ประวัติการรับวัสดุเข้าคลัง</span>
+                </div>
             </div>
 
             <div class="toolbar">
@@ -24,7 +35,7 @@
                     <select id="searchType">
                         <option value="receipt_no">เลขที่ใบรับวัสดุ</option>
                         <option value="received_date">วันที่รับ</option>
-                        <option value="procurement_method">วิธีการจัดซื้อจัดจ้าง</option>
+                        <option value="organization">หน่วยงาน</option>
                     </select>
                 </div>
 
@@ -44,7 +55,7 @@
 
                 <button class="search-btn" type="button" id="searchButton">ค้นหา</button>
 
-                <a class="create-btn link-button" href="{{ route('material.receiving.create') }}">
+                <a class="save-btn link-button" href="{{ route('material.receiving.create') }}">
                     บันทึกการรับวัสดุเข้าคลัง
                 </a>
             </div>
@@ -55,40 +66,46 @@
                         <tr>
                             <th>เลขที่ใบรับวัสดุ</th>
                             <th>วันที่รับ</th>
-                            <th>จำนวนที่รับทั้งหมด</th>
-                            <th>วิธีการจัดซื้อจัดจ้าง</th>
+                            <th>หน่วยงาน</th>
+                            <th>ผู้บันทึก</th>
+                            <th>สถานะ</th>
                             <th class="action-column">จัดการ</th>
                         </tr>
                     </thead>
 
                     <tbody id="receivingTableBody">
-                        @foreach ($receivingRecords as $record)
-                            @php
-                                $totalQuantity = collect($record['items'] ?? [])->sum('quantity');
-                            @endphp
-
+                        @forelse ($receivingRecords as $record)
                             <tr
-                                data-receipt-no="{{ $record['receipt_no'] }}"
-                                data-received-date="{{ $record['received_date'] }}"
-                                data-procurement-method="{{ $record['procurement_method'] }}"
+                                data-receipt-no="{{ $record->mat_pro_code }}"
+                                data-received-date="{{ optional($record->mat_pro_date)->format('d/m/Y') }}"
+                                data-organization="{{ $record->organization?->org_name ?? '' }}"
                             >
-                                <td>{{ $record['receipt_no'] }}</td>
-                                <td>{{ $record['received_date'] }}</td>
-                                <td>{{ $totalQuantity }}</td>
-                                <td>{{ $record['procurement_method'] }}</td>
+                                <td>{{ $record->mat_pro_code }}</td>
+                                <td>{{ optional($record->mat_pro_date)->format('d/m/Y') }}</td>
+                                <td>{{ $record->organization?->org_name ?? '-' }}</td>
+                                <td>{{ $record->created_by ?? '-' }}</td>
+                                <td>{{ $record->status_label }}</td>
                                 <td class="action-column">
-                                    <a class="detail-btn link-button" href="{{ route('material.receiving.show', $record['receipt_no']) }}">
+                                    <a class="detail-btn link-button" href="{{ route('material.receiving.show', $record->mat_pro_code) }}">
                                         ดูรายละเอียด
+                                    </a>
+
+                                    <a class="detail-btn link-button" href="{{ route('material.receiving.edit', $record->mat_pro_code) }}">
+                                        แก้ไข
                                     </a>
                                 </td>
                             </tr>
-                        @endforeach
+                        @empty
+                            <tr class="no-data-row">
+                                <td class="no-data" colspan="6">ยังไม่มีข้อมูลวัสดุ</td>
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
 
             <div class="table-footer">
-                <p id="resultText">แสดง 1–2 จากทั้งหมด 2 รายการ</p>
+                <p id="resultText">แสดงทั้งหมด {{ $receivingRecords->count() }} รายการ</p>
 
                 <div class="pagination">
                     <button class="page-btn disabled" type="button">‹</button>

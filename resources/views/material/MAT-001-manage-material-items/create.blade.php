@@ -19,7 +19,8 @@
                 <span>ฟอร์มบันทึกข้อมูลวัสดุ</span>
             </div>
 
-            <form id="materialCreateForm" class="material-form" autocomplete="off">
+            <form id="materialCreateForm" class="material-form" autocomplete="off" action="{{ route('material.items.store') }}" method="POST">
+                @csrf
                 <div class="form-grid two-column">
                     <div class="form-field">
                         <label for="materialCode">รหัสวัสดุ</label>
@@ -28,19 +29,19 @@
 
                     <div class="form-field">
                         <label for="materialName">ชื่อวัสดุ<span class="required">*</span></label>
-                        <input id="materialName" type="text" placeholder="กรอกชื่อวัสดุ" required>
+                        <input id="materialName" name="MAT_NAME" type="text" placeholder="กรอกชื่อวัสดุ" required>
                     </div>
                 </div>
 
                 <div class="form-field full-width">
                     <label for="materialDescription">คุณลักษณะเฉพาะ:</label>
-                    <textarea id="materialDescription" rows="3" placeholder="กรอกคุณลักษณะเฉพาะของวัสดุ"></textarea>
+                    <textarea id="materialDescription" name="MAT_DESC" rows="3" placeholder="กรอกคุณลักษณะเฉพาะของวัสดุ"></textarea>
                 </div>
 
                 <div class="form-grid three-column">
                     <div class="form-field">
                         <label for="materialUnit">หน่วยนับ <span class="required">*</span></label>
-                        <select id="materialUnit" required>
+                        <select id="materialUnit" name="UNIT" required>
                             <option value="">เลือกหน่วยนับ</option>
                             <option value="รีม">รีม</option>
                             <option value="กล่อง">กล่อง</option>
@@ -52,12 +53,12 @@
 
                     <div class="form-field">
                         <label for="materialMin">จำนวนคงเหลือต่ำสุด</label>
-                        <input id="materialMin" type="number" min="0" placeholder="0">
+                        <input id="materialMin" name="MIN_AMT" type="number" min="0" placeholder="0">
                     </div>
 
                     <div class="form-field">
                         <label for="materialMax">จำนวนคงเหลือสูงสุด</label>
-                        <input id="materialMax" type="number" min="0" placeholder="0">
+                        <input id="materialMax" name="MAX_AMT" type="number" min="0" placeholder="0">
                     </div>
                 </div>
 

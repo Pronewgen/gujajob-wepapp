@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\MaterialController;
+use App\Http\Controllers\MaterialReceivingController;
 use Illuminate\Support\Facades\Route;
 
 if (! function_exists('gujajob_material_items')) {
@@ -586,63 +588,40 @@ Route::get('/', function () {
     return redirect('/material/MAT-001-manage-material-items');
 });
 
-Route::get('/material/MAT-001-manage-material-items', function () {
-    return view('material.MAT-001-manage-material-items.index', [
-        'pageTitle' => 'จัดการรายการวัสดุ',
-        'materials' => gujajob_material_items(),
-    ]);
-})->name('material.items.index');
+Route::get('/material/MAT-001-manage-material-items', [MaterialController::class, 'index'])
+    ->name('material.items.index');
+Route::get('/material/MAT-001-manage-material-items/create', [MaterialController::class, 'create'])
+    ->name('material.items.create');
+Route::post('/material/MAT-001-manage-material-items', [MaterialController::class, 'store'])
+    ->name('material.items.store');
+Route::get('/material/MAT-001-manage-material-items/{code}', [MaterialController::class, 'show'])
+    ->name('material.items.show');
+Route::get('/material/MAT-001-manage-material-items/{code}/edit', [MaterialController::class, 'edit'])
+    ->name('material.items.edit');
+Route::put('/material/MAT-001-manage-material-items/{code}', [MaterialController::class, 'update'])
+    ->name('material.items.update');
+Route::delete('/material/MAT-001-manage-material-items/{code}', [MaterialController::class, 'destroy'])
+    ->name('material.items.destroy');
 
-Route::get('/material/MAT-001-manage-material-items/create', function () {
-    return view('material.MAT-001-manage-material-items.create', [
-        'pageTitle' => 'จัดการรายการวัสดุ',
-        'nextMaterialCode' => 'MAT-1003',
-    ]);
-})->name('material.items.create');
+Route::get('/material/MAT-002-record-material-receiving', [MaterialReceivingController::class, 'index'])
+    ->name('material.receiving.index');
+Route::get('/material/MAT-002-record-material-receiving/create', [MaterialReceivingController::class, 'create'])
+    ->name('material.receiving.create');
+Route::post('/material/MAT-002-record-material-receiving', [MaterialReceivingController::class, 'storeHeader'])
+    ->name('material.receiving.store');
+Route::get('/material/MAT-002-record-material-receiving/{receiptNo}', [MaterialReceivingController::class, 'show'])
+    ->name('material.receiving.show');
+Route::get('/material/MAT-002-record-material-receiving/{receiptNo}/edit', [MaterialReceivingController::class, 'edit'])
+    ->name('material.receiving.edit');
+Route::put('/material/MAT-002-record-material-receiving/{receiptNo}', [MaterialReceivingController::class, 'update'])
+    ->name('material.receiving.update');
+Route::post('/material/MAT-002-record-material-receiving/{receiptNo}/items', [MaterialReceivingController::class, 'storeItem'])
+    ->name('material.receiving.items.store');
+Route::delete('/material/MAT-002-record-material-receiving/{receiptNo}/items/{itemId}', [MaterialReceivingController::class, 'destroyItem'])
+    ->name('material.receiving.items.destroy');
+Route::post('/material/MAT-002-record-material-receiving/{receiptNo}/finalize', [MaterialReceivingController::class, 'finalize'])
+    ->name('material.receiving.finalize');
 
-Route::get('/material/MAT-001-manage-material-items/{code}', function (string $code) {
-    return view('material.MAT-001-manage-material-items.show', [
-        'pageTitle' => 'จัดการรายการวัสดุ',
-        'material' => gujajob_find_material($code),
-    ]);
-})->name('material.items.show');
-
-Route::get('/material/MAT-001-manage-material-items/{code}/edit', function (string $code) {
-    return view('material.MAT-001-manage-material-items.edit', [
-        'pageTitle' => 'จัดการรายการวัสดุ',
-        'material' => gujajob_find_material($code),
-    ]);
-})->name('material.items.edit');
-
-Route::get('/material/MAT-002-record-material-receiving', function () {
-    return view('material.MAT-002-record-material-receiving.index', [
-        'pageTitle' => 'บันทึกการรับวัสดุเข้าคลัง',
-        'receivingRecords' => gujajob_material_receiving_records(),
-    ]);
-})->name('material.receiving.index');
-
-Route::get('/material/MAT-002-record-material-receiving/create', function () {
-    return view('material.MAT-002-record-material-receiving.create', [
-        'pageTitle' => 'บันทึกการรับวัสดุเข้าคลัง',
-        'nextReceiptNo' => 'REC-66-00126',
-        'materials' => gujajob_material_items(),
-    ]);
-})->name('material.receiving.create');
-
-Route::get('/material/MAT-002-record-material-receiving/{receiptNo}', function (string $receiptNo) {
-    return view('material.MAT-002-record-material-receiving.show', [
-        'pageTitle' => 'บันทึกการรับวัสดุเข้าคลัง',
-        'record' => gujajob_find_receiving_record($receiptNo),
-    ]);
-})->name('material.receiving.show');
-
-Route::get('/material/MAT-002-record-material-receiving/{receiptNo}/edit', function (string $receiptNo) {
-    return view('material.MAT-002-record-material-receiving.edit', [
-        'pageTitle' => 'บันทึกการรับวัสดุเข้าคลัง',
-        'record' => gujajob_find_receiving_record($receiptNo),
-        'materials' => gujajob_material_items(),
-    ]);
-})->name('material.receiving.edit');
 
 
 Route::get('/material/MAT-003-withdraw-material', function () {

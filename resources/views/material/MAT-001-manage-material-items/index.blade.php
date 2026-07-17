@@ -21,24 +21,24 @@
                 </div>
             </div>
 
-            <div class="toolbar">
+            <form class="toolbar" method="GET" action="{{ route('material.items.index') }}">
                 <div class="field-group">
                     <label for="materialType">ค้นหาจาก</label>
-                    <select id="materialType">
-                        <option value="name">ชื่อวัสดุ</option>
-                        <option value="code">รหัสวัสดุ</option>
+                    <select id="materialType" name="search_by">
+                        <option value="name" {{ ($searchBy ?? 'name') === 'name' ? 'selected' : '' }}>ชื่อวัสดุ</option>
+                        <option value="code" {{ ($searchBy ?? 'name') === 'code' ? 'selected' : '' }}>รหัสวัสดุ</option>
                     </select>
                 </div>
 
                 <div class="field-group search-group">
                     <label for="materialSearch">คำค้นหา</label>
-                    <input id="materialSearch" type="text" placeholder="กรอกชื่อวัสดุ">
+                    <input id="materialSearch" name="keyword" type="text" placeholder="กรอกชื่อวัสดุ" value="{{ $keyword ?? '' }}">
                 </div>
 
-                <button class="search-btn" type="button" id="searchButton">ค้นหา</button>
+                <button class="search-btn" type="submit" id="searchButton">ค้นหา</button>
 
                 <a class="save-btn link-button" href="{{ route('material.items.create') }}">บันทึกวัสดุ</a>
-            </div>
+            </form>
 
             <div class="table-wrapper">
                 <table class="material-table">
@@ -53,27 +53,35 @@
                     </thead>
 
                     <tbody id="materialTableBody">
-                        @foreach ($materials as $material)
-                            <tr data-code="{{ $material['code'] }}" data-name="{{ $material['name'] }}">
+                        @forelse ($materials as $material)
+                            <tr data-code="{{ $material->mat_code }}" data-name="{{ $material->mat_name }}">
                                 <td>
-                                    <span class="material-code">{{ $material['code'] }}</span>
+                                    <span class="material-code">{{ $material->mat_code }}</span>
                                 </td>
-                                <td>{{ $material['name'] }}</td>
-                                <td>{{ $material['unit'] }}</td>
-                                <td>{{ $material['balance'] }} / {{ $material['max'] }}</td>
+                                <td>{{ $material->mat_name }}</td>
+                                <td>{{ $material->unit }}</td>
+                                <td>{{ $material->min_amt ?? 0 }} / {{ $material->max_amt ?? 0 }}</td>
                                 <td class="action-column">
-                                    <a class="detail-btn link-button" href="{{ route('material.items.show', $material['code']) }}">
-                                        ดูรายละเอียด
-                                    </a>
+                                    @if (!empty($material->mat_code))
+                                        <a class="detail-btn link-button" href="{{ route('material.items.show', $material->mat_code) }}">
+                                            ดูรายละเอียด
+                                        </a>
+                                    @else
+                                        -
+                                    @endif
                                 </td>
                             </tr>
-                        @endforeach
+                        @empty
+                            <tr class="no-data-row">
+                                <td class="no-data" colspan="5">ยังไม่มีข้อมูลวัสดุ</td>
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
 
             <div class="table-footer">
-                <p id="tableResultText">แสดง 1–2 จากทั้งหมด 2 รายการ</p>
+                <p id="tableResultText">แสดงทั้งหมด {{ $materials->count() }} รายการ</p>
 
                 <div class="pagination">
                     <button class="page-btn disabled" type="button">‹</button>

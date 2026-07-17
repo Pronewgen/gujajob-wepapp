@@ -23,41 +23,41 @@
                 <div class="form-grid two-column">
                     <div class="form-field">
                         <label>รหัสวัสดุ <span class="required">*</span></label>
-                        <input type="text" value="{{ $material['code'] }}" readonly>
+                        <input type="text" value="{{ $material->mat_code }}" readonly>
                     </div>
 
                     <div class="form-field">
                         <label>ชื่อวัสดุ<span class="required">*</span></label>
-                        <input type="text" value="{{ $material['name'] }}" readonly>
+                        <input type="text" value="{{ $material->mat_name }}" readonly>
                     </div>
                 </div>
 
                 <div class="form-field full-width">
                     <label>คุณลักษณะเฉพาะ:</label>
-                    <textarea rows="3" readonly>{{ $material['description'] }}</textarea>
+                    <textarea rows="3" readonly>{{ $material->mat_desc }}</textarea>
                 </div>
 
                 <div class="form-grid three-column">
                     <div class="form-field">
                         <label>หน่วยนับ <span class="required">*</span></label>
-                        <input type="text" value="{{ $material['unit'] }}" readonly>
+                        <input type="text" value="{{ $material->unit }}" readonly>
                     </div>
 
                     <div class="form-field">
                         <label>จำนวนคงเหลือต่ำสุด</label>
-                        <input type="text" value="{{ $material['balance'] }}" readonly>
+                        <input type="text" value="{{ $material->min_amt }}" readonly>
                     </div>
 
                     <div class="form-field">
                         <label>จำนวนคงเหลือสูงสุด</label>
-                        <input type="text" value="{{ $material['max'] }}" readonly>
+                        <input type="text" value="{{ $material->max_amt }}" readonly>
                     </div>
                 </div>
 
                 <div class="form-actions">
                     <a class="cancel-btn" href="{{ route('material.items.index') }}">ยกเลิก</a>
-                    <button class="delete-btn" type="button" id="openDeleteModalButton" data-code="{{ $material['code'] }}">ลบรายการวัสดุ</button>
-                    <a class="edit-btn" href="{{ route('material.items.edit', $material['code']) }}">แก้ไขรายการวัสดุ</a>
+                    <button class="delete-btn" type="button" id="openDeleteModalButton" data-code="{{ $material->mat_code }}">ลบรายการวัสดุ</button>
+                    <a class="edit-btn" href="{{ route('material.items.edit', $material->mat_code) }}">แก้ไขรายการวัสดุ</a>
                 </div>
             </form>
         </section>
@@ -71,7 +71,7 @@
 
             <h3>ยืนยันการลบข้อมูล</h3>
             <p>
-                คุณแน่ใจหรือไม่ว่าต้องการลบรายการ '{{ $material['code'] }}'<br>
+                คุณแน่ใจหรือไม่ว่าต้องการลบรายการ '{{ $material->mat_code }}'<br>
                 การดำเนินการนี้ไม่สามารถเรียกคืนได้
             </p>
 
@@ -81,6 +81,11 @@
             </div>
         </div>
     </div>
+
+    <form id="deleteForm" action="{{ route('material.items.destroy', $material->mat_code) }}" method="POST" style="display:none">
+        @csrf
+        @method('DELETE')
+    </form>
 @endsection
 
 @section('page-script')

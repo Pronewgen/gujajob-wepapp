@@ -1,3 +1,6 @@
+import '../../components/date-picker.js';
+import { initSearchableSelects } from '../../components/searchable-select.js';
+
 const sidebarStorageKey = 'gujajob.sidebar.groupState';
 
 function getSidebarState() {
@@ -34,7 +37,6 @@ function saveSidebarState(state) {
 
 function applySidebarGroupState(groupElement, isOpen) {
     const toggleButton = groupElement.querySelector('.menu-group-toggle');
-
     groupElement.classList.toggle('is-collapsed', !isOpen);
 
     if (toggleButton) {
@@ -60,7 +62,6 @@ function initializeSidebarGroups() {
         toggleButton.addEventListener('click', () => {
             const currentState = getSidebarState();
             const nextIsOpen = groupElement.classList.contains('is-collapsed');
-
             currentState[groupName] = nextIsOpen;
 
             applySidebarGroupState(groupElement, nextIsOpen);
@@ -77,20 +78,6 @@ function preventDisabledMenuReload() {
     });
 }
 
-function openOverlay(overlay) {
-    if (!overlay) return;
-
-    overlay.classList.add('is-visible');
-    overlay.setAttribute('aria-hidden', 'false');
-}
-
-function closeOverlay(overlay) {
-    if (!overlay) return;
-
-    overlay.classList.remove('is-visible');
-    overlay.setAttribute('aria-hidden', 'true');
-}
-
 function initializeReceivingSearch() {
     const searchType = document.getElementById('searchType');
     const searchInput = document.getElementById('searchInput');
@@ -102,7 +89,7 @@ function initializeReceivingSearch() {
         return;
     }
 
-    const originalRows = Array.from(tableBody.querySelectorAll('tr'));
+    const originalRows = Array.from(tableBody.querySelectorAll('tr')).filter((row) => !row.classList.contains('no-data-row'));
 
     function updatePlaceholder() {
         if (searchType.value === 'received_date') {
@@ -110,8 +97,8 @@ function initializeReceivingSearch() {
             return;
         }
 
-        if (searchType.value === 'procurement_method') {
-            searchInput.placeholder = 'กรอกวิธีการจัดซื้อจัดจ้าง';
+        if (searchType.value === 'organization') {
+            searchInput.placeholder = 'กรอกหน่วยงาน';
             return;
         }
 
@@ -124,7 +111,7 @@ function initializeReceivingSearch() {
             return;
         }
 
-        resultText.textContent = `แสดง 1–${visibleCount} จากทั้งหมด ${visibleCount} รายการ`;
+        resultText.textContent = `แสดงทั้งหมด ${visibleCount} รายการ`;
     }
 
     function searchRecords() {
@@ -133,17 +120,15 @@ function initializeReceivingSearch() {
         let visibleCount = 0;
 
         originalRows.forEach((row) => {
-            let targetText = '';
+            let targetText = row.dataset.receiptNo || '';
 
             if (type === 'received_date') {
-                targetText = row.dataset.receivedDate.toLowerCase();
-            } else if (type === 'procurement_method') {
-                targetText = row.dataset.procurementMethod.toLowerCase();
-            } else {
-                targetText = row.dataset.receiptNo.toLowerCase();
+                targetText = row.dataset.receivedDate || '';
+            } else if (type === 'organization') {
+                targetText = row.dataset.organization || '';
             }
 
-            const isVisible = targetText.includes(keyword);
+            const isVisible = targetText.toLowerCase().includes(keyword);
             row.style.display = isVisible ? '' : 'none';
 
             if (isVisible) {
@@ -160,7 +145,7 @@ function initializeReceivingSearch() {
         if (visibleCount === 0) {
             const noDataRow = document.createElement('tr');
             noDataRow.className = 'no-data-row';
-            noDataRow.innerHTML = '<td class="no-data" colspan="5">ไม่พบข้อมูลที่ค้นหา</td>';
+            noDataRow.innerHTML = '<td class="no-data" colspan="6">ยังไม่มีข้อมูลวัสดุ</td>';
             tableBody.appendChild(noDataRow);
         }
 
@@ -174,706 +159,558 @@ function initializeReceivingSearch() {
     });
 
     searchButton.addEventListener('click', searchRecords);
-
-    searchInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            searchRecords();
-        }
-    });
-
-    searchInput.addEventListener('input', () => {
-        if (searchInput.value.trim() === '') {
-            searchRecords();
-        }
-    });
+    searchInput.addEventListener('input', searchRecords);
 
     updatePlaceholder();
 }
+
+/* ===== Shared helpers used by both the header form and the item editor ===== */
+
+function getDisplayField(field) {
+    if (field && field._flatpickr && field._flatpickr.altInput) return field._flatpickr.altInput;
+    if (field && field._saTextInput) return field._saTextInput;
+    return field;
+}
+
+function getErrorContainer(field) {
+    if (!field || !field.id) {
+        return null;
+    }
+
+    return document.getElementById(`${field.id}Error`);
+}
+
+function markFieldInvalid(field, message) {
+    if (!field) {
+        return;
+    }
+
+    getDisplayField(field).classList.add('gujajob-is-invalid');
+
+    const container = getErrorContainer(field);
+
+    if (container) {
+        container.textContent = message;
+    }
+}
+
+function clearFieldInvalid(field) {
+    if (!field) {
+        return;
+    }
+
+    getDisplayField(field).classList.remove('gujajob-is-invalid');
+
+    const container = getErrorContainer(field);
+
+    if (container) {
+        container.textContent = '';
+    }
+}
+
+function attachLiveClear(field, isValidNow) {
+    if (!field) {
+        return;
+    }
+
+    const handler = () => {
+        if (isValidNow()) {
+            clearFieldInvalid(field);
+        }
+    };
+
+    field.addEventListener('input', handler);
+    field.addEventListener('change', handler);
+}
+
+function openOverlay(overlay) {
+    if (!overlay) {
+        return;
+    }
+
+    overlay.classList.add('is-visible');
+    overlay.setAttribute('aria-hidden', 'false');
+}
+
+function closeOverlay(overlay) {
+    if (!overlay) {
+        return;
+    }
+
+    overlay.classList.remove('is-visible');
+    overlay.setAttribute('aria-hidden', 'true');
+}
+
+function getCsrfToken() {
+    const tokenInput = document.querySelector('#receivingHeaderForm input[name="_token"]');
+    return tokenInput ? tokenInput.value : '';
+}
+
+/* ===== Step 1: Header form only (MATERIAL_PROCUREMENT). Never touches items. ===== */
+
+function initializeHeaderForm() {
+    const headerForm = document.getElementById('receivingHeaderForm');
+    const saveButton = document.getElementById('saveHeaderButton');
+
+    if (!headerForm || !saveButton) {
+        return;
+    }
+
+    const receivedDateInput = document.getElementById('receivedDate');
+    const receiverDepartmentSelect = document.getElementById('receiverDepartment');
+    const dealerSelect = document.getElementById('dealerSelect');
+
+    const saveConfirmOverlay = document.getElementById('saveReceivingOverlay');
+    const cancelSaveButton = document.getElementById('cancelSaveReceivingButton');
+    const confirmSaveButton = document.getElementById('confirmSaveReceivingButton');
+
+    function validateHeaderFields() {
+        const requiredFields = [
+            { field: receivedDateInput, message: 'กรุณาระบุวันที่รับวัสดุ' },
+            { field: receiverDepartmentSelect, message: 'กรุณาเลือกหน่วยงานที่รับเข้า' },
+            { field: dealerSelect, message: 'กรุณาเลือกผู้ประกอบการ' },
+        ];
+
+        let isValid = true;
+        let firstInvalidField = null;
+
+        requiredFields.forEach(({ field, message }) => {
+            if (!field) {
+                return;
+            }
+
+            const value = String(field.value || '').trim();
+
+            if (value === '') {
+                markFieldInvalid(field, message);
+                isValid = false;
+
+                if (!firstInvalidField) {
+                    firstInvalidField = field;
+                }
+            } else {
+                clearFieldInvalid(field);
+            }
+        });
+
+        return { isValid, firstInvalidField };
+    }
+
+    attachLiveClear(receivedDateInput, () => String(receivedDateInput?.value || '').trim() !== '');
+    attachLiveClear(receiverDepartmentSelect, () => String(receiverDepartmentSelect?.value || '').trim() !== '');
+    attachLiveClear(dealerSelect, () => String(dealerSelect?.value || '').trim() !== '');
+
+    saveButton.addEventListener('click', () => {
+        const result = validateHeaderFields();
+
+        if (!result.isValid) {
+            if (result.firstInvalidField) {
+                const displayField = getDisplayField(result.firstInvalidField);
+                displayField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => displayField.focus(), 250);
+            }
+
+            return;
+        }
+
+        openOverlay(saveConfirmOverlay);
+    });
+
+    if (cancelSaveButton) {
+        cancelSaveButton.addEventListener('click', () => closeOverlay(saveConfirmOverlay));
+    }
+
+    if (confirmSaveButton) {
+        confirmSaveButton.addEventListener('click', () => {
+            closeOverlay(saveConfirmOverlay);
+            headerForm.submit();
+        });
+    }
+
+    if (saveConfirmOverlay) {
+        saveConfirmOverlay.addEventListener('click', (event) => {
+            if (event.target === saveConfirmOverlay) {
+                closeOverlay(saveConfirmOverlay);
+            }
+        });
+    }
+}
+
+/* ===== Step 2: Items (MATERIAL_PROCUREMENT_LIST), enabled only once the header exists. ===== */
 
 function initializeReceivingItemEditor() {
     const materialSearchType = document.getElementById('materialSearchType');
     const materialSearchInput = document.getElementById('materialSearchInput');
     const findMaterialButton = document.getElementById('findMaterialButton');
-
-    const materialCode = document.getElementById('materialCode');
-    const materialName = document.getElementById('materialName');
-    const materialUnit = document.getElementById('materialUnit');
-    const receiveQty = document.getElementById('receiveQty');
-    const unitPrice = document.getElementById('unitPrice');
     const addMaterialButton = document.getElementById('addMaterialButton');
-
     const tableBody = document.getElementById('receivingItemsBody');
-    const totalQty = document.getElementById('totalQty');
+    const totalQtyElement = document.getElementById('totalQty');
 
-    if (!materialSearchType || !materialSearchInput || !findMaterialButton || !materialCode || !materialName || !materialUnit || !tableBody || !addMaterialButton) {
+    if (!materialSearchType || !materialSearchInput || !findMaterialButton || !addMaterialButton || !tableBody || !totalQtyElement) {
         return;
     }
 
-    let editingRow = null;
+    const materialIdInput = document.getElementById('materialId');
+    const materialCodeInput = document.getElementById('materialCode');
+    const materialNameInput = document.getElementById('materialName');
+    const materialUnitInput = document.getElementById('materialUnit');
+    const receiveQtyInput = document.getElementById('receiveQty');
+    const unitPriceInput = document.getElementById('unitPrice');
 
-    const materialMaster = [
-        {
-            code: 'MAT-1001',
-            name: 'กระดาษถ่ายเอกสาร A4 80 แกรม',
-            unit: 'รีม',
-        },
-        {
-            code: 'MAT-3012',
-            name: 'หมึกพิมพ์ Brother TN-2380',
-            unit: 'กล่อง',
-        },
-    ];
+    const finalizeButton = document.getElementById('finalizeReceivingButton');
+    const finalizeForm = document.getElementById('finalizeForm');
+    const noItemsOverlay = document.getElementById('noItemsOverlay');
+    const noItemsMessage = document.getElementById('noItemsMessage');
+    const closeNoItemsButton = document.getElementById('closeNoItemsButton');
 
-    function setAddMode() {
-        editingRow = null;
-        addMaterialButton.textContent = 'เพิ่ม';
-        addMaterialButton.classList.remove('is-editing');
-    }
-
-    function setEditMode(row) {
-        editingRow = row;
-        addMaterialButton.textContent = 'เพิ่ม';
-        addMaterialButton.classList.add('is-editing');
-    }
-
-    function clearMaterialInputForm() {
-        materialCode.value = '';
-        materialName.value = '';
-        receiveQty.value = '';
-        materialUnit.value = '';
-        unitPrice.value = '';
-        setAddMode();
-    }
+    const materialMaster = Array.isArray(window.matReceivingMaterials) ? window.matReceivingMaterials : [];
+    const isRecordSaved = Boolean(window.matReceivingRecordSaved);
+    const itemsBaseUrl = window.matReceivingItemsBaseUrl || null;
 
     function updateSearchPlaceholder() {
-        if (materialSearchType.value === 'name') {
-            materialSearchInput.placeholder = 'กรอกชื่อวัสดุ';
-            return;
-        }
-
-        materialSearchInput.placeholder = 'กรอกรหัสวัสดุ';
+        materialSearchInput.placeholder = materialSearchType.value === 'name'
+            ? 'กรอกชื่อวัสดุ'
+            : 'กรอกรหัสวัสดุ';
     }
 
-    function fillMaterialInputForm(material, qty = '', price = '') {
-        materialCode.value = material.code;
-        materialName.value = material.name;
-        materialUnit.value = material.unit;
-        receiveQty.value = qty;
-        unitPrice.value = price;
+    function clearMiniForm() {
+        materialIdInput.value = '';
+        materialCodeInput.value = '';
+        materialNameInput.value = '';
+        materialUnitInput.value = '';
+        receiveQtyInput.value = '';
+        unitPriceInput.value = '';
+        clearFieldInvalid(materialCodeInput);
+        clearFieldInvalid(receiveQtyInput);
+        clearFieldInvalid(unitPriceInput);
     }
 
     function findMaterial() {
         const keyword = materialSearchInput.value.trim().toLowerCase();
 
+        clearFieldInvalid(materialSearchInput);
+
         if (!keyword) {
-            alert('กรุณากรอกคำค้นหาวัสดุ');
+            markFieldInvalid(materialSearchInput, 'กรุณากรอกคำค้นหา');
             return;
         }
 
-        let material = null;
+        const material = materialMaster.find((item) => {
+            if (materialSearchType.value === 'name') {
+                return String(item.name || '').toLowerCase().includes(keyword);
+            }
 
-        if (materialSearchType.value === 'name') {
-            material = materialMaster.find((item) => item.name.toLowerCase().includes(keyword));
-        } else {
-            material = materialMaster.find((item) => item.code.toLowerCase() === keyword);
-        }
-
-        if (!material) {
-            clearMaterialInputForm();
-            alert('ไม่พบข้อมูลวัสดุที่ค้นหา');
-            return;
-        }
-
-        fillMaterialInputForm(material);
-        setAddMode();
-    }
-
-    function recalculateTotal() {
-        let total = 0;
-
-        tableBody.querySelectorAll('tr').forEach((row) => {
-            total += Number(row.dataset.qty || 0);
+            return String(item.code || '').toLowerCase().includes(keyword);
         });
 
-        if (totalQty) {
-            totalQty.textContent = total;
+        if (!material) {
+            markFieldInvalid(materialSearchInput, 'ไม่พบข้อมูลวัสดุที่ค้นหา');
+            return;
         }
+
+        materialIdInput.value = material.id;
+        materialCodeInput.value = material.code;
+        materialNameInput.value = material.name;
+        materialUnitInput.value = material.unit;
+        clearFieldInvalid(materialCodeInput);
     }
 
-    function reorderRows() {
-        tableBody.querySelectorAll('tr').forEach((row, index) => {
+    function collectRows() {
+        return Array.from(tableBody.querySelectorAll('tr')).filter((row) => !row.classList.contains('empty-row'));
+    }
+
+    function rebuildRowNumbers() {
+        collectRows().forEach((row, index) => {
             row.children[0].textContent = index + 1;
         });
     }
 
-    function showNoItemRowIfEmpty() {
-        const rows = tableBody.querySelectorAll('tr:not(.empty-row)');
-
-        if (rows.length > 0) {
-            const oldEmpty = tableBody.querySelector('.empty-row');
-
-            if (oldEmpty) {
-                oldEmpty.remove();
+    function showEmptyRowIfNeeded() {
+        if (collectRows().length > 0) {
+            const empty = tableBody.querySelector('.empty-row');
+            if (empty) {
+                empty.remove();
             }
-
             return;
         }
 
         if (!tableBody.querySelector('.empty-row')) {
-            const emptyRow = document.createElement('tr');
-            emptyRow.className = 'empty-row';
-            emptyRow.innerHTML = '<td colspan="7" style="text-align:center;color:#6b7280;">ยังไม่มีรายการ</td>';
-            tableBody.appendChild(emptyRow);
+            const row = document.createElement('tr');
+            row.className = 'empty-row';
+            row.innerHTML = '<td colspan="7" class="no-data">ยังไม่มีรายการ</td>';
+            tableBody.appendChild(row);
         }
     }
 
-    function buildActionButtons() {
-        return `
-            <button class="small-edit-btn" type="button">แก้ไข</button>
-            <button class="small-delete-btn" type="button">ลบ</button>
-        `;
+    function updateTotalQty() {
+        const totalQty = collectRows().reduce((sum, row) => sum + Number(row.dataset.qty || 0), 0);
+        totalQtyElement.textContent = totalQty;
     }
 
-    function updateRow(row, code, name, qty, unit, price) {
-        row.dataset.code = code;
-        row.dataset.name = name;
-        row.dataset.qty = qty;
-        row.dataset.unit = unit;
-        row.dataset.price = price.toFixed(2);
-
-        row.children[1].innerHTML = `<span class="material-code">${code}</span>`;
-        row.children[2].textContent = name;
-        row.children[3].textContent = qty;
-        row.children[4].textContent = unit;
-        row.children[5].textContent = price.toFixed(2);
-        row.children[6].innerHTML = buildActionButtons();
-    }
-
-    function addNewRow(code, name, qty, unit, price) {
-        const emptyRow = tableBody.querySelector('.empty-row');
-
-        if (emptyRow) {
-            emptyRow.remove();
-        }
-
-        const rowCount = tableBody.querySelectorAll('tr').length + 1;
+    function buildRow(item) {
         const row = document.createElement('tr');
-
-        row.dataset.code = code;
-        row.dataset.name = name;
-        row.dataset.qty = qty;
-        row.dataset.unit = unit;
-        row.dataset.price = price.toFixed(2);
+        row.dataset.itemId = String(item.id);
+        row.dataset.matId = String(item.mat_id);
+        row.dataset.code = item.code || '';
+        row.dataset.name = item.name || '';
+        row.dataset.unit = item.unit || '';
+        row.dataset.qty = String(item.qty);
+        row.dataset.price = String(item.price);
 
         row.innerHTML = `
-            <td>${rowCount}</td>
-            <td><span class="material-code">${code}</span></td>
-            <td>${name}</td>
-            <td>${qty}</td>
-            <td>${unit}</td>
-            <td>${price.toFixed(2)}</td>
-            <td>${buildActionButtons()}</td>
+            <td>0</td>
+            <td><span class="material-code">${item.code || ''}</span></td>
+            <td>${item.name || ''}</td>
+            <td>${item.qty}</td>
+            <td>${item.unit || ''}</td>
+            <td>${Number(item.price).toFixed(2)}</td>
+            <td><button class="small-delete-btn" type="button">ลบ</button></td>
         `;
 
-        tableBody.appendChild(row);
+        return row;
     }
+
+    function findDuplicateRow(matId) {
+        return collectRows().find((row) => Number(row.dataset.matId) === matId);
+    }
+
+    function addItem() {
+        if (!isRecordSaved || !itemsBaseUrl) {
+            return;
+        }
+
+        const matId = Number(materialIdInput.value || 0);
+        const qtyRaw = receiveQtyInput.value;
+        const priceRaw = unitPriceInput.value;
+        const qty = Number(qtyRaw || 0);
+        const price = Number(priceRaw || 0);
+
+        let isValid = true;
+
+        if (!matId) {
+            markFieldInvalid(materialCodeInput, 'กรุณาเลือกวัสดุ');
+            isValid = false;
+        } else {
+            clearFieldInvalid(materialCodeInput);
+        }
+
+        if (String(qtyRaw).trim() === '' || qty <= 0) {
+            markFieldInvalid(receiveQtyInput, 'กรุณาระบุจำนวนมากกว่า 0');
+            isValid = false;
+        } else {
+            clearFieldInvalid(receiveQtyInput);
+        }
+
+        if (String(priceRaw).trim() === '' || price < 0) {
+            markFieldInvalid(unitPriceInput, 'กรุณาระบุราคา/หน่วยให้ถูกต้อง');
+            isValid = false;
+        } else {
+            clearFieldInvalid(unitPriceInput);
+        }
+
+        if (!isValid) {
+            return;
+        }
+
+        if (findDuplicateRow(matId)) {
+            markFieldInvalid(materialCodeInput, 'วัสดุรายการนี้ถูกเพิ่มแล้ว กรุณาแก้ไขจำนวนในรายการเดิม');
+            return;
+        }
+
+        addMaterialButton.disabled = true;
+
+        fetch(itemsBaseUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-CSRF-TOKEN': getCsrfToken(),
+            },
+            body: JSON.stringify({
+                material_id: matId,
+                quantity: qty,
+                unit_price: price,
+            }),
+        })
+            .then(async (response) => {
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    const message = data?.errors?.material_id?.[0]
+                        || data?.errors?.quantity?.[0]
+                        || data?.errors?.unit_price?.[0]
+                        || data?.message
+                        || 'ไม่สามารถเพิ่มรายการวัสดุได้';
+
+                    markFieldInvalid(materialCodeInput, message);
+                    return;
+                }
+
+                const row = buildRow(data.item);
+                tableBody.appendChild(row);
+                rebuildRowNumbers();
+                showEmptyRowIfNeeded();
+                updateTotalQty();
+                clearMiniForm();
+                materialSearchInput.value = '';
+            })
+            .catch(() => {
+                markFieldInvalid(materialCodeInput, 'ไม่สามารถเพิ่มรายการวัสดุได้ กรุณาลองใหม่อีกครั้ง');
+            })
+            .finally(() => {
+                addMaterialButton.disabled = false;
+            });
+    }
+
+    function deleteItem(row) {
+        if (!itemsBaseUrl) {
+            return;
+        }
+
+        const itemId = row.dataset.itemId;
+
+        if (!itemId) {
+            return;
+        }
+
+        fetch(`${itemsBaseUrl}/${itemId}`, {
+            method: 'DELETE',
+            headers: {
+                Accept: 'application/json',
+                'X-CSRF-TOKEN': getCsrfToken(),
+            },
+        })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error('delete failed');
+                }
+
+                row.remove();
+                rebuildRowNumbers();
+                showEmptyRowIfNeeded();
+                updateTotalQty();
+            })
+            .catch(() => {
+                // Silently ignore; row stays as-is if the delete failed.
+            });
+    }
+
+    tableBody.addEventListener('click', (event) => {
+        if (!event.target.classList.contains('small-delete-btn')) {
+            return;
+        }
+
+        const row = event.target.closest('tr');
+
+        if (row && !row.classList.contains('empty-row')) {
+            deleteItem(row);
+        }
+    });
 
     materialSearchType.addEventListener('change', () => {
         materialSearchInput.value = '';
+        clearFieldInvalid(materialSearchInput);
         updateSearchPlaceholder();
     });
 
     findMaterialButton.addEventListener('click', findMaterial);
+    addMaterialButton.addEventListener('click', addItem);
 
-    materialSearchInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            findMaterial();
-        }
-    });
+    attachLiveClear(materialSearchInput, () => materialSearchInput.value.trim() !== '');
+    attachLiveClear(receiveQtyInput, () => Number(receiveQtyInput.value || 0) > 0);
+    attachLiveClear(unitPriceInput, () => String(unitPriceInput.value).trim() !== '' && Number(unitPriceInput.value) >= 0);
 
-    addMaterialButton.addEventListener('click', () => {
-        if (!materialCode.value || !materialName.value || !materialUnit.value) {
-            alert('กรุณาค้นหาและเลือกวัสดุก่อน');
-            return;
-        }
+    /* ===== Finalize: the ONLY place that requires at least one item ===== */
 
-        const qty = Number(receiveQty.value);
-        const price = Number(unitPrice.value);
-
-        if (qty <= 0 || price < 0) {
-            alert('กรุณาระบุจำนวนและราคาให้ถูกต้อง');
-            return;
-        }
-
-        if (editingRow) {
-            updateRow(editingRow, materialCode.value, materialName.value, qty, materialUnit.value, price);
-        } else {
-            addNewRow(materialCode.value, materialName.value, qty, materialUnit.value, price);
-        }
-
-        reorderRows();
-        recalculateTotal();
-        clearMaterialInputForm();
-        materialSearchInput.value = '';
-        showNoItemRowIfEmpty();
-    });
-
-    tableBody.addEventListener('click', (event) => {
-        const row = event.target.closest('tr');
-
-        if (!row || row.classList.contains('empty-row')) {
-            return;
-        }
-
-        if (event.target.classList.contains('small-delete-btn')) {
-            if (editingRow === row) {
-                clearMaterialInputForm();
+    if (finalizeButton) {
+        finalizeButton.addEventListener('click', () => {
+            if (!isRecordSaved || !finalizeForm) {
+                return;
             }
 
-            row.remove();
-            reorderRows();
-            recalculateTotal();
-            showNoItemRowIfEmpty();
-            return;
-        }
+            if (collectRows().length === 0) {
+                if (noItemsMessage) {
+                    noItemsMessage.textContent = 'กรุณาเพิ่มรายการวัสดุอย่างน้อย 1 รายการ';
+                }
+                openOverlay(noItemsOverlay);
+                return;
+            }
 
-        if (event.target.classList.contains('small-edit-btn')) {
-            fillMaterialInputForm(
-                {
-                    code: row.dataset.code,
-                    name: row.dataset.name,
-                    unit: row.dataset.unit,
-                },
-                row.dataset.qty,
-                row.dataset.price
-            );
+            finalizeForm.submit();
+        });
+    }
 
-            materialSearchInput.value = row.dataset.code;
-            materialSearchType.value = 'code';
-            updateSearchPlaceholder();
-            setEditMode(row);
+    if (closeNoItemsButton) {
+        closeNoItemsButton.addEventListener('click', () => closeOverlay(noItemsOverlay));
+    }
+
+    if (noItemsOverlay) {
+        noItemsOverlay.addEventListener('click', (event) => {
+            if (event.target === noItemsOverlay) {
+                closeOverlay(noItemsOverlay);
+            }
+        });
+    }
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && noItemsOverlay && noItemsOverlay.classList.contains('is-visible')) {
+            closeOverlay(noItemsOverlay);
         }
     });
+
+    // Server redirected back after a failed finalize() (items were removed by
+    // someone else between page load and clicking finalize) - show the same popup.
+    if (window.matReceivingFinalizeError) {
+        if (noItemsMessage) {
+            noItemsMessage.textContent = window.matReceivingFinalizeError;
+        }
+        openOverlay(noItemsOverlay);
+    }
 
     updateSearchPlaceholder();
-    clearMaterialInputForm();
-    recalculateTotal();
-    showNoItemRowIfEmpty();
+    showEmptyRowIfNeeded();
+    updateTotalQty();
 }
 
-function initializeCreateSavePopup() {
-    const saveButton = document.getElementById('saveReceivingButton');
-    const overlay = document.getElementById('saveReceivingOverlay');
-    const cancelButton = document.getElementById('cancelSaveReceivingButton');
-    const confirmButton = document.getElementById('confirmSaveReceivingButton');
+/* ===== VAT type toggle: enable/disable the vat_rate input ===== */
 
-    if (!saveButton || !overlay || !cancelButton || !confirmButton) {
+function initializeVatToggle() {
+    const vatRateInput = document.getElementById('vatRate');
+    const vatTypeRadios = document.querySelectorAll('input[name="vat_type"]');
+
+    if (!vatRateInput || !vatTypeRadios.length) {
         return;
     }
 
-    saveButton.addEventListener('click', () => openOverlay(overlay));
-    cancelButton.addEventListener('click', () => closeOverlay(overlay));
+    function applyVatState() {
+        const selected = document.querySelector('input[name="vat_type"]:checked');
+        const isIncluded = selected && String(selected.value) === '1';
 
-    overlay.addEventListener('click', (event) => {
-        if (event.target === overlay) {
-            closeOverlay(overlay);
+        if (isIncluded) {
+            vatRateInput.disabled = false;
+
+            if (String(vatRateInput.value).trim() === '') {
+                vatRateInput.value = '7';
+            }
+        } else {
+            vatRateInput.value = '';
+            vatRateInput.disabled = true;
         }
-    });
-
-    confirmButton.addEventListener('click', () => {
-        closeOverlay(overlay);
-        window.location.href = '/material/MAT-002-record-material-receiving';
-    });
-}
-
-function initializeEditSavePopup() {
-    const saveButton = document.getElementById('saveReceivingEditButton');
-    const overlay = document.getElementById('editReceivingOverlay');
-    const cancelButton = document.getElementById('cancelEditReceivingButton');
-    const confirmButton = document.getElementById('confirmEditReceivingButton');
-
-    if (!saveButton || !overlay || !cancelButton || !confirmButton) {
-        return;
     }
 
-    saveButton.addEventListener('click', () => openOverlay(overlay));
-    cancelButton.addEventListener('click', () => closeOverlay(overlay));
-
-    overlay.addEventListener('click', (event) => {
-        if (event.target === overlay) {
-            closeOverlay(overlay);
-        }
+    vatTypeRadios.forEach((radio) => {
+        radio.addEventListener('change', applyVatState);
     });
 
-    confirmButton.addEventListener('click', () => {
-        closeOverlay(overlay);
-        window.location.href = '/material/MAT-002-record-material-receiving';
-    });
+    // Apply on page load
+    applyVatState();
 }
-
-function initializeReceivingDeletePopup() {
-    const openButton = document.getElementById('openDeleteReceivingModal');
-    const overlay = document.getElementById('deleteReceivingOverlay');
-    const cancelButton = document.getElementById('cancelDeleteReceivingButton');
-    const confirmButton = document.getElementById('confirmDeleteReceivingButton');
-
-    if (!openButton || !overlay || !cancelButton || !confirmButton) {
-        return;
-    }
-
-    openButton.addEventListener('click', () => openOverlay(overlay));
-    cancelButton.addEventListener('click', () => closeOverlay(overlay));
-
-    overlay.addEventListener('click', (event) => {
-        if (event.target === overlay) {
-            closeOverlay(overlay);
-        }
-    });
-
-    confirmButton.addEventListener('click', () => {
-        closeOverlay(overlay);
-        window.location.href = '/material/MAT-002-record-material-receiving';
-    });
-}
-
-document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') {
-        return;
-    }
-
-    document.querySelectorAll('.confirm-overlay.is-visible').forEach((overlay) => {
-        closeOverlay(overlay);
-    });
-});
 
 initializeSidebarGroups();
 preventDisabledMenuReload();
 initializeReceivingSearch();
+initSearchableSelects();
+initializeHeaderForm();
 initializeReceivingItemEditor();
-initializeCreateSavePopup();
-initializeEditSavePopup();
-initializeReceivingDeletePopup();
+initializeVatToggle();
 
-
-/* ===== Global save validation for create/edit pages ===== */
-
-(function () {
-    if (window.__gujajobSaveValidationInstalled) {
-        return;
-    }
-
-    window.__gujajobSaveValidationInstalled = true;
-
-    const currentPath = window.location.pathname;
-    const isFormPage = currentPath.includes('/create') || currentPath.endsWith('/edit') || currentPath.includes('/edit/');
-
-    if (!isFormPage) {
-        return;
-    }
-
-    function isVisible(element) {
-        if (!element) {
-            return false;
-        }
-
-        const style = window.getComputedStyle(element);
-
-        return style.display !== 'none'
-            && style.visibility !== 'hidden'
-            && element.offsetParent !== null;
-    }
-
-    function getContentRoot() {
-        return document.querySelector('.content') || document.body;
-    }
-
-    function getFieldLabel(field) {
-        if (field.id) {
-            const label = document.querySelector(`label[for="${CSS.escape(field.id)}"]`);
-
-            if (label) {
-                return label;
-            }
-        }
-
-        const wrapper = field.closest('.form-field, .field-group');
-
-        if (wrapper) {
-            return wrapper.querySelector('label');
-        }
-
-        return null;
-    }
-
-    function isIgnoredField(field) {
-        if (!field || field.disabled || field.readOnly) {
-            return true;
-        }
-
-        if (!isVisible(field)) {
-            return true;
-        }
-
-        const ignoredTypes = ['hidden', 'button', 'submit', 'reset', 'file'];
-
-        if (ignoredTypes.includes(field.type)) {
-            return true;
-        }
-
-        const id = field.id || '';
-        const name = field.name || '';
-        const ignoredKeyword = ['search', 'keyword', 'filter'];
-
-        return ignoredKeyword.some((word) => {
-            return id.toLowerCase().includes(word) || name.toLowerCase().includes(word);
-        });
-    }
-
-    function isRequiredField(field) {
-        if (field.required) {
-            return true;
-        }
-
-        const label = getFieldLabel(field);
-
-        if (!label) {
-            return false;
-        }
-
-        return label.textContent.includes('*') || Boolean(label.querySelector('.required'));
-    }
-
-    function clearValidationState() {
-        document.querySelectorAll('.gujajob-is-invalid').forEach((field) => {
-            field.classList.remove('gujajob-is-invalid');
-        });
-
-        document.querySelectorAll('.gujajob-validation-message').forEach((message) => {
-            message.remove();
-        });
-
-        const oldAlert = document.querySelector('.gujajob-validation-alert');
-
-        if (oldAlert) {
-            oldAlert.remove();
-        }
-    }
-
-    function markInvalid(field, message) {
-        field.classList.add('gujajob-is-invalid');
-
-        const wrapper = field.closest('.form-field, .field-group') || field.parentElement;
-
-        if (wrapper && !wrapper.querySelector('.gujajob-validation-message')) {
-            const messageElement = document.createElement('div');
-            messageElement.className = 'gujajob-validation-message';
-            messageElement.textContent = message;
-            wrapper.appendChild(messageElement);
-        }
-    }
-
-    function showValidationAlert(message) {
-        const root = getContentRoot();
-        const pageHeader = root.querySelector('.page-header');
-
-        const alert = document.createElement('div');
-        alert.className = 'gujajob-validation-alert';
-        alert.textContent = message;
-
-        if (pageHeader && pageHeader.parentNode) {
-            pageHeader.insertAdjacentElement('afterend', alert);
-        } else {
-            root.prepend(alert);
-        }
-    }
-
-    function hasAtLeastOneRealRow(selector) {
-        const body = document.querySelector(selector);
-
-        if (!body) {
-            return true;
-        }
-
-        const rows = Array.from(body.querySelectorAll('tr')).filter((row) => {
-            const text = row.textContent.trim();
-
-            return isVisible(row)
-                && !row.classList.contains('no-data-row')
-                && !text.includes('ยังไม่มีรายการ')
-                && !text.includes('ไม่พบข้อมูล')
-                && row.querySelectorAll('td').length > 1;
-        });
-
-        return rows.length > 0;
-    }
-
-    function validateRequiredFields() {
-        clearValidationState();
-
-        const root = getContentRoot();
-        let isValid = true;
-        let firstInvalidField = null;
-
-        const fields = Array.from(root.querySelectorAll('input, select, textarea'));
-
-        fields.forEach((field) => {
-            if (isIgnoredField(field)) {
-                return;
-            }
-
-            const required = isRequiredField(field);
-            const value = String(field.value || '').trim();
-
-            if (required && value === '') {
-                isValid = false;
-
-                if (!firstInvalidField) {
-                    firstInvalidField = field;
-                }
-
-                markInvalid(field, 'กรุณากรอกข้อมูลช่องนี้');
-
-                return;
-            }
-
-            if (field.type === 'number' && value !== '' && Number(value) < 0) {
-                isValid = false;
-
-                if (!firstInvalidField) {
-                    firstInvalidField = field;
-                }
-
-                markInvalid(field, 'ค่าตัวเลขต้องไม่ติดลบ');
-            }
-        });
-
-        if (currentPath.includes('MAT-002-record-material-receiving')) {
-            const hasRows = hasAtLeastOneRealRow('#receivingItemsBody')
-                && hasAtLeastOneRealRow('#receiveItemsBody')
-                && hasAtLeastOneRealRow('#materialReceivingItemsBody');
-
-            if (!hasRows) {
-                isValid = false;
-                showValidationAlert('กรุณาเพิ่มรายการวัสดุที่รับเข้าคลังอย่างน้อย 1 รายการ');
-            }
-        }
-
-        if (currentPath.includes('MAT-003-withdraw-material')) {
-            const hasRows = hasAtLeastOneRealRow('#withdrawItemsBody');
-
-            if (!hasRows) {
-                isValid = false;
-                showValidationAlert('กรุณาเพิ่มรายการวัสดุที่ต้องการเบิกอย่างน้อย 1 รายการ');
-            }
-        }
-
-        if (!isValid) {
-            if (!document.querySelector('.gujajob-validation-alert')) {
-                showValidationAlert('กรุณากรอกข้อมูลที่จำเป็นให้ครบก่อนบันทึก');
-            }
-
-            if (firstInvalidField) {
-                firstInvalidField.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'center',
-                });
-
-                setTimeout(() => firstInvalidField.focus(), 250);
-            }
-        }
-
-        return isValid;
-    }
-
-    function isMainSaveButton(button) {
-        if (!button || button.tagName !== 'BUTTON') {
-            return false;
-        }
-
-        const text = button.textContent.trim();
-
-        if (!text.includes('บันทึก')) {
-            return false;
-        }
-
-        if (text.includes('ยืนยัน')) {
-            return false;
-        }
-
-        if (text.includes('พิมพ์') || text.includes('ดาวน์โหลด')) {
-            return false;
-        }
-
-        return true;
-    }
-
-    function enableAllSaveButtons() {
-        const root = getContentRoot();
-
-        Array.from(root.querySelectorAll('button')).forEach((button) => {
-            if (!isMainSaveButton(button)) {
-                return;
-            }
-
-            button.disabled = false;
-            button.classList.remove('gujajob-save-disabled');
-        });
-    }
-
-    document.addEventListener('click', (event) => {
-        const button = event.target.closest('button');
-
-        if (!isMainSaveButton(button)) {
-            return;
-        }
-
-        const isValid = validateRequiredFields();
-
-        if (!isValid) {
-            event.preventDefault();
-            event.stopPropagation();
-            event.stopImmediatePropagation();
-        }
-    }, true);
-
-    document.addEventListener('input', (event) => {
-        const field = event.target;
-
-        if (!field.classList || !field.classList.contains('gujajob-is-invalid')) {
-            return;
-        }
-
-        if (String(field.value || '').trim() !== '') {
-            field.classList.remove('gujajob-is-invalid');
-
-            const wrapper = field.closest('.form-field, .field-group') || field.parentElement;
-            const message = wrapper ? wrapper.querySelector('.gujajob-validation-message') : null;
-
-            if (message) {
-                message.remove();
-            }
-        }
-    });
-
-    document.addEventListener('change', (event) => {
-        const field = event.target;
-
-        if (!field.classList || !field.classList.contains('gujajob-is-invalid')) {
-            return;
-        }
-
-        if (String(field.value || '').trim() !== '') {
-            field.classList.remove('gujajob-is-invalid');
-
-            const wrapper = field.closest('.form-field, .field-group') || field.parentElement;
-            const message = wrapper ? wrapper.querySelector('.gujajob-validation-message') : null;
-
-            if (message) {
-                message.remove();
-            }
-        }
-    });
-
-    setTimeout(enableAllSaveButtons, 50);
-    setTimeout(enableAllSaveButtons, 300);
-})();
