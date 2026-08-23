@@ -37,4 +37,33 @@ class Dealer extends Model
         'created_by',
         'updated_by',
     ];
+
+    /** Code → label mapping (no master table exists in DB). */
+    public const DEALER_TYPES = [
+        '1' => 'บริษัท จำกัด',
+        '2' => 'บริษัทมหาชนจำกัด',
+        '3' => 'ห้างหุ้นส่วนจำกัด',
+        '4' => 'ร้านค้า',
+        '5' => 'บุคคลธรรมดา',
+    ];
+
+    public function getDealerTypeLabelAttribute(): string
+    {
+        return self::DEALER_TYPES[$this->dealer_type] ?? ($this->dealer_type ?? '-');
+    }
+
+    public function province(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(GlbProvince::class, 'dealer_prov_id', 'id');
+    }
+
+    public function amphur(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(GlbAmphur::class, 'dealer_amp_id', 'id');
+    }
+
+    public function tambon(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(GlbTambon::class, 'dealer_tam_id', 'id');
+    }
 }

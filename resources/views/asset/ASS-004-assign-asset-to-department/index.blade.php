@@ -1,98 +1,165 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('page-style')
-    @vite(['resources/css/asset/ASS-004-assign-asset-to-department/style.css'])
+    @vite([
+        'resources/css/components/table-actions.css',
+        'resources/css/components/pagination.css',
+        'resources/css/components/searchable-select.css',
+        'resources/css/asset/ASS-004-assign-asset-to-department/style.css',
+    ])
 @endsection
 
 @section('content')
     <div class="page-container assignment-page">
-        <header class="page-header">
-            <div class="page-title-box">
-                <h2>{{ $pageTitle }}</h2>
-                <div class="header-line"></div>
+        <x-page-header :title="$pageTitle" />
+
+        @if (session('assignment_success'))
+            <div class="form-success-box" style="margin-bottom:12px;padding:10px 14px;background:#d1fae5;border:1px solid #34d399;border-radius:6px;font-size:13px;color:#065f46;">
+                {{ session('assignment_success') }}
             </div>
-        </header>
+        @endif
+        @if ($errors->has('_error'))
+            <div class="form-error-box" style="margin-bottom:12px;padding:10px 14px;background:#fee2e2;border:1px solid #f87171;border-radius:6px;font-size:13px;color:#991b1b;">
+                {{ $errors->first('_error') }}
+            </div>
+        @endif
 
         <section class="assignment-card">
-            <div class="toolbar">
-                <div class="field-group">
-                    <label for="assignDepartment">จัดสรรให้หน่วยงาน</label>
-                    <select id="assignDepartment">
-                        <option value="all">จัดสรรให้หน่วยงาน</option>
-                        <option value="กองคลังพัสดุ">กองคลังพัสดุ</option>
-                        <option value="สำนักบริหาร">สำนักบริหาร</option>
-                        <option value="สนง.ภูมิภาค ภาคเหนือ">สนง.ภูมิภาค ภาคเหนือ</option>
-                    </select>
-                </div>
-
-                <div class="field-group">
-                    <label for="assignGroup">หน่วยงานกลุ่ม</label>
-                    <select id="assignGroup">
-                        <option value="all">หน่วยงานกลุ่ม</option>
-                        <option value="กลุ่มจัดซื้อ">กลุ่มจัดซื้อ</option>
-                        <option value="กลุ่มงานบุคคล">กลุ่มงานบุคคล</option>
-                        <option value="ฝ่ายคลัง">ฝ่ายคลัง</option>
-                    </select>
-                </div>
-
-                <div class="field-group">
-                    <label for="assigner">ผู้จัดสรร</label>
-                    <select id="assigner">
-                        <option value="all">ผู้จัดสรร</option>
-                        <option value="สมชาย ใจดี">สมชาย ใจดี</option>
-                        <option value="มาลี รักดี">มาลี รักดี</option>
-                    </select>
-                </div>
-
-                <button class="search-btn" id="searchAssignButton" type="button">ค้นหา</button>
-
-                <button class="create-btn" id="createAssignButton" type="button" data-create-url="{{ route('asset.assignments.create') }}">บันทึกการจัดสรรใหม่</button>
+            <div class="card-title">
+                <svg class="card-title-icon"><use href="#icon-material-list"></use></svg>
+                <span>รายการจัดสรรครุภัณฑ์</span>
             </div>
 
+            {{-- Toolbar / Filters --}}
+            <form method="GET" action="{{ route('asset.assignments.index') }}" class="toolbar">
+                <div class="field-group">
+                    <label>จัดสรรให้หน่วยงาน</label>
+                    <div class="guja-autocomplete" data-server-select
+                         data-endpoint="{{ route('search.suggestions') }}?entity=assign_org&limit=15&q="
+                         data-initial-label="{{ $filterOrgName }}">
+                        <input type="text"   class="guja-autocomplete__input" placeholder="พิมพ์ชื่อหน่วยงาน" autocomplete="off" spellcheck="false">
+                        <span               class="guja-autocomplete__arrow">▼</span>
+                        <div               class="guja-autocomplete__items"></div>
+                        <input type="hidden" class="guja-autocomplete__value" name="filter_org_id" value="{{ $filterOrgId ?: '' }}">
+                    </div>
+                </div>
+
+                <div class="field-group">
+                    <label>ผู้จัดสรร</label>
+                    <div class="guja-autocomplete" data-server-select
+                         data-endpoint="{{ route('search.suggestions') }}?entity=assign_user&limit=15&q="
+                         data-initial-label="{{ $filterAssignerName }}">
+                        <input type="text"   class="guja-autocomplete__input" placeholder="พิมพ์ชื่อผู้จัดสรร" autocomplete="off" spellcheck="false">
+                        <span               class="guja-autocomplete__arrow">▼</span>
+                        <div               class="guja-autocomplete__items"></div>
+                        <input type="hidden" class="guja-autocomplete__value" name="filter_assigner_id" value="{{ $filterAssignerId }}">
+                    </div>
+                </div>
+
+                <button class="search-btn" type="submit">ค้นหา</button>
+                <div class="toolbar-spacer"></div>
+                <a class="create-btn link-button" href="{{ route('asset.assignments.create') }}">การจัดสรรครุภัณฑ์ใหม่</a>
+            </form>
+
+            {{-- Table --}}
             <div class="table-wrapper">
                 <table class="assignment-table">
                     <thead>
                         <tr>
-                            <th>ครั้งที่</th>
-                            <th>วันที่จัดสรร</th>
-                            <th>จัดสรรให้หน่วยงาน</th>
-                            <th>หน่วยงานกลุ่ม</th>
-                            <th>จำนวน</th>
-                            <th>ผู้จัดสรร</th>
-                            <th>จัดการ</th>
+                            <th class="col-date">วันที่จัดสรร</th>
+                            <th class="col-org">จัดสรรให้หน่วยงาน</th>
+                            <th class="col-status">สถานะ</th>
+                            <th class="col-qty">จำนวน</th>
+                            <th class="col-assigner">ผู้จัดสรร</th>
+                            <th class="col-action action-column">จัดการ</th>
                         </tr>
                     </thead>
-                    <tbody id="assignmentTableBody">
-                        @foreach ($assignmentRecords as $record)
-                            <tr
-                                data-department="{{ $record['department'] }}"
-                                data-group="{{ $record['group'] }}"
-                                data-assigner="{{ $record['assigner'] }}"
-                            >
-                                <td class="center">{{ $record['sequence'] }}</td>
-                                <td><span class="date-text">{{ $record['assign_date'] }}</span></td>
-                                <td>{{ $record['department'] }}</td>
-                                <td>{{ $record['group'] }}</td>
-                                <td class="center qty-text">{{ $record['quantity'] }}</td>
-                                <td>{{ $record['assigner'] }}</td>
-                                <td class="center">
-                                    <a class="detail-btn" href="{{ route('asset.assignments.show', $record['sequence']) }}">ดูรายละเอียด</a>
+                    <tbody>
+                        @forelse ($records as $record)
+                            @php
+                                $dateLabel = $record->assign_date
+                                    ? (\Carbon\Carbon::parse($record->assign_date)->format('d-m-') .
+                                       (\Carbon\Carbon::parse($record->assign_date)->year + 543))
+                                    : '-';
+                            @endphp
+                            <tr>
+                                <td>
+                                    <a class="date-link" href="{{ route('asset.assignments.show', $record->id) }}">{{ $dateLabel }}</a>
+                                </td>
+                                <td>{{ $record->target_org_name ?? '-' }}</td>
+                                <td>
+                                    @if ($record->status == \App\Models\AssetAssignment::STATUS_ACTIVE)
+                                        <span class="status-badge status-active">ใช้งาน</span>
+                                    @else
+                                        <span class="status-badge status-cancelled">ยกเลิก</span>
+                                    @endif
+                                </td>
+                                <td class="center qty-text">{{ $record->item_count }}</td>
+                                <td>{{ $record->assigner_name ?? '-' }}</td>
+                                <td class="center action-column">
+                                    <div class="table-action-buttons">
+                                        <a class="table-action-icon table-action-edit"
+                                           aria-label="แก้ไข" data-tooltip="แก้ไข"
+                                           href="{{ route('asset.assignments.edit', $record->id) }}">
+                                            <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
+                                        </a>
+                                        <button class="table-action-icon table-action-delete js-cancel-btn"
+                                                type="button"
+                                                aria-label="ยกเลิกการจัดสรร" data-tooltip="ยกเลิกการจัดสรร"
+                                                data-assignment-id="{{ $record->id }}"
+                                                data-assign-date="{{ $dateLabel }}"
+                                                data-org-name="{{ $record->target_org_name ?? '' }}"
+                                                data-cancel-url="{{ route('asset.assignments.cancel', $record->id) }}">
+                                            <svg aria-hidden="true"><use href="#icon-trash"></use></svg>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
-                        @endforeach
+                        @empty
+                            <tr class="no-data-row">
+                                <td class="no-data" colspan="6">ยังไม่มีข้อมูลการจัดสรรครุภัณฑ์</td>
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
+            </div>
 
-                <div class="table-footer">
-                    <p id="resultText">แสดง 0 ถึง {{ count($assignmentRecords) }} รายการจัดสรร : ครุภัณฑ์ที่จัดสรรแล้วรวม {{ count($assignmentRecords) }} รายการ</p>
+            {{-- Pagination footer --}}
+            <div class="table-footer">
+                <p class="result-text">
+                    แสดง {{ $total > 0 ? ($page - 1) * $perPage + 1 : 0 }}
+                    ถึง {{ min($page * $perPage, $total) }}
+                    จาก {{ $total }} รายการ
+                </p>
+                @if ($totalPages > 1)
                     <div class="pagination">
-                        <button class="page-btn" type="button" disabled>‹</button>
-                        <button class="page-btn active" type="button">1</button>
-                        <button class="page-btn" type="button">›</button>
+                        <a class="page-btn{{ $page <= 1 ? ' disabled' : '' }}"
+                           href="{{ $page > 1 ? request()->fullUrlWithQuery(['page' => $page - 1]) : '#' }}">‹</a>
+                        @for ($p = 1; $p <= $totalPages; $p++)
+                            <a class="page-btn{{ $p === $page ? ' active' : '' }}"
+                               href="{{ request()->fullUrlWithQuery(['page' => $p]) }}">{{ $p }}</a>
+                        @endfor
+                        <a class="page-btn{{ $page >= $totalPages ? ' disabled' : '' }}"
+                           href="{{ $page < $totalPages ? request()->fullUrlWithQuery(['page' => $page + 1]) : '#' }}">›</a>
                     </div>
-                </div>
+                @endif
             </div>
         </section>
+    </div>
+
+    {{-- Cancel confirmation modal --}}
+    <div class="confirm-overlay" id="cancelAssignmentOverlay" aria-hidden="true">
+        <div class="confirm-modal" role="dialog" aria-modal="true">
+            <div class="confirm-icon delete-confirm-icon">
+                <svg><use href="#icon-alert-triangle"></use></svg>
+            </div>
+            <h3>ยืนยันยกเลิกการจัดสรร</h3>
+            <p id="cancelModalDesc">คุณแน่ใจหรือไม่ว่าต้องการยกเลิกการจัดสรรรายการนี้<br>การดำเนินการนี้ไม่สามารถเรียกคืนได้</p>
+            <div class="confirm-actions">
+                <button class="modal-cancel-btn" type="button" id="cancelCancelButton">ยกเลิก</button>
+                <button class="modal-confirm-btn delete-confirm-btn" type="button" id="confirmCancelButton">ยืนยันยกเลิกการจัดสรร</button>
+            </div>
+        </div>
     </div>
 @endsection
 

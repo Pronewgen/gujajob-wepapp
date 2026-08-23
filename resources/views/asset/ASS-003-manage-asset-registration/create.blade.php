@@ -1,201 +1,257 @@
 @extends('layouts.app')
 
 @section('page-style')
-    @vite(['resources/css/asset/ASS-003-manage-asset-registration/create.css'])
+    @vite([
+        'resources/css/components/search-autocomplete.css',
+        'resources/css/components/searchable-select.css',
+        'resources/css/asset/ASS-003-manage-asset-registration/create.css',
+    ])
 @endsection
 
 @section('content')
     <div class="page-container asset-registration-create-page">
-        <header class="page-header">
-            <div class="page-title-box">
-                <h2>{{ $pageTitle }}</h2>
-                <div class="header-line"></div>
-            </div>
-        </header>
+        <x-page-header :title="$pageTitle" />
+
+        @error('general')
+            <div class="gujajob-validation-alert">{{ $message }}</div>
+        @enderror
 
         <section class="form-card">
             <div class="form-title">
                 <svg class="form-title-icon"><use href="#icon-square-pen"></use></svg>
-                <span>แบบฟอร์มจัดการทะเบียนครุภัณฑ์</span>
+                <span>บันทึกทะเบียนครุภัณฑ์ใหม่</span>
             </div>
 
-            <form class="registration-form" action="javascript:void(0);" autocomplete="off">
+            <form class="registration-form" method="POST" action="{{ route('asset.registrations.store') }}" autocomplete="off" enctype="multipart/form-data">
+                @csrf
+
+                {{-- ─────────────────────────────────────────────────────── --}}
                 <h3 class="section-title">1. ข้อมูลทั่วไปของครุภัณฑ์</h3>
 
                 <div class="form-row one-col short-row">
-                    <div class="form-field short-input">
-                        <label for="assetCode">รหัสทะเบียนครุภัณฑ์</label>
-                        <input id="assetCode" type="text" value="7440-001-001" readonly>
+                    <div class="form-field">
+                        <label for="assCode">รหัสทะเบียนครุภัณฑ์ <span class="required">*</span></label>
+                        <input id="assCode" name="ass_code" type="text" maxlength="50"
+                               placeholder="กรอกรหัสทะเบียนครุภัณฑ์"
+                               value="{{ old('ass_code') }}" autocomplete="off">
+                        @error('ass_code')<span class="field-error" style="color:#dc2626;font-size:11px;">{{ $message }}</span>@enderror
                     </div>
                 </div>
 
+                {{-- Search panel for category --}}
                 <div class="search-panel">
+                    <span class="search-panel-label">ค้นหาประเภทครุภัณฑ์</span>
                     <div class="search-grid">
                         <div class="form-field">
-                            <label for="searchType">ค้นหาจาก <span class="required">*</span></label>
-                            <select id="searchType">
-                                <option>รหัสประเภท</option>
-                                <option>ชื่อครุภัณฑ์</option>
+                            <label for="catSearchType">ค้นหาจาก</label>
+                            <select id="catSearchType">
+                                <option value="name">ชื่อประเภท</option>
+                                <option value="code">รหัสประเภท</option>
                             </select>
                         </div>
-
                         <div class="form-field">
-                            <label for="searchKeyword">คำค้นหา <span class="required">*</span></label>
-                            <input id="searchKeyword" class="required-filter" type="text" placeholder="เช่น CAT001 หรือ คอมพิวเตอร์" required>
+                            <label for="catSearchInput">คำค้นหา</label>
+                            <input id="catSearchInput" type="search" autocomplete="off" placeholder="พิมพ์เพื่อค้นหา" spellcheck="false">
                         </div>
-
-                        <button class="small-search-btn" id="searchAssetButton" type="button">ค้นหา</button>
+                        <button class="small-search-btn" type="button" id="catSearchBtn">ค้นหา</button>
                     </div>
+                </div>
 
-                    <div class="form-row four-col compact-top">
-                        <div class="form-field">
-                            <label for="assetTypeCode">รหัสประเภทครุภัณฑ์</label>
-                            <input id="assetTypeCode" type="text" value="7440-001-001" readonly>
-                        </div>
+                {{-- Hidden asscat_id submitted to backend --}}
+                <input id="asscatId" name="asscat_id" type="hidden" value="{{ old('asscat_id') }}">
+                @error('asscat_id')<span class="field-error" style="color:#dc2626;font-size:11px;font-weight:700;">{{ $message }}</span>@enderror
 
-                        <div class="form-field">
-                            <label for="assetCategory">หมวดครุภัณฑ์</label>
-                            <input id="assetCategory" type="text" value="คอมพิวเตอร์และอุปกรณ์" readonly>
-                        </div>
-
-                        <div class="form-field">
-                            <label for="assetKind">ชนิดครุภัณฑ์</label>
-                            <input id="assetKind" type="text" value="คอมพิวเตอร์ตั้งโต๊ะ" readonly>
-                        </div>
-
-                        <div class="form-field">
-                            <label for="assetNameRef">ชื่อครุภัณฑ์</label>
-                            <input id="assetNameRef" type="text" value="Dell OptiPlex Series" readonly>
-                        </div>
+                {{-- 4-column category details (populated by search) --}}
+                <div class="form-row four-col compact-top">
+                    <div class="form-field">
+                        <label for="asscatCode">รหัสประเภทครุภัณฑ์</label>
+                        <input id="asscatCode" type="text" readonly placeholder="-">
                     </div>
+                    <div class="form-field">
+                        <label for="asscatGroup">หมวดครุภัณฑ์</label>
+                        <input id="asscatGroup" type="text" readonly placeholder="-">
+                    </div>
+                    <div class="form-field">
+                        <label for="asscatType">ชนิดครุภัณฑ์</label>
+                        <input id="asscatType" type="text" readonly placeholder="-">
+                    </div>
+                    <div class="form-field">
+                        <label for="asscatName">ชื่อครุภัณฑ์ <span class="required">*</span></label>
+                        <input id="asscatName" type="text" readonly placeholder="-"
+                               data-required-label="ชื่อครุภัณฑ์">
+                    </div>
+                </div>
 
-                    <div class="form-row two-col unit-rate-row compact-top">
-                        <div class="form-field">
-                            <label for="assetUnit">หน่วยนับ</label>
-                            <input id="assetUnit" type="text" value="เครื่อง" readonly>
-                        </div>
-
-                        <div class="form-field">
-                            <label for="depreciationRate">อัตราค่าเสื่อม</label>
-                            <input id="depreciationRate" type="text" value="20.00 % / ปี" readonly>
-                        </div>
+                <div class="form-row two-col unit-rate-row">
+                    <div class="form-field">
+                        <label for="asscatUnit">หน่วยนับ</label>
+                        <input id="asscatUnit" type="text" readonly placeholder="-">
+                    </div>
+                    <div class="form-field">
+                        <label for="depreciationRate">อัตราค่าเสื่อม</label>
+                        <input id="depreciationRate" type="text" readonly placeholder="-">
                     </div>
                 </div>
 
                 <div class="form-row one-col">
                     <div class="form-field">
-                        <label for="assetSpec">ลักษณะ / รายละเอียดครุภัณฑ์ <span class="required">*</span></label>
-                        <textarea id="assetSpec" rows="2" placeholder="ระบุคุณสมบัติเฉพาะ หรือ ลักษณะของครุภัณฑ์" required></textarea>
+                        <label for="assDesc">ลักษณะ / รายละเอียดครุภัณฑ์</label>
+                        <textarea id="assDesc" name="ass_desc" rows="3" maxlength="500" placeholder="กรอกรายละเอียด">{{ old('ass_desc') }}</textarea>
+                        @error('ass_desc')<span class="field-error" style="color:#dc2626;font-size:11px;">{{ $message }}</span>@enderror
                     </div>
                 </div>
 
                 <div class="form-row three-col">
                     <div class="form-field">
-                        <label for="assetModel">รุ่น/แบบ ของครุภัณฑ์ <span class="required">*</span></label>
-                        <input id="assetModel" type="text" placeholder="ระบุชื่อและรุ่น เช่น HP LaserJet Pro" required>
+                        <label for="assModel">รุ่น / แบบ</label>
+                        <input id="assModel" name="ass_model" type="text" maxlength="100" value="{{ old('ass_model') }}" placeholder="กรอกรุ่น/แบบ">
+                        @error('ass_model')<span class="field-error" style="color:#dc2626;font-size:11px;">{{ $message }}</span>@enderror
                     </div>
-
                     <div class="form-field">
-                        <label for="serialNumber">หมายเลขเครื่อง <span class="required">*</span></label>
-                        <input id="serialNumber" type="text" placeholder="Serial Number ของอุปกรณ์" required>
+                        <label for="assSerail">หมายเลขเครื่อง</label>
+                        <input id="assSerail" name="ass_serail" type="text" maxlength="30" value="{{ old('ass_serail') }}" placeholder="กรอก Serial">
+                        @error('ass_serail')<span class="field-error" style="color:#dc2626;font-size:11px;">{{ $message }}</span>@enderror
                     </div>
-
                     <div class="form-field">
-                        <label for="assetPrice">มูลค่าครุภัณฑ์ (บาท) <span class="required">*</span></label>
-                        <input id="assetPrice" type="number" min="0" step="0.01" placeholder="0.00" required>
+                        <label for="assPrice">มูลค่าครุภัณฑ์ (บาท)</label>
+                        <input id="assPrice" name="ass_price" type="number" step="0.01" min="0" value="{{ old('ass_price') }}" placeholder="0.00">
+                        @error('ass_price')<span class="field-error" style="color:#dc2626;font-size:11px;">{{ $message }}</span>@enderror
                     </div>
                 </div>
 
+                {{-- ─────────────────────────────────────────────────────── --}}
                 <h3 class="section-title">2. ผู้ประกอบการและสัญญา</h3>
 
                 <div class="form-row four-col">
                     <div class="form-field">
-                        <label for="supplierName">ผู้ประกอบการ <span class="required">*</span></label>
-                        <select id="supplierName">
-                            <option value="">-- เลือกผู้ประกอบการ --</option>
-                            <option>บริษัท A</option>
-                            <option>บริษัท ตัวอย่าง จำกัด</option>
-                        </select>
+                        <label for="dealerId">ผู้ประกอบการ</label>
+                        <div class="guja-autocomplete"
+                             data-server-select
+                             data-endpoint="{{ route('search.suggestions') }}?entity=dealer_search&limit=20&q="
+                             data-initial-label="{{ old('_dealer_label', '') }}">
+                            <input type="text"   class="guja-autocomplete__input" placeholder="พิมพ์ชื่อผู้ประกอบการ" autocomplete="off">
+                            <span               class="guja-autocomplete__arrow">▼</span>
+                            <div               class="guja-autocomplete__items"></div>
+                            <input type="hidden" class="guja-autocomplete__value" id="dealerId" name="dealer_id" value="{{ old('dealer_id', '') }}">
+                        </div>
+                        @error('dealer_id')<span class="field-error" style="color:#dc2626;font-size:11px;">{{ $message }}</span>@enderror
                     </div>
-
                     <div class="form-field">
-                        <label for="contractNo">เลขที่สัญญา</label>
-                        <input id="contractNo" type="text" placeholder="ระบุเลขที่สัญญา (ถ้ามี)">
+                        <label for="assContactNo">เลขที่สัญญา</label>
+                        <input id="assContactNo" name="ass_contact_no" type="text" maxlength="20" value="{{ old('ass_contact_no') }}" placeholder="กรอกเลขที่สัญญา">
+                        @error('ass_contact_no')<span class="field-error" style="color:#dc2626;font-size:11px;">{{ $message }}</span>@enderror
                     </div>
-
                     <div class="form-field">
-                        <label for="contractDate">วันที่ลงสัญญา</label>
-                        <input id="contractDate" type="date">
+                        <label for="assContactDate">วันที่ทำสัญญา</label>
+                        <input id="assContactDate" name="ass_contact_date" type="text" class="js-date-picker" value="{{ old('ass_contact_date') }}" placeholder="วว-ดด-ปปปป" data-picker-position="below">
+                        @error('ass_contact_date')<span class="field-error" style="color:#dc2626;font-size:11px;">{{ $message }}</span>@enderror
                     </div>
-
                     <div class="form-field">
-                        <label for="receiveDate">วันที่ตรวจรับ <span class="required">*</span></label>
-                        <input id="receiveDate" type="date" required>
+                        <label for="inspectDate">วันที่ตรวจรับ</label>
+                        <input id="inspectDate" name="inspect_date" type="text" class="js-date-picker" value="{{ old('inspect_date') }}" placeholder="วว-ดด-ปปปป" data-picker-position="below">
+                        @error('inspect_date')<span class="field-error" style="color:#dc2626;font-size:11px;">{{ $message }}</span>@enderror
                     </div>
                 </div>
 
+                {{-- ─────────────────────────────────────────────────────── --}}
                 <h3 class="section-title">3. อายุการใช้งานและการรับประกัน</h3>
 
-                <div class="form-row three-col">
-                    <div class="form-field">
-                        <label for="warrantyDays">ระยะเวลารับประกัน (วัน) <span class="required">*</span></label>
-                        <input id="warrantyDays" type="number" min="0" placeholder="จำนวนวัน เช่น 365" required>
+                <div class="section3-grid">
+                    {{-- Left: fields --}}
+                    <div class="section3-left">
+                        <div class="form-row two-col">
+                            <div class="form-field">
+                                <label for="orgId">หน่วยงานผู้ใช้</label>
+                                <div class="guja-autocomplete"
+                                     data-server-select
+                                     data-endpoint="{{ route('search.suggestions') }}?entity=org_search&limit=20&q="
+                                     data-initial-label="{{ old('_org_label', '') }}">
+                                    <input type="text"   class="guja-autocomplete__input" placeholder="พิมพ์ชื่อหน่วยงาน" autocomplete="off">
+                                    <span               class="guja-autocomplete__arrow">▼</span>
+                                    <div               class="guja-autocomplete__items"></div>
+                                    <input type="hidden" class="guja-autocomplete__value" id="orgId" name="org_id" value="{{ old('org_id', '') }}">
+                                </div>
+                                @error('org_id')<span class="field-error" style="color:#dc2626;font-size:11px;">{{ $message }}</span>@enderror
+                            </div>
+                            <div class="form-field">
+                                <label for="assStatus">สถานะ</label>
+                                <select id="assStatus" name="ass_status">
+                                    <option value="1" @selected(old('ass_status', '1') === '1')>ปกติ</option>
+                                    <option value="3" @selected(old('ass_status') === '3')>พร้อมจำหน่าย</option>
+                                </select>
+                                @error('ass_status')<span class="field-error" style="color:#dc2626;font-size:11px;">{{ $message }}</span>@enderror
+                            </div>
+                        </div>
+                        <div class="form-row two-col">
+                            <div class="form-field">
+                                <label for="warranty">ระยะเวลารับประกัน (วัน)</label>
+                                <input id="warranty" name="warranty" type="number" min="0" value="{{ old('warranty') }}" placeholder="0">
+                                @error('warranty')<span class="field-error" style="color:#dc2626;font-size:11px;">{{ $message }}</span>@enderror
+                            </div>
+                            <div class="form-field">
+                                <label for="assLifetime">อายุครุภัณฑ์ (ปี)</label>
+                                <input id="assLifetime" name="ass_lifetime" type="number" min="0" value="{{ old('ass_lifetime') }}" placeholder="0">
+                                @error('ass_lifetime')<span class="field-error" style="color:#dc2626;font-size:11px;">{{ $message }}</span>@enderror
+                            </div>
+                        </div>
+                        <div class="form-row one-col">
+                            <div class="form-field">
+                                <label for="remainPrice">มูลค่าคงเหลือปัจจุบัน (บาท)</label>
+                                <input id="remainPrice" type="text" readonly class="readonly-field" value="{{ old('ass_price') ? number_format((float) old('ass_price'), 2) : '-' }}" placeholder="-" tabindex="-1">
+                                <p class="field-hint">คำนวณจากมูลค่าครุภัณฑ์ — ไม่สามารถแก้ไขได้</p>
+                            </div>
+                        </div>
+                        <div class="form-row one-col">
+                            <div class="form-field">
+                                <label for="remarks">หมายเหตุ</label>
+                                <textarea id="remarks" name="remarks" rows="3" maxlength="500" placeholder="หมายเหตุ">{{ old('remarks') }}</textarea>
+                                @error('remarks')<span class="field-error" style="color:#dc2626;font-size:11px;">{{ $message }}</span>@enderror
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="form-field">
-                        <label for="assetLife">อายุครุภัณฑ์ (ปี) <span class="required">*</span></label>
-                        <input id="assetLife" type="number" min="0" placeholder="เช่น 5 ปี" required>
-                    </div>
-
-                    <div class="form-field upload-field">
-                        <label>แนบรูปภาพครุภัณฑ์</label>
-                        <div class="upload-box" id="uploadBox">
-                            <svg><use href="#icon-upload"></use></svg>
-                            <p>คลิกเพื่ออัปโหลด หรือ ลากไฟล์รูปภาพมาวางที่นี่</p>
-                            <input id="assetImages" type="file" accept="image/*" multiple>
+                    {{-- Right: image upload --}}
+                    <div class="section3-right">
+                        <div class="form-field upload-field">
+                            <label>แนบรูปภาพครุภัณฑ์</label>
+                            <div class="upload-box" id="assetImageDropzone" role="button" tabindex="0" aria-label="เลือกรูปภาพ">
+                                <svg aria-hidden="true"><use href="#icon-upload"></use></svg>
+                                <span>คลิกเพื่ออัปโหลด<br>หรือลากไฟล์มาวางที่นี่</span>
+                                <input id="assetImageInput" type="file" name="asset_images[]" accept="image/*" multiple>
+                            </div>
+                            <p class="upload-hint">รองรับ JPG, PNG, GIF ขนาดไม่เกิน 1 MB ต่อไฟล์</p>
+                            <div class="file-chip-list" id="assetImageList"></div>
                         </div>
                     </div>
                 </div>
 
-                <div class="form-row three-col compact-top">
-                    <div class="form-field">
-                        <label for="assetLocation">มูลค่าเสื่อมต่อปี</label>
-                        <input id="assetLocation" type="text" value="คำนวณอัตโนมัติ" readonly>
-                    </div>
-
-                    <div class="form-field">
-                        <label for="assetNote">หมายเหตุ</label>
-                        <input id="assetNote" type="text" placeholder="หมายเหตุ">
-                    </div>
-
-                    <div class="file-chip-list" id="fileChipList" aria-live="polite"></div>
-                </div>
-
                 <div class="form-actions">
-                    <a class="cancel-btn" href="{{ route('asset.registrations.index') }}">ยกเลิก</a>
-                    <button class="submit-btn" type="button" id="saveAssetRegistrationButton">บันทึกทะเบียนครุภัณฑ์</button>
+                    <a class="cancel-btn" href="{{ route('asset.registrations.index') }}">ย้อนกลับ</a>
+                    <button class="submit-btn" type="button" id="saveAssetRegistrationButton">บันทึก</button>
                 </div>
             </form>
         </section>
+    </div>
 
-        <div class="confirm-overlay" id="saveAssetRegistrationOverlay" aria-hidden="true">
-            <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
-                <div class="confirm-icon success-confirm-icon">
-                    <svg><use href="#icon-success"></use></svg>
-                </div>
-
-                <h3 id="confirmTitle">ยืนยันการบันทึกข้อมูล</h3>
-                <p>คุณแน่ใจหรือไม่ว่าต้องการบันทึกทะเบียนครุภัณฑ์นี้</p>
-
-                <div class="confirm-actions">
-                    <button class="modal-cancel-btn" type="button" id="cancelSaveAssetRegistrationButton">ยกเลิก</button>
-                    <button class="modal-confirm-btn success-confirm-btn" type="button" id="confirmSaveAssetRegistrationButton" data-redirect-url="{{ route('asset.registrations.index') }}">ยืนยันการบันทึก</button>
-                </div>
+    {{-- Green+Check save confirmation popup --}}
+    <div class="confirm-overlay" id="saveAssetRegistrationOverlay" aria-hidden="true">
+        <div class="confirm-modal" role="dialog" aria-modal="true">
+            <div class="confirm-icon success-confirm-icon">
+                <svg><use href="#icon-check"></use></svg>
+            </div>
+            <h3>ยืนยันการบันทึกข้อมูล</h3>
+            <p>คุณแน่ใจหรือไม่ว่าต้องการบันทึกทะเบียนครุภัณฑ์นี้</p>
+            <div class="confirm-actions">
+                <button class="modal-cancel-btn" type="button" id="cancelSaveAssetRegistrationButton">ยกเลิก</button>
+                <button class="modal-confirm-btn success-confirm-btn" type="button" id="confirmSaveAssetRegistrationButton">ยืนยันการบันทึก</button>
             </div>
         </div>
     </div>
 @endsection
 
 @section('page-script')
-    @vite(['resources/js/asset/ASS-003-manage-asset-registration/create.js'])
+    @vite([
+        'resources/js/components/date-picker.js',
+        'resources/js/asset/ASS-003-manage-asset-registration/create.js',
+    ])
 @endsection

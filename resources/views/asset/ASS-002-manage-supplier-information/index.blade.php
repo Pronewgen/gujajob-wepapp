@@ -1,28 +1,46 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('page-style')
-    @vite(['resources/css/asset/ASS-002-manage-supplier-information/style.css'])
+    @vite([
+        'resources/css/components/search-autocomplete.css',
+        'resources/css/components/table-actions.css',
+        'resources/css/components/pagination.css',
+        'resources/css/components/sort-icon.css',
+        'resources/css/asset/ASS-002-manage-supplier-information/style.css',
+    ])
 @endsection
 
 @section('content')
     <div class="page-container">
-        <header class="page-header">
-            <div class="page-title-box">
-                <h2>{{ $pageTitle }}</h2>
-                <div class="header-line"></div>
+        <x-page-header :title="$pageTitle" />
+
+        @if (session('supplier_success'))
+            <div class="form-success-box" style="margin-bottom:12px;padding:10px 14px;background:#d1fae5;border:1px solid #34d399;border-radius:6px;font-size:13px;color:#065f46;">
+                {{ session('supplier_success') }}
             </div>
-        </header>
+        @endif
+        @if (session('supplier_error'))
+            <div class="form-error-box" style="margin-bottom:12px;padding:10px 14px;background:#fee2e2;border:1px solid #f87171;border-radius:6px;font-size:13px;color:#991b1b;">
+                {{ session('supplier_error') }}
+            </div>
+        @endif
 
         <section class="supplier-card">
-            <div class="toolbar">
+            <div class="card-title">
+                <svg class="card-title-icon"><use href="#icon-material-list"></use></svg>
+                <span>รายการผู้ประกอบการ</span>
+            </div>
+
+            <form class="toolbar" method="GET" action="{{ route('asset.suppliers.index') }}" id="supplierSearchForm">
                 <div class="field-group">
                     <label for="supplierSearchType">ค้นหาจาก</label>
-                    <select id="supplierSearchType">
-                        <option value="supplier_name">ชื่อผู้ประกอบการ</option>
-                        <option value="supplier_type">ประเภทผู้ประกอบการ</option>
-                        <option value="contact_name">ชื่อผู้ติดต่อ</option>
-                        <option value="phone">เบอร์โทรศัพท์</option>
-                        <option value="address">ที่อยู่</option>
+                    <select id="supplierSearchType" name="search_by">
+                        <option value="all"     @selected(($searchBy ?? 'all') === 'all')>ทั้งหมด</option>
+                        <option value="name"    @selected(($searchBy ?? '') === 'name')>ชื่อผู้ประกอบการ</option>
+                        <option value="type"    @selected(($searchBy ?? '') === 'type')>ประเภทผู้ประกอบการ</option>
+                        <option value="tax_id"  @selected(($searchBy ?? '') === 'tax_id')>เลขประจำตัวผู้เสียภาษี</option>
+                        <option value="contact" @selected(($searchBy ?? '') === 'contact')>ชื่อผู้ติดต่อ</option>
+                        <option value="phone"   @selected(($searchBy ?? '') === 'phone')>เบอร์โทรศัพท์</option>
                     </select>
                 </div>
 
@@ -30,80 +48,111 @@
                     <label for="supplierSearchInput">คำค้นหา</label>
                     <input
                         id="supplierSearchInput"
+                        name="keyword"
                         type="search"
-                        placeholder="กรอกชื่อผู้ประกอบการ"
+                        placeholder="กรอกคำค้นหา"
                         autocomplete="off"
                         autocorrect="off"
                         autocapitalize="off"
                         spellcheck="false"
+                        value="{{ $keyword ?? '' }}"
                     >
                 </div>
 
-                <button class="search-btn" type="button" id="supplierSearchButton">
-                    ค้นหา
-                </button>
+                <button class="search-btn" type="submit">ค้นหา</button>
 
                 <a class="create-btn link-button" href="{{ route('asset.suppliers.create') }}">
                     บันทึกผู้ประกอบการใหม่
                 </a>
-            </div>
+            </form>
 
             <div class="table-wrapper">
                 <table class="supplier-table">
                     <thead>
                         <tr>
-                            <th>ลำดับ</th>
-                            <th>ชื่อผู้ประกอบการ</th>
-                            <th>ประเภทผู้ประกอบการ</th>
-                            <th>ชื่อผู้ติดต่อ</th>
-                            <th>เบอร์โทรศัพท์</th>
-                            <th>ที่อยู่</th>
+                            <x-sortable-th label="ชื่อผู้ประกอบการ"    key="name"    :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword]" />
+                            <x-sortable-th label="ประเภทผู้ประกอบการ"   key="type"    :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword]" />
+                            <x-sortable-th label="ชื่อผู้ติดต่อ"        key="contact" :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword]" />
+                            <x-sortable-th label="เบอร์โทรศัพท์"        key="phone"   :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword]" class="col-center" />
+                            <x-sortable-th label="ที่อยู่"              key="address" :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword]" />
                             <th class="action-column">จัดการ</th>
                         </tr>
                     </thead>
 
-                    <tbody id="supplierTableBody">
-                        @foreach ($suppliers as $supplier)
-                            <tr
-                                data-supplier-name="{{ $supplier['supplier_name'] }}"
-                                data-supplier-type="{{ $supplier['supplier_type'] }}"
-                                data-contact-name="{{ $supplier['contact_name'] }}"
-                                data-phone="{{ $supplier['phone'] }}"
-                                data-address="{{ $supplier['address'] }}"
-                            >
-                                <td>{{ $supplier['no'] }}</td>
-                                <td>{{ $supplier['supplier_name'] }}</td>
-                                <td>{{ $supplier['supplier_type'] }}</td>
-                                <td>{{ $supplier['contact_name'] }}</td>
-                                <td>{{ $supplier['phone'] }}</td>
-                                <td>{{ $supplier['address'] }}</td>
-                                <td class="action-column">
-                                    <a
-                                        class="detail-btn link-button"
-                                        href="{{ route('asset.suppliers.show', $supplier['no']) }}"
-                                    >
-                                        ดูรายละเอียด
+                    <tbody>
+                        @forelse ($suppliers as $supplier)
+                            <tr>
+                                <td>
+                                    <a class="supplier-name-link" href="{{ route('asset.suppliers.show', $supplier->id) }}">
+                                        {{ $supplier->dealer_name }}
                                     </a>
                                 </td>
+                                <td>{{ $supplier->dealer_type_label }}</td>
+                                <td>{{ $supplier->dealer_contact ?? '-' }}</td>
+                                <td class="col-center">{{ $supplier->dealer_phone ?? '-' }}</td>
+                                <td>{{ collect([$supplier->dealer_addr_no, $supplier->dealer_alley, $supplier->dealer_street])->filter()->implode(' ') ?: '-' }}</td>
+                                <td class="action-column">
+                                    <div class="table-action-buttons">
+                                        <a class="table-action-icon table-action-edit"
+                                           aria-label="แก้ไข" title="แก้ไข" data-tooltip="แก้ไข"
+                                           href="{{ route('asset.suppliers.edit', $supplier->id) }}"
+                                        >
+                                            <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
+                                        </a>
+                                        <button
+                                            class="table-action-icon table-action-delete"
+                                            type="button"
+                                            aria-label="ลบ" title="ลบ" data-tooltip="ลบ"
+                                            data-delete-url="{{ route('asset.suppliers.destroy', $supplier->id) }}"
+                                            data-supplier-name="{{ $supplier->dealer_name }}"
+                                        >
+                                            <svg aria-hidden="true"><use href="#icon-trash"></use></svg>
+                                        </button>
+                                    </div>
+                                </td>
                             </tr>
-                        @endforeach
+                        @empty
+                            <tr><td class="no-data" colspan="6">ไม่พบข้อมูลผู้ประกอบการ</td></tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
 
             <div class="table-footer">
-                <p id="supplierResultText">แสดง 1 จากทั้งหมด 1 รายการ</p>
-
-                <div class="pagination">
-                    <button class="page-btn disabled" type="button">‹</button>
-                    <button class="page-btn active-page" type="button">1</button>
-                    <button class="page-btn" type="button">›</button>
-                </div>
+                <p class="app-pagination-summary">
+                    @if ($suppliers->total() === 0)
+                        ไม่พบข้อมูลผู้ประกอบการ
+                    @else
+                        แสดง {{ $suppliers->firstItem() }}–{{ $suppliers->lastItem() }} จากทั้งหมด {{ $suppliers->total() }} รายการ
+                    @endif
+                </p>
+                <x-app-pagination :paginator="$suppliers" />
             </div>
         </section>
     </div>
+
+    {{-- Delete confirmation modal --}}
+    <div class="confirm-overlay" id="deleteSupplierOverlay" aria-hidden="true">
+        <div class="confirm-modal" role="dialog" aria-modal="true">
+            <div class="confirm-icon delete-confirm-icon">
+                <svg><use href="#icon-alert-triangle"></use></svg>
+            </div>
+            <h3>ยืนยันการลบข้อมูล</h3>
+            <p id="deleteSupplierMessage">คุณแน่ใจหรือไม่ว่าต้องการลบรายการนี้<br>การดำเนินการนี้ไม่สามารถเรียกคืนได้</p>
+            <div class="confirm-actions">
+                <button class="modal-cancel-btn" type="button" id="cancelDeleteSupplierButton">ยกเลิก</button>
+                <button class="modal-confirm-btn delete-confirm-btn" type="button" id="confirmDeleteSupplierButton">ยืนยันการลบ</button>
+            </div>
+        </div>
+    </div>
+
+    <form id="deleteSupplierForm" method="POST" style="display:none;">
+        @csrf
+        @method('DELETE')
+    </form>
 @endsection
 
 @section('page-script')
     @vite(['resources/js/asset/ASS-002-manage-supplier-information/script.js'])
 @endsection
+

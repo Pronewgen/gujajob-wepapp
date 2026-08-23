@@ -1,4 +1,4 @@
-* {
+﻿* {
     box-sizing: border-box;
 }
 
@@ -13,6 +13,7 @@
     --page-bg: #dfe4ea;
     --primary: #173b8f;
     --primary-dark: #102d70;
+    --card-border: #173b8f;
     --line: #d9e0ea;
     --thead: #edf2f7;
     --text-main: #334155;
@@ -203,7 +204,7 @@ svg.svg-sprite {
 
 .page-container {
     width: 100%;
-    max-width: 1120px;
+    max-width: 1136px;
     margin: 0 auto;
     padding: 34px 26px 60px;
 }
@@ -228,10 +229,11 @@ svg.svg-sprite {
 }
 
 .receiving-card {
-    background: #f8fbff;
-    border: 1px solid #d2dbe7;
-    border-radius: 7px;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    background: #ffffff;
+    border: 1.5px solid var(--card-border);
+    border-top-width: 4px;
+    border-radius: 8px;
+    box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
     overflow: hidden;
 }
 
@@ -300,9 +302,9 @@ svg.svg-sprite {
 }
 
 .table-wrapper {
-    margin: 0 16px;
+    margin: 16px 28px 0;
     border: 1px solid #d7e0ea;
-    border-radius: 6px;
+    border-radius: 7px;
     overflow: hidden;
     background: #ffffff;
 }

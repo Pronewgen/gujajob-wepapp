@@ -1,0 +1,38 @@
+/* ==========================================================================
+   Form Action Buttons — System-wide standard
+   Loaded in app layout AFTER per-module CSS (@yield('page-style')).
+   Standardises height / min-width / padding only.
+   Does NOT change colours, borders, or hover states.
+   ========================================================================== */
+
+/* ─── Core text action buttons ──────────────────────────────────────────── */
+.cancel-btn,
+.submit-btn,
+.save-btn,
+.approve-btn,
+.reject-btn,
+.cancel-approval-link,
+.delete-action-btn,
+.edit-action-btn,
+.detail-save-btn {
+    height: 32px;
+    min-width: auto;
+    padding: 0 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    box-sizing: border-box;
+}
+
+/* ─── Action row gap ────────────────────────────────────────────────────── */
+.form-actions,
+.supplier-form-actions,
+.edit-form-actions,
+.create-actions,
+.detail-actions,
+.approval-actions {
+    gap: 10px;
+}

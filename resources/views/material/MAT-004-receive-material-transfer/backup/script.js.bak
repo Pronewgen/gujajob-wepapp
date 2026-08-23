@@ -1,0 +1,147 @@
+/**
+ * MAT-004 รับโอนวัสดุ — JavaScript
+ * Real-time calculation + Modal confirmations
+ */
+
+document.addEventListener('DOMContentLoaded', () => {
+    // ── Real-time "คงเหลือหลังรับโอน" calculation ─────────────────────
+    function updateBalanceAfter(row) {
+        const currentBalance = Number(row.dataset.currentBalance ?? '');
+        const increaseInput  = row.querySelector('[data-transfer-increase]');
+        const resultCell     = row.querySelector('[data-balance-after-transfer]');
+
+        if (!increaseInput || !resultCell) return;
+
+        const increase = Number(increaseInput.value) || 0;
+
+        if (isNaN(currentBalance) || row.dataset.currentBalance === '') {
+            resultCell.textContent = '–';
+            resultCell.dataset.value = '';
+            return;
+        }
+
+        const balanceAfter = currentBalance + increase;
+        resultCell.textContent = balanceAfter.toLocaleString('th-TH');
+        resultCell.dataset.value = String(balanceAfter);
+    }
+
+    document.querySelectorAll('[data-transfer-row]').forEach((row) => {
+        updateBalanceAfter(row);
+
+        const input = row.querySelector('[data-transfer-increase]');
+        input?.addEventListener('input', () => updateBalanceAfter(row));
+    });
+
+    // ── Modal helpers ─────────────────────────────────────────────────
+    function openModal(overlay) {
+        if (!overlay) return;
+        overlay.classList.add('is-visible');
+        overlay.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeModal(overlay) {
+        if (!overlay) return;
+        overlay.classList.remove('is-visible');
+        overlay.setAttribute('aria-hidden', 'true');
+    }
+
+    // Close on backdrop click
+    document.querySelectorAll('.transfer-overlay').forEach((overlay) => {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeModal(overlay);
+        });
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        document.querySelectorAll('.transfer-overlay.is-visible').forEach((o) => closeModal(o));
+    });
+
+    // ── Show page: confirm transfer popup ─────────────────────────────
+    const confirmOverlay   = document.getElementById('transferConfirmOverlay');
+    const confirmBtn       = document.getElementById('transferConfirmBtn');
+    const confirmModalBtn  = document.getElementById('transferConfirmModalBtn');
+    const confirmCancelBtn = document.getElementById('transferConfirmCancelBtn');
+    const confirmForm      = document.getElementById('transferConfirmForm');
+    const draftForm        = document.getElementById('transferDraftForm');
+
+    // Fields on show page
+    const showDateInput    = document.getElementById('showInspDate');
+    const showPersonInput  = document.getElementById('showInspPerson');
+    const showRemarkInput  = document.getElementById('showInspRemark');
+
+    /** Copy values from show-page inputs into a hidden form */
+    function syncHiddenFields(form) {
+        if (!form) return;
+        const setVal = (name, val) => {
+            const el = form.querySelector(`[name="${name}"]`);
+            if (el) el.value = val ?? '';
+        };
+        setVal('mat_insp_date',   showDateInput?.value   ?? '');
+        setVal('mat_insp_person', showPersonInput?.value ?? '');
+        setVal('mat_insp_remark', showRemarkInput?.value ?? '');
+    }
+
+    // "ยืนยันการรับโอน" → open popup
+    confirmBtn?.addEventListener('click', () => {
+        if (!validateHeader()) return;
+        syncHiddenFields(confirmForm);
+        openModal(confirmOverlay);
+    });
+
+    // Popup cancel
+    confirmCancelBtn?.addEventListener('click', () => closeModal(confirmOverlay));
+
+    // Popup confirm → submit
+    confirmModalBtn?.addEventListener('click', () => {
+        confirmModalBtn.disabled = true;
+        confirmModalBtn.textContent = 'กำลังบันทึก...';
+        confirmForm?.submit();
+    });
+
+    // "แก้ไขข้อมูลรับโอน" → submit draft form
+    const editBtn = document.getElementById('transferEditBtn');
+    editBtn?.addEventListener('click', () => {
+        if (!validateHeader()) return;
+        syncHiddenFields(draftForm);
+        draftForm?.submit();
+    });
+
+    /** Basic header validation */
+    function validateHeader() {
+        const dateVal   = showDateInput?.value?.trim();
+        const personVal = showPersonInput?.value?.trim();
+
+        if (!dateVal) {
+            showDateInput?.focus();
+            alert('กรุณาระบุวันที่รับโอน');
+            return false;
+        }
+        if (!personVal) {
+            showPersonInput?.focus();
+            alert('กรุณากรอกชื่อผู้รับโอนวัสดุ');
+            return false;
+        }
+        return true;
+    }
+
+    // ── Edit page: save popup ─────────────────────────────────────────
+    const editSaveOverlay   = document.getElementById('editSaveOverlay');
+    const saveBtn           = document.getElementById('transferSaveBtn');
+    const saveModalBtn      = document.getElementById('editSaveModalBtn');
+    const saveCancelBtn     = document.getElementById('editSaveCancelBtn');
+    const editPageForm      = document.getElementById('transferEditPageForm');
+
+    saveBtn?.addEventListener('click', () => {
+        openModal(editSaveOverlay);
+    });
+
+    saveCancelBtn?.addEventListener('click', () => closeModal(editSaveOverlay));
+
+    saveModalBtn?.addEventListener('click', () => {
+        saveModalBtn.disabled = true;
+        saveModalBtn.textContent = 'กำลังบันทึก...';
+        editPageForm?.submit();
+    });
+});

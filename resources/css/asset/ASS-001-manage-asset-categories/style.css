@@ -1,4 +1,4 @@
-* {
+﻿* {
     box-sizing: border-box;
 }
 
@@ -189,7 +189,7 @@ textarea {
 
 .page-container {
     width: 100%;
-    max-width: 1040px;
+    max-width: 1136px;
     margin: 0 auto;
     padding: 52px 28px 70px;
 }
@@ -219,7 +219,7 @@ textarea {
 
 .asset-category-card {
     width: 100%;
-    max-width: 1040px;
+    max-width: 1136px;
     background: #ffffff;
     border: 1.5px solid var(--card-border);
     border-top-width: 4px;
@@ -332,7 +332,7 @@ textarea {
 }
 
 .table-wrapper {
-    padding: 0 24px;
+    padding: 0 28px;
     overflow-x: auto;
 }
 
@@ -341,6 +341,9 @@ textarea {
     border-collapse: separate;
     border-spacing: 0;
     table-layout: fixed;
+    border: 1px solid #d7e0ea;
+    border-radius: 7px;
+    overflow: hidden;
 }
 
 .asset-category-table thead tr {
@@ -527,7 +530,7 @@ textarea {
 }
 
 .asset-create-page {
-    max-width: 1040px;
+    max-width: 1136px;
 }
 
 .asset-form-card {
@@ -853,7 +856,7 @@ textarea {
 /* ===== ASS-001 show/edit detail page ===== */
 
 .asset-detail-page {
-    max-width: 1040px;
+    max-width: 1136px;
 }
 
 .asset-show-card,
@@ -867,7 +870,7 @@ textarea {
 }
 
 .asset-edit-card {
-    background: #fff4c2;
+    background: #ffffff;
 }
 
 .asset-show-card .form-field input[readonly],
@@ -986,3 +989,5 @@ textarea {
         width: 100%;
     }
 }
+
+.field-error { display: block; margin-top: 3px; font-size: 12px; color: #dc2626; }

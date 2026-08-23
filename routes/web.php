@@ -1,7 +1,18 @@
 <?php
 
+use App\Http\Controllers\AssetAssignmentController;
+use App\Http\Controllers\AssetCategoryController;
+use App\Http\Controllers\AssetController;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\DealerController;
+use App\Http\Controllers\MaterialBalanceSettingController;
 use App\Http\Controllers\MaterialController;
 use App\Http\Controllers\MaterialReceivingController;
+use App\Http\Controllers\MaterialRegisterController;
+use App\Http\Controllers\MaterialTransferReceiveController;
+use App\Http\Controllers\MaterialWithdrawApprovalController;
+use App\Http\Controllers\MaterialWithdrawController;
+use App\Http\Controllers\SearchSuggestionsController;
 use Illuminate\Support\Facades\Route;
 
 if (! function_exists('gujajob_material_items')) {
@@ -298,62 +309,6 @@ if (! function_exists('gujajob_material_balance_setting_records')) {
 }
 
 
-if (! function_exists('gujajob_asset_category_records')) {
-    function gujajob_asset_category_records(): array
-    {
-        return [
-            [
-                'category_code' => 'AST-0001',
-                'asset_name' => 'คอมพิวเตอร์ Lenovo IdeaCentre Tower',
-                'asset_type' => 'คอมพิวเตอร์ตั้งโต๊ะ',
-                'asset_group' => 'ครุภัณฑ์สำนักงาน',
-                'unit' => 'เครื่อง',
-                'depreciation_rate' => '10%',
-            ],
-        ];
-    }
-}
-
-
-
-if (! function_exists('gujajob_asset_supplier_records')) {
-    function gujajob_asset_supplier_records(): array
-    {
-        return [
-            [
-                'no' => 1,
-                'supplier_type' => 'บริษัท จำกัด',
-                'supplier_name' => 'บริษัท A',
-                'tax_id' => '1111111111111',
-                'address_no' => '24/8',
-                'alley' => 'กองหยิบ',
-                'road' => 'กองหยอด',
-                'province' => 'เมืองสมุทรปราการ',
-                'district' => 'เมืองสมุทรปราการ',
-                'sub_district' => 'แพรกษา',
-                'postal_code' => '10280',
-                'contact_name' => 'สมชาย แซ่ตั้ง',
-                'phone' => '012-0123-01234',
-                'address' => 'เมืองสมุทรปราการ',
-            ],
-        ];
-    }
-}
-
-if (! function_exists('gujajob_find_asset_supplier_record')) {
-    function gujajob_find_asset_supplier_record(string $supplierNo): array
-    {
-        foreach (gujajob_asset_supplier_records() as $record) {
-            if ((string) $record['no'] === (string) $supplierNo) {
-                return $record;
-            }
-        }
-
-        abort(404);
-    }
-}
-
-
 
 if (! function_exists('gujajob_asset_registration_records')) {
     function gujajob_asset_registration_records(): array
@@ -584,9 +539,18 @@ if (! function_exists('gujajob_find_asset_disposal_request_record')) {
     }
 }
 
+Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [LoginController::class, 'login'])->name('login.post');
+Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+
+Route::middleware('auth')->group(function () {
+
 Route::get('/', function () {
     return redirect('/material/MAT-001-manage-material-items');
 });
+
+Route::get('/material/search-api', [MaterialController::class, 'searchApi'])
+    ->name('material.search-api');
 
 Route::get('/material/MAT-001-manage-material-items', [MaterialController::class, 'index'])
     ->name('material.items.index');
@@ -607,6 +571,10 @@ Route::get('/material/MAT-002-record-material-receiving', [MaterialReceivingCont
     ->name('material.receiving.index');
 Route::get('/material/MAT-002-record-material-receiving/create', [MaterialReceivingController::class, 'create'])
     ->name('material.receiving.create');
+Route::get('/material/MAT-002-record-material-receiving/preview-code', [MaterialReceivingController::class, 'previewCode'])
+    ->name('material.receiving.preview-code');
+Route::post('/material/MAT-002-record-material-receiving/save-items', [MaterialReceivingController::class, 'saveItems'])
+    ->name('material.receiving.save-items');
 Route::post('/material/MAT-002-record-material-receiving', [MaterialReceivingController::class, 'storeHeader'])
     ->name('material.receiving.store');
 Route::get('/material/MAT-002-record-material-receiving/{receiptNo}', [MaterialReceivingController::class, 'show'])
@@ -621,37 +589,47 @@ Route::delete('/material/MAT-002-record-material-receiving/{receiptNo}/items/{it
     ->name('material.receiving.items.destroy');
 Route::post('/material/MAT-002-record-material-receiving/{receiptNo}/finalize', [MaterialReceivingController::class, 'finalize'])
     ->name('material.receiving.finalize');
+Route::delete('/material/MAT-002-record-material-receiving/{receiptNo}', [MaterialReceivingController::class, 'destroy'])
+    ->name('material.receiving.destroy');
 
 
 
-Route::get('/material/MAT-003-withdraw-material', function () {
-    return view('material.MAT-003-withdraw-material.index', [
-        'pageTitle' => 'เบิกวัสดุ',
-        'withdrawalRecords' => gujajob_material_withdrawal_records(),
-    ]);
-})->name('material.withdraw.index');
+Route::get('/material/MAT-003-withdraw-material', [MaterialWithdrawController::class, 'index'])->name('material.withdraw.index');
+Route::get('/material/MAT-003-withdraw-material/create', [MaterialWithdrawController::class, 'create'])->name('material.withdraw.create');
+Route::post('/material/MAT-003-withdraw-material', [MaterialWithdrawController::class, 'store'])->name('material.withdraw.store');
+Route::get('/material/MAT-003-withdraw-material/stock-check', [MaterialWithdrawController::class, 'stockCheck'])->name('material.withdraw.stock-check');
+
+// ─── Approval sub-routes — must be declared before {code} wildcard routes ───
+Route::get('/material/MAT-003-withdraw-material/approvals', [MaterialWithdrawApprovalController::class, 'index'])->name('material.withdraw.approval.index');
+Route::get('/material/MAT-003-withdraw-material/approvals/{code}', [MaterialWithdrawApprovalController::class, 'show'])->name('material.withdraw.approval.show');
+Route::post('/material/MAT-003-withdraw-material/approvals/{code}/validate-stock', [MaterialWithdrawApprovalController::class, 'validateStock'])->name('material.withdraw.approval.validate-stock');
+Route::post('/material/MAT-003-withdraw-material/approvals/{code}/approve', [MaterialWithdrawApprovalController::class, 'approve'])->name('material.withdraw.approval.approve');
+Route::post('/material/MAT-003-withdraw-material/approvals/{code}/reject', [MaterialWithdrawApprovalController::class, 'reject'])->name('material.withdraw.approval.reject');
+Route::get('/material/MAT-003-withdraw-material/approvals/{code}/edit', [MaterialWithdrawApprovalController::class, 'edit'])->name('material.withdraw.approval.edit');
+
+// ─── MAT-004: รับโอนวัสดุ ─────────────────────────────────────────────────
+// MAT-004: {code} refers to mat_insp_code (ISP-YYYYY). Static sub-paths before wildcard.
+
+// Unified search-suggestions autocomplete endpoint
+Route::get('/search/suggestions', [SearchSuggestionsController::class, 'index'])->name('search.suggestions');
+
+Route::get('/material/MAT-004-receive-material-transfer', [MaterialTransferReceiveController::class, 'index'])->name('material.transfer.index');
+Route::post('/material/MAT-004-receive-material-transfer/create', [MaterialTransferReceiveController::class, 'createInspection'])->name('material.transfer.create');
+Route::get('/material/MAT-004-receive-material-transfer/{code}/edit', [MaterialTransferReceiveController::class, 'edit'])->name('material.transfer.edit');
+Route::post('/material/MAT-004-receive-material-transfer/{code}/confirm', [MaterialTransferReceiveController::class, 'confirm'])->name('material.transfer.confirm');
+Route::put('/material/MAT-004-receive-material-transfer/{code}', [MaterialTransferReceiveController::class, 'update'])->name('material.transfer.update');
+Route::get('/material/MAT-004-receive-material-transfer/{code}', [MaterialTransferReceiveController::class, 'show'])->name('material.transfer.show');
+
+Route::get('/material/MAT-003-withdraw-material/{code}/edit', [MaterialWithdrawController::class, 'edit'])->name('material.withdraw.edit');
+Route::put('/material/MAT-003-withdraw-material/{code}', [MaterialWithdrawController::class, 'update'])->name('material.withdraw.update');
+Route::get('/material/MAT-003-withdraw-material/{code}', [MaterialWithdrawController::class, 'show'])->name('material.withdraw.show');
+Route::delete('/material/MAT-003-withdraw-material/{code}', [MaterialWithdrawController::class, 'destroy'])->name('material.withdraw.destroy');
+Route::delete('/material/MAT-003-withdraw-material/{code}/items/{id}', [MaterialWithdrawController::class, 'destroyItem'])->name('material.withdraw.item.destroy');
+Route::post('/material/MAT-003-withdraw-material/{code}/finalize', [MaterialWithdrawController::class, 'finalizeWithdraw'])->name('material.withdraw.finalize');
 
 
 
-Route::get('/material/MAT-003-withdraw-material/create', function () {
-    return view('material.MAT-003-withdraw-material.create', [
-        'pageTitle' => 'เบิกวัสดุ',
-        'nextWithdrawNo' => 'CI-2026-003',
-        'materials' => gujajob_material_items(),
-    ]);
-})->name('material.withdraw.create');
-
-
-
-Route::get('/material/MAT-005-material-register', function () {
-    $registerData = gujajob_material_register_data();
-
-    return view('material.MAT-005-material-register.index', [
-        'pageTitle' => 'คุมทะเบียนวัสดุ',
-        'registerData' => $registerData,
-        'defaultRegister' => $registerData['MAT-1001'],
-    ]);
-})->name('material.register.index');
+Route::get('/material/MAT-005-material-register', [MaterialRegisterController::class, 'index'])->name('material.register.index');
 
 
 
@@ -691,22 +669,13 @@ if (! function_exists('gujajob_material_balance_lot_records')) {
     }
 }
 
-Route::get('/material/MAT-006-record-balance-setting', function () {
-    return view('material.MAT-006-record-balance-setting.index', [
-        'pageTitle' => 'บันทึกการตั้งยอดคงเหลือ',
-        'balanceRecords' => gujajob_material_balance_setting_records(),
-    ]);
-})->name('material.balance.index');
+Route::get('/material/MAT-006-record-balance-setting', [MaterialBalanceSettingController::class, 'index'])->name('material.balance.index');
 
+Route::post('/material/MAT-006-record-balance-setting/bulk-update', [MaterialBalanceSettingController::class, 'bulkUpdate'])->name('material.balance.bulk-update');
 
+Route::post('/material/MAT-006-record-balance-setting/{materialCode}/balance', [MaterialBalanceSettingController::class, 'updateBalance'])->name('material.balance.update');
 
-Route::get('/material/MAT-006-record-balance-setting/{materialCode}/edit', function (string $materialCode) {
-    return view('material.MAT-006-record-balance-setting.edit', [
-        'pageTitle' => 'บันทึกการตั้งยอดคงเหลือ',
-        'record' => gujajob_find_material_balance_record($materialCode),
-        'lots' => gujajob_material_balance_lot_records($materialCode),
-    ]);
-})->name('material.balance.edit');
+Route::get('/material/MAT-006-record-balance-setting/{materialCode}/edit', [MaterialBalanceSettingController::class, 'edit'])->name('material.balance.edit');
 
 
 
@@ -720,287 +689,46 @@ Route::get('/material/MAT-007-print-material-report', function () {
 
 
 
-if (! function_exists('gujajob_find_asset_category_record')) {
-    function gujajob_find_asset_category_record(string $categoryCode): array
-    {
-        foreach (gujajob_asset_category_records() as $record) {
-            if ($record['category_code'] === $categoryCode) {
-                return $record;
-            }
-        }
-
-        abort(404);
-    }
-}
-
-
-Route::get('/asset/ASS-001-manage-asset-categories/create', function () {
-    return view('asset.ASS-001-manage-asset-categories.create', [
-        'pageTitle' => 'จัดการประเภทครุภัณฑ์',
-        'nextAssetCode' => 'AST-0002',
-    ]);
-})->name('asset.categories.create');
-
-
-Route::get('/asset/ASS-001-manage-asset-categories', function () {
-    return view('asset.ASS-001-manage-asset-categories.index', [
-        'pageTitle' => 'จัดการประเภทครุภัณฑ์',
-        'assetCategories' => gujajob_asset_category_records(),
-    ]);
-})->name('asset.categories.index');
-
-
-
-Route::get('/asset/ASS-001-manage-asset-categories/{categoryCode}', function (string $categoryCode) {
-    return view('asset.ASS-001-manage-asset-categories.show', [
-        'pageTitle' => 'จัดการประเภทครุภัณฑ์',
-        'asset' => gujajob_find_asset_category_record($categoryCode),
-    ]);
-})->name('asset.categories.show');
-
-Route::get('/asset/ASS-001-manage-asset-categories/{categoryCode}/edit', function (string $categoryCode) {
-    return view('asset.ASS-001-manage-asset-categories.edit', [
-        'pageTitle' => 'จัดการประเภทครุภัณฑ์',
-        'asset' => gujajob_find_asset_category_record($categoryCode),
-    ]);
-})->name('asset.categories.edit');
+Route::get('/asset/ASS-001-manage-asset-categories/create', [AssetCategoryController::class, 'create'])->name('asset.categories.create');
+Route::post('/asset/ASS-001-manage-asset-categories', [AssetCategoryController::class, 'store'])->name('asset.categories.store');
+Route::get('/asset/ASS-001-manage-asset-categories', [AssetCategoryController::class, 'index'])->name('asset.categories.index');
+Route::get('/asset/ASS-001-manage-asset-categories/{id}', [AssetCategoryController::class, 'show'])->name('asset.categories.show');
+Route::get('/asset/ASS-001-manage-asset-categories/{id}/edit', [AssetCategoryController::class, 'edit'])->name('asset.categories.edit');
+Route::put('/asset/ASS-001-manage-asset-categories/{id}', [AssetCategoryController::class, 'update'])->name('asset.categories.update');
+Route::delete('/asset/ASS-001-manage-asset-categories/{id}', [AssetCategoryController::class, 'destroy'])->name('asset.categories.destroy');
 
 
 
 
-Route::get('/asset/ASS-002-manage-supplier-information/create', function () {
-    return view('asset.ASS-002-manage-supplier-information.create', [
-        'pageTitle' => 'จัดการข้อมูลผู้ประกอบการ',
-    ]);
-})->name('asset.suppliers.create');
-
-
-Route::get('/asset/ASS-002-manage-supplier-information', function () {
-    return view('asset.ASS-002-manage-supplier-information.index', [
-        'pageTitle' => 'จัดการข้อมูลผู้ประกอบการ',
-        'suppliers' => gujajob_asset_supplier_records(),
-    ]);
-})->name('asset.suppliers.index');
+Route::get('/asset/ASS-002-manage-supplier-information', [DealerController::class, 'index'])->name('asset.suppliers.index');
+Route::get('/asset/ASS-002-manage-supplier-information/create', [DealerController::class, 'create'])->name('asset.suppliers.create');
+Route::post('/asset/ASS-002-manage-supplier-information', [DealerController::class, 'store'])->name('asset.suppliers.store');
+Route::get('/asset/ASS-002-manage-supplier-information/{id}', [DealerController::class, 'show'])->name('asset.suppliers.show');
+Route::get('/asset/ASS-002-manage-supplier-information/{id}/edit', [DealerController::class, 'edit'])->name('asset.suppliers.edit');
+Route::put('/asset/ASS-002-manage-supplier-information/{id}', [DealerController::class, 'update'])->name('asset.suppliers.update');
+Route::delete('/asset/ASS-002-manage-supplier-information/{id}', [DealerController::class, 'destroy'])->name('asset.suppliers.destroy');
+Route::get('/api/amphurs', [DealerController::class, 'amphursByProvince'])->name('api.amphurs');
+Route::get('/api/tambons', [DealerController::class, 'tambonsByAmphur'])->name('api.tambons');
 
 
 
-Route::get('/asset/ASS-002-manage-supplier-information/{supplierNo}', function (string $supplierNo) {
-    return view('asset.ASS-002-manage-supplier-information.show', [
-        'pageTitle' => 'จัดการข้อมูลผู้ประกอบการ',
-        'supplier' => gujajob_find_asset_supplier_record($supplierNo),
-    ]);
-})->name('asset.suppliers.show');
+Route::get('/asset/ASS-003-manage-asset-registration', [AssetController::class, 'index'])->name('asset.registrations.index');
+Route::get('/asset/ASS-003-manage-asset-registration/create', [AssetController::class, 'create'])->name('asset.registrations.create');
+Route::get('/asset/ASS-003-manage-asset-registration/forecast-data', [AssetController::class, 'forecastData'])->name('asset.registrations.forecast');
+Route::post('/asset/ASS-003-manage-asset-registration', [AssetController::class, 'store'])->name('asset.registrations.store');
+Route::get('/asset/ASS-003-manage-asset-registration/{id}', [AssetController::class, 'show'])->name('asset.registrations.show');
+Route::get('/asset/ASS-003-manage-asset-registration/{id}/edit', [AssetController::class, 'edit'])->name('asset.registrations.edit');
+Route::put('/asset/ASS-003-manage-asset-registration/{id}', [AssetController::class, 'update'])->name('asset.registrations.update');
+Route::delete('/asset/ASS-003-manage-asset-registration/{id}', [AssetController::class, 'destroy'])->name('asset.registrations.destroy');
 
-Route::get('/asset/ASS-002-manage-supplier-information/{supplierNo}/edit', function (string $supplierNo) {
-    return view('asset.ASS-002-manage-supplier-information.edit', [
-        'pageTitle' => 'จัดการข้อมูลผู้ประกอบการ',
-        'supplier' => gujajob_find_asset_supplier_record($supplierNo),
-    ]);
-})->name('asset.suppliers.edit');
-
-
-
-Route::get('/asset/ASS-003-manage-asset-registration', function () {
-    return view('asset.ASS-003-manage-asset-registration.index', [
-        'pageTitle' => 'จัดการทะเบียนครุภัณฑ์',
-        'assets' => gujajob_asset_registration_records(),
-    ]);
-})->name('asset.registrations.index');
-
-Route::get('/asset/ASS-003-manage-asset-registration/create', function () {
-    return view('asset.ASS-003-manage-asset-registration.create', [
-        'pageTitle' => 'จัดการทะเบียนครุภัณฑ์',
-    ]);
-})->name('asset.registrations.create');
-
-Route::get('/asset/ASS-003-manage-asset-registration/{assetCode}', function (string $assetCode) {
-    return view('asset.ASS-003-manage-asset-registration.show', [
-        'pageTitle' => 'จัดการทะเบียนครุภัณฑ์',
-        'asset' => gujajob_find_asset_registration_record($assetCode),
-    ]);
-})->name('asset.registrations.show');
-
-Route::get('/asset/ASS-003-manage-asset-registration/{assetCode}/edit', function (string $assetCode) {
-    return view('asset.ASS-003-manage-asset-registration.edit', [
-        'pageTitle' => 'จัดการทะเบียนครุภัณฑ์',
-        'asset' => gujajob_find_asset_registration_record($assetCode),
-    ]);
-})->name('asset.registrations.edit');
-
-Route::get('/asset/ASS-004-assign-asset-to-department', function () {
-    return view('asset.ASS-004-assign-asset-to-department.index', [
-        'pageTitle' => 'จัดสรรครุภัณฑ์ให้หน่วยงาน',
-        'assignmentRecords' => gujajob_asset_assignment_records(),
-    ]);
-})->name('asset.assignments.index');
-
-Route::get('/asset/ASS-004-assign-asset-to-department/create', function () {
-    $availableAssets = [
-        [
-            'asset_code' => '7440-001-0001',
-            'asset_name' => 'HP LaserJet Pro M404dn',
-            'category' => 'คอมพิวเตอร์และอุปกรณ์',
-            'value' => '8,900.00',
-            'check_date' => '25/06/2565',
-        ],
-        [
-            'asset_code' => '7440-003-0001',
-            'asset_name' => 'Toyota Hilux Revo',
-            'category' => 'ยานพาหนะ',
-            'value' => '750,000.00',
-            'check_date' => '15/08/2564',
-        ],
-        [
-            'asset_code' => '7440-004-0001',
-            'asset_name' => 'Canon iR2525',
-            'category' => 'เครื่องถ่ายสำนักงาน',
-            'value' => '45,000.00',
-            'check_date' => '05/10/2563',
-        ],
-        [
-            'asset_code' => '7110-002-0004',
-            'asset_name' => 'โต๊ะทำงานผู้บริหาร',
-            'category' => 'เฟอร์นิเจอร์สำนักงาน',
-            'value' => '15,000.00',
-            'check_date' => '05/01/2566',
-        ],
-    ];
-
-    return view('asset.ASS-004-assign-asset-to-department.create', [
-        'pageTitle' => 'จัดสรรครุภัณฑ์ให้หน่วยงาน',
-        'availableAssets' => $availableAssets,
-        'defaultSelectedAssetCodes' => ['7440-001-0001', '7440-003-0001'],
-    ]);
-})->name('asset.assignments.create');
-
-Route::get('/asset/ASS-004-assign-asset-to-department/{sequence}', function (int $sequence) {
-    $assignmentDetails = [
-        1 => [
-            'requesting_department' => 'Auto filled ตามผู้ใช้ login',
-            'target_department' => 'หน่วยงาน ก.',
-            'items' => [
-                [
-                    'asset_code' => '7440-001-0001',
-                    'sub_code' => '',
-                    'asset_name' => 'HP LaserJet Pro M404dn',
-                    'category' => 'คอมพิวเตอร์และอุปกรณ์',
-                    'value' => '8,900.00',
-                    'receive_status' => 'ยังไม่ได้การยืนยัน',
-                    'receive_status_type' => 'pending',
-                ],
-                [
-                    'asset_code' => '7440-003-0001',
-                    'sub_code' => '03/001/69',
-                    'asset_name' => 'Toyota Hilux Revo',
-                    'category' => 'ยานพาหนะ',
-                    'value' => '750,000.00',
-                    'receive_status' => 'ยืนยันแล้ว',
-                    'receive_status_type' => 'confirmed',
-                ],
-            ],
-        ],
-        2 => [
-            'requesting_department' => 'Auto filled ตามผู้ใช้ login',
-            'target_department' => 'หน่วยงาน ข.',
-            'items' => [
-                [
-                    'asset_code' => '7440-004-0001',
-                    'sub_code' => '',
-                    'asset_name' => 'Canon iR2525',
-                    'category' => 'เครื่องถ่ายสำนักงาน',
-                    'value' => '45,000.00',
-                    'receive_status' => 'ยืนยันแล้ว',
-                    'receive_status_type' => 'confirmed',
-                ],
-            ],
-        ],
-        3 => [
-            'requesting_department' => 'Auto filled ตามผู้ใช้ login',
-            'target_department' => 'หน่วยงาน ค.',
-            'items' => [
-                [
-                    'asset_code' => '7110-002-0004',
-                    'sub_code' => '',
-                    'asset_name' => 'โต๊ะทำงานผู้บริหาร',
-                    'category' => 'เฟอร์นิเจอร์สำนักงาน',
-                    'value' => '15,000.00',
-                    'receive_status' => 'ยังไม่ได้การยืนยัน',
-                    'receive_status_type' => 'pending',
-                ],
-            ],
-        ],
-    ];
-
-    if (! array_key_exists($sequence, $assignmentDetails)) {
-        abort(404);
-    }
-
-    return view('asset.ASS-004-assign-asset-to-department.show', [
-        'pageTitle' => 'จัดสรรครุภัณฑ์ให้หน่วยงาน',
-        'assignmentSequence' => $sequence,
-        'assignmentDetail' => $assignmentDetails[$sequence],
-    ]);
-})->name('asset.assignments.show');
-
-Route::get('/asset/ASS-004-assign-asset-to-department/{sequence}/edit', function (int $sequence) {
-    $availableAssets = [
-        [
-            'asset_code' => '7440-001-0001',
-            'asset_name' => 'HP LaserJet Pro M404dn',
-            'category' => 'คอมพิวเตอร์และอุปกรณ์',
-            'value' => '8,900.00',
-            'check_date' => '25/06/2565',
-        ],
-        [
-            'asset_code' => '7440-003-0001',
-            'asset_name' => 'Toyota Hilux Revo',
-            'category' => 'ยานพาหนะ',
-            'value' => '750,000.00',
-            'check_date' => '15/08/2564',
-        ],
-        [
-            'asset_code' => '7440-004-0001',
-            'asset_name' => 'Canon iR2525',
-            'category' => 'เครื่องถ่ายสำนักงาน',
-            'value' => '45,000.00',
-            'check_date' => '05/10/2563',
-        ],
-        [
-            'asset_code' => '7110-002-0004',
-            'asset_name' => 'โต๊ะทำงานผู้บริหาร',
-            'category' => 'เฟอร์นิเจอร์สำนักงาน',
-            'value' => '15,000.00',
-            'check_date' => '05/01/2566',
-        ],
-    ];
-
-    $assignmentDetails = [
-        1 => [
-            'target_department' => 'หน่วยงาน ก.',
-            'selected_codes' => ['7440-001-0001', '7440-003-0001'],
-        ],
-        2 => [
-            'target_department' => 'หน่วยงาน ข.',
-            'selected_codes' => ['7440-004-0001'],
-        ],
-        3 => [
-            'target_department' => 'หน่วยงาน ค.',
-            'selected_codes' => ['7110-002-0004'],
-        ],
-    ];
-
-    if (! array_key_exists($sequence, $assignmentDetails)) {
-        abort(404);
-    }
-
-    return view('asset.ASS-004-assign-asset-to-department.edit', [
-        'pageTitle' => 'จัดสรรครุภัณฑ์ให้หน่วยงาน',
-        'assignmentSequence' => $sequence,
-        'availableAssets' => $availableAssets,
-        'defaultSelectedAssetCodes' => $assignmentDetails[$sequence]['selected_codes'],
-        'targetDepartment' => $assignmentDetails[$sequence]['target_department'],
-    ]);
-})->name('asset.assignments.edit');
+Route::get('/asset/ASS-004-assign-asset-to-department', [AssetAssignmentController::class, 'index'])->name('asset.assignments.index');
+Route::get('/asset/ASS-004-assign-asset-to-department/create', [AssetAssignmentController::class, 'create'])->name('asset.assignments.create');
+Route::post('/asset/ASS-004-assign-asset-to-department', [AssetAssignmentController::class, 'store'])->name('asset.assignments.store');
+Route::get('/asset/ASS-004-assign-asset-to-department/{id}', [AssetAssignmentController::class, 'show'])->name('asset.assignments.show')->where('id', '[0-9]+');
+Route::get('/asset/ASS-004-assign-asset-to-department/{id}/edit', [AssetAssignmentController::class, 'edit'])->name('asset.assignments.edit')->where('id', '[0-9]+');
+Route::put('/asset/ASS-004-assign-asset-to-department/{id}', [AssetAssignmentController::class, 'update'])->name('asset.assignments.update')->where('id', '[0-9]+');
+Route::delete('/asset/ASS-004-assign-asset-to-department/{id}', [AssetAssignmentController::class, 'cancel'])->name('asset.assignments.cancel')->where('id', '[0-9]+');
+Route::get('/asset/ASS-004-assign-asset-to-department/assets/search', [AssetAssignmentController::class, 'searchAssets'])->name('asset.assignments.assets.search');
 
 Route::get('/asset/ASS-006-request-asset-disposal', function () {
     return view('asset.ASS-006-request-asset-disposal.index', [
@@ -1052,3 +780,4 @@ Route::get('/asset/ASS-005-receive-department-registered-asset/{assetCode}/recei
     ]);
 })->name('asset.department-receiving.receive');
 
+}); // end Route::middleware('auth')

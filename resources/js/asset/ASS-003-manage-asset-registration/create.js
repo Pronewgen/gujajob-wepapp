@@ -1,3 +1,7 @@
+import { SearchAutocomplete } from '../../components/search-autocomplete.js';
+import { initDatePickers } from '../../components/date-picker.js';
+import { initServerSearchableSelects } from '../../components/server-searchable-select.js';
+
 const sidebarStorageKey = 'gujajob.sidebar.groupState';
 
 function getSidebarState() {
@@ -209,42 +213,142 @@ function validateRequiredFields() {
     return isValid;
 }
 
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+const MAX_IMAGE_FILES = 3;
+const MAX_IMAGE_BYTES = 1 * 1024 * 1024;
+
+let selectedImageFiles = [];
+
+function syncImageInput(input) {
+    const dt = new DataTransfer();
+    selectedImageFiles.forEach((f) => dt.items.add(f));
+    input.files = dt.files;
+}
+
+function renderImageChips(list, input) {
+    list.innerHTML = '';
+    selectedImageFiles.forEach((file, index) => {
+        const chip = document.createElement('span');
+        chip.className = 'file-chip';
+        chip.innerHTML = `${file.name} <button type="button" aria-label="ลบ">×</button>`;
+        chip.querySelector('button').addEventListener('click', () => {
+            selectedImageFiles.splice(index, 1);
+            renderImageChips(list, input);
+            syncImageInput(input);
+        });
+        list.appendChild(chip);
+    });
+}
+
+function showUploadError(list, message) {
+    const existing = list.parentElement?.querySelector('.upload-error-msg');
+    if (existing) existing.remove();
+    const msg = document.createElement('p');
+    msg.className = 'upload-error-msg gujajob-validation-message';
+    msg.style.color = '#dc2626';
+    msg.style.fontSize = '11px';
+    msg.style.marginTop = '4px';
+    msg.textContent = message;
+    list.parentElement?.insertBefore(msg, list);
+    setTimeout(() => msg.remove(), 4000);
+}
+
+function initializeImageUpload() {
+    const dropzone = document.getElementById('assetImageDropzone');
+    const input    = document.getElementById('assetImageInput');
+    const list     = document.getElementById('assetImageList');
+
+    if (!input || !list) return;
+
+    dropzone?.addEventListener('click', (e) => {
+        if (e.target !== input) input.click();
+    });
+    dropzone?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); }
+    });
+
+    input.addEventListener('change', () => {
+        const newFiles = Array.from(input.files);
+        // Clear error messages from previous attempt
+        list.parentElement?.querySelectorAll('.upload-error-msg').forEach((m) => m.remove());
+
+        for (const file of newFiles) {
+            if (selectedImageFiles.length >= MAX_IMAGE_FILES) {
+                showUploadError(list, 'สามารถแนบรูปภาพได้สูงสุด 3 รูป');
+                break;
+            }
+            if (!ALLOWED_IMAGE_TYPES.includes(file.type.toLowerCase())) {
+                showUploadError(list, `"${file.name}" — รองรับเฉพาะไฟล์ JPG, PNG, GIF เท่านั้น`);
+                continue;
+            }
+            if (file.size > MAX_IMAGE_BYTES) {
+                showUploadError(list, `"${file.name}" — ไฟล์รูปภาพต้องมีขนาดไม่เกิน 1 MB ต่อไฟล์`);
+                continue;
+            }
+            selectedImageFiles.push(file);
+        }
+        input.value = '';
+        renderImageChips(list, input);
+        syncImageInput(input);
+    });
+}
+
+function initializeCategorySearch() {
+    const searchTypeEl  = document.getElementById('catSearchType');
+    const searchInputEl = document.getElementById('catSearchInput');
+    const searchBtn     = document.getElementById('catSearchBtn');
+    const asscatIdEl    = document.getElementById('asscatId');
+
+    if (!searchInputEl || !asscatIdEl) return;
+
+    function fillCategoryFields(item) {
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
+        // asscatCode is NOT filled here: must show only after asset is received (PART J4)
+        const asscatCodeEl = document.getElementById('asscatCode');
+        const fillCode = asscatCodeEl?.dataset.fillOnSelect === 'true';
+        if (fillCode) {
+            set('asscatCode', item.asscat_code ?? '');
+        }
+        set('asscatId',        item.id ?? '');
+        set('asscatGroup',     item.asscat_group ?? '');
+        set('asscatType',      item.asscat_type ?? '');
+        set('asscatName',      item.asscat_name ?? '');
+        set('asscatUnit',      item.asscat_unit ?? '');
+        set('depreciationRate', item.depreciation_rate ?? '');
+        if (asscatIdEl) asscatIdEl.value = item.id ?? '';
+        // Clear invalid state on asscatName
+        const nameEl = document.getElementById('asscatName');
+        nameEl?.classList.remove('gujajob-is-invalid');
+    }
+
+    function clearCategoryFields() {
+        ['asscatId','asscatCode','asscatGroup','asscatType','asscatName','asscatUnit','depreciationRate']
+            .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        searchInputEl.value = '';
+    }
+
+    const ac = new SearchAutocomplete({
+        inputEl:     searchInputEl,
+        searchTypeEl: searchTypeEl ?? undefined,
+        endpoint:    '/search/suggestions',
+        extraParams: { entity: 'create_asscat' },
+        minChars:    1,
+        debounceMs:  300,
+        maxResults:  20,
+        onSelect: (item) => {
+            fillCategoryFields(item);
+            searchInputEl.value = '';
+        },
+    });
+
+    searchBtn?.addEventListener('click', () => ac.triggerSearch());
+}
+
 function initializeCreateInteractions() {
-    const uploadBox = document.getElementById('uploadBox');
-    const assetImages = document.getElementById('assetImages');
-    const fileChipList = document.getElementById('fileChipList');
     const saveButton = document.getElementById('saveAssetRegistrationButton');
     const saveOverlay = document.getElementById('saveAssetRegistrationOverlay');
     const cancelSaveButton = document.getElementById('cancelSaveAssetRegistrationButton');
     const confirmSaveButton = document.getElementById('confirmSaveAssetRegistrationButton');
-
-    if (fileChipList) {
-        fileChipList.addEventListener('click', (event) => {
-            if (event.target.tagName === 'BUTTON') {
-                const chip = event.target.closest('.file-chip');
-
-                if (chip) {
-                    chip.remove();
-                }
-            }
-        });
-    }
-
-    if (uploadBox && assetImages && fileChipList) {
-        assetImages.addEventListener('change', () => {
-            const files = Array.from(assetImages.files || []);
-
-            files.forEach((file) => {
-                const chip = document.createElement('span');
-                chip.className = 'file-chip';
-                chip.innerHTML = `${file.name} <button type="button">×</button>`;
-                fileChipList.appendChild(chip);
-            });
-
-            assetImages.value = '';
-        });
-    }
-
     if (saveButton) {
         saveButton.addEventListener('click', () => {
             const isValid = validateRequiredFields();
@@ -273,8 +377,6 @@ function initializeCreateInteractions() {
 
     if (confirmSaveButton) {
         confirmSaveButton.addEventListener('click', () => {
-            const redirectUrl = confirmSaveButton.dataset.redirectUrl;
-
             const isValid = validateRequiredFields();
 
             if (!isValid) {
@@ -282,10 +384,10 @@ function initializeCreateInteractions() {
                 return;
             }
 
-            closeOverlay(saveOverlay);
-
-            if (redirectUrl) {
-                window.location.href = redirectUrl;
+            confirmSaveButton.disabled = true;
+            const form = document.querySelector('.registration-form');
+            if (form) {
+                form.submit();
             }
         });
     }
@@ -339,8 +441,60 @@ document.addEventListener('keydown', (event) => {
     });
 });
 
+function initializeEditInteractions() {
+    const saveEditBtn    = document.getElementById('saveEditAssetButton');
+    const editOverlay    = document.getElementById('editAssetOverlay');
+    const cancelEditBtn  = document.getElementById('cancelEditAssetButton');
+    const confirmEditBtn = document.getElementById('confirmEditAssetButton');
+
+    if (!saveEditBtn || !editOverlay) {
+        return;
+    }
+
+    saveEditBtn.addEventListener('click', () => {
+        const isValid = validateRequiredFields();
+        if (!isValid) return;
+        openOverlay(editOverlay);
+    });
+
+    cancelEditBtn?.addEventListener('click', () => closeOverlay(editOverlay));
+
+    editOverlay.addEventListener('click', (e) => {
+        if (e.target === editOverlay) closeOverlay(editOverlay);
+    });
+
+    confirmEditBtn?.addEventListener('click', () => {
+        const isValid = validateRequiredFields();
+        if (!isValid) {
+            closeOverlay(editOverlay);
+            return;
+        }
+        confirmEditBtn.disabled = true;
+        const form = document.querySelector('.registration-form');
+        if (form) form.submit();
+    });
+}
+
+function initializeExistingImageRemoval() {
+    document.querySelectorAll('.remove-existing-image-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const imageId = btn.dataset.imageId;
+            const item = document.getElementById(`existing-img-${imageId}`);
+            const hidden = document.getElementById(`remove-img-${imageId}`);
+            if (hidden) hidden.disabled = false;
+            if (item) item.style.display = 'none';
+        });
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initializeSidebarGroups();
     preventDisabledMenuReload();
+    initDatePickers();
+    initServerSearchableSelects();
+    initializeCategorySearch();
+    initializeImageUpload();
     initializeCreateInteractions();
+    initializeEditInteractions();
+    initializeExistingImageRemoval();
 });

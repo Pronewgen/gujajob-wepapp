@@ -6,12 +6,7 @@
 
 @section('content')
     <div class="page-container report-page">
-        <header class="page-header">
-            <div class="page-title-box">
-                <h2>{{ $pageTitle }}</h2>
-                <div class="header-line"></div>
-            </div>
-        </header>
+        <x-page-header :title="$pageTitle" />
 
         <section class="report-card report-type-section">
             <div class="section-title">

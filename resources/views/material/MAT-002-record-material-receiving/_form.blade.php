@@ -9,10 +9,15 @@
     $selectedDealerId = old('dealer_id', $record?->dealer_id ?? '');
     $selectedMethod = (int) old('mat_pro_method', $record->mat_pro_method ?? 0);
     $selectedVatType = (int) old('vat_type', $record->vat_type ?? 1);
-    // Show empty when vat_type = 2 (ไม่รวม VAT), JS will also enforce this on load
-    $vatRateValue = ($record && (int) $record->vat_type === 2)
-        ? ''
-        : old('vat_rate', $record->vat_rate ?? 7);
+    // VAT rate: only 7 or 10 allowed; default 7; 0 for no-VAT type
+    $selectedVatRate = match ($selectedVatType) {
+        3       => 0,
+        default => (int) old('vat_rate', $record?->vat_rate ?? 7),
+    };
+    // Clamp to valid options
+    if (! in_array($selectedVatRate, [7, 10], true)) {
+        $selectedVatRate = 7;
+    }
 
     // Items always come from the already-saved header's own details - items are
     // never submitted as part of this page's own form/old-input anymore, they are
@@ -62,6 +67,9 @@
     </div>
 @endif
 
+{{-- ===== Combined single-card wrapper (doc fields + items table) ===== --}}
+<div class="mat002-combined-card">
+
 {{-- ===== Step 1: Header form (MATERIAL_PROCUREMENT). Saved independently of items. ===== --}}
 <form id="receivingHeaderForm" action="{{ $formAction }}" method="POST" autocomplete="off">
     @csrf
@@ -72,7 +80,7 @@
     <section class="document-card">
         <div class="section-title">
             <svg class="section-icon"><use href="#icon-document"></use></svg>
-            <span>{{ $isEdit ? 'แก้ไขข้อมูลเอกสารการรับวัสดุ' : 'ข้อมูลเอกสารการรับวัสดุ' }}</span>
+            <span>{{ $isEdit ? 'แก้ไขข้อมูลการรับวัสดุ' : 'บันทึกข้อมูลการรับวัสดุ' }}</span>
         </div>
 
         <div class="mat002-document-grid">
@@ -159,44 +167,57 @@
 
             <div class="vat-rate">
                 <label for="vatRate">อัตราภาษี :</label>
-                <input id="vatRate" name="vat_rate" type="number" min="0" step="0.01" value="{{ $vatRateValue }}">
+                <select id="vatRate" name="vat_rate"
+                        {{ $selectedVatType === 3 ? 'disabled' : '' }}>
+                    <option value="7"  {{ $selectedVatRate === 7  ? 'selected' : '' }}>7</option>
+                    <option value="10" {{ $selectedVatRate === 10 ? 'selected' : '' }}>10</option>
+                </select>
                 <span>%</span>
+                {{-- send 0 when disabled (no-VAT) --}}
+                @if ($selectedVatType === 3)
+                    <input type="hidden" name="vat_rate" value="0">
+                @endif
             </div>
         </div>
 
-        <div class="form-actions">
-            <a class="cancel-btn" href="{{ $isEdit ? route('material.receiving.show', $record->mat_pro_code) : route('material.receiving.index') }}">ยกเลิก</a>
-            <button class="submit-btn" type="button" id="saveHeaderButton">{{ $isEdit ? 'บันทึกการแก้ไขข้อมูลเอกสารการรับวัสดุ' : 'บันทึกข้อมูลเอกสารการรับวัสดุ' }}</button>
-        </div>
+        {{-- saveHeaderButton kept hidden; JS confirmation flow clicks it programmatically --}}
+        <button id="saveHeaderButton" type="button" hidden aria-hidden="true"></button>
+        @if (!$isEdit)
+            {{-- Draft items JSON for single-pass create submit --}}
+            <input type="hidden" id="draftItemsJson" name="draft_items_json" value="{{ old('draft_items_json', '[]') }}">
+        @endif
     </section>
 </form>
+
+<hr class="mat002-section-divider">
 
 {{-- ===== Step 2: Items (MATERIAL_PROCUREMENT_LIST). Enabled only once the header exists. ===== --}}
 <section class="items-card">
     <div class="section-title">
         <svg class="section-icon"><use href="#icon-panel"></use></svg>
-        <span>{{ $isEdit ? 'แก้ไขรายการวัสดุที่รับเข้าคลัง' : 'รายการวัสดุที่รับเข้าคลัง' }}</span>
+        <span>{{ $isEdit ? 'แก้ไขรายการวัสดุที่รับเข้าคลัง' : 'รายการที่รับวัสดุเข้าคลัง' }}</span>
     </div>
 
     <div class="mat002-search-grid">
         <div class="mat002-field">
             <label for="materialSearchType">ค้นหาจาก</label>
-            <select id="materialSearchType" @disabled(! $record)>
+            <select id="materialSearchType">
                 <option value="code">รหัสวัสดุ</option>
                 <option value="name">ชื่อวัสดุ</option>
             </select>
             <div class="mat002-field-error" id="materialSearchTypeError" aria-live="polite"></div>
         </div>
 
-        <div class="mat002-field">
+        <div class="mat002-field mat002-search-field">
             <label for="materialSearchInput">คำค้นหา</label>
-            <input id="materialSearchInput" type="search" placeholder="กรอกรหัสวัสดุ" autocomplete="off" @disabled(! $record)>
+            <input id="materialSearchInput" type="search" placeholder="กรอกรหัสวัสดุ" autocomplete="off">
+            <div id="materialSearchResults" class="mat002-search-results" aria-live="polite"></div>
             <div class="mat002-field-error" id="materialSearchInputError" aria-live="polite"></div>
         </div>
 
         <div class="mat002-field mat002-btn-field">
             <label aria-hidden="true">&nbsp;</label>
-            <button class="search-btn" type="button" id="findMaterialButton" @disabled(! $record)>ค้นหา</button>
+            <button class="search-btn" type="button" id="findMaterialButton">ค้นหา</button>
         </div>
     </div>
 
@@ -220,7 +241,7 @@
 
         <div class="mat002-field">
             <label for="receiveQty">จำนวน <span class="required">*</span></label>
-            <input id="receiveQty" type="number" min="0" step="0.01" placeholder="0.00" @disabled(! $record)>
+            <input id="receiveQty" type="number" min="0" step="0.01" placeholder="0.00" disabled>
             <div class="mat002-field-error" id="receiveQtyError" aria-live="polite"></div>
         </div>
 
@@ -232,13 +253,13 @@
 
         <div class="mat002-field">
             <label for="unitPrice">ราคา/หน่วย <span class="required">*</span></label>
-            <input id="unitPrice" type="number" min="0" step="0.01" placeholder="0.00" @disabled(! $record)>
+            <input id="unitPrice" type="number" min="0" step="0.01" placeholder="0.00" disabled>
             <div class="mat002-field-error" id="unitPriceError" aria-live="polite"></div>
         </div>
 
         <div class="mat002-field mat002-btn-field">
             <label aria-hidden="true">&nbsp;</label>
-            <button class="add-btn" type="button" id="addMaterialButton" @disabled(! $record)>เพิ่ม</button>
+            <button class="add-btn" type="button" id="addMaterialButton" disabled>เพิ่ม</button>
         </div>
     </div>
 
@@ -270,11 +291,49 @@
                         <td>{{ $index + 1 }}</td>
                         <td><span class="material-code">{{ $item['mat_code'] ?? '' }}</span></td>
                         <td>{{ $item['mat_name'] ?? '' }}</td>
-                        <td>{{ (float) ($item['mat_amt'] ?? 0) }}</td>
+                        <td class="mat002-qty-cell">
+                            @if ($isEdit)
+                                <input class="mat002-qty-visible mat002-inline-number-input"
+                                       type="number"
+                                       value="{{ (float) ($item['mat_amt'] ?? 0) }}"
+                                       min="0.01" step="0.01" disabled>
+                                <input class="mat002-qty-hidden"
+                                       type="hidden"
+                                       form="receivingHeaderForm"
+                                       name="items[{{ $item['id'] }}][qty]"
+                                       value="{{ (float) ($item['mat_amt'] ?? 0) }}">
+                            @else
+                                {{ (float) ($item['mat_amt'] ?? 0) }}
+                            @endif
+                        </td>
                         <td>{{ $item['unit'] ?? '' }}</td>
-                        <td>{{ number_format((float) ($item['mat_price'] ?? 0), 2, '.', '') }}</td>
+                        <td class="mat002-price-cell">
+                            @if ($isEdit)
+                                <input class="mat002-price-visible mat002-inline-number-input"
+                                       type="number"
+                                       value="{{ number_format((float) ($item['mat_price'] ?? 0), 2, '.', '') }}"
+                                       min="0" step="0.01" disabled>
+                                <input class="mat002-price-hidden"
+                                       type="hidden"
+                                       form="receivingHeaderForm"
+                                       name="items[{{ $item['id'] }}][price]"
+                                       value="{{ number_format((float) ($item['mat_price'] ?? 0), 2, '.', '') }}">
+                            @else
+                                {{ number_format((float) ($item['mat_price'] ?? 0), 2, '.', '') }}
+                            @endif
+                        </td>
                         <td>
-                            <button class="small-delete-btn" type="button">ลบ</button>
+                            <div class="table-action-buttons">
+                                <button class="table-action-icon table-action-edit" type="button"
+                                        title="{{ $isEdit ? 'แก้ไขจำนวน' : 'แก้ไข' }}"
+                                        aria-label="{{ $isEdit ? 'แก้ไขจำนวน' : 'แก้ไข' }}"
+                                        data-tooltip="{{ $isEdit ? 'แก้ไขจำนวน' : 'แก้ไข' }}">
+                                    <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
+                                </button>
+                                <button class="table-action-icon table-action-delete" type="button" title="ลบ" aria-label="ลบ" data-tooltip="ลบ">
+                                    <svg aria-hidden="true"><use href="#icon-trash"></use></svg>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 @empty
@@ -296,11 +355,19 @@
         </table>
     </div>
 
-    <div class="form-actions">
-        <a class="cancel-btn" href="{{ $record ? route('material.receiving.show', $record->mat_pro_code) : route('material.receiving.index') }}">ยกเลิก</a>
-        <button class="submit-btn" type="button" id="finalizeReceivingButton" @disabled(! $record)>เสร็จสิ้นการรับวัสดุ</button>
-    </div>
 </section>
+
+{{-- ===== Single action row at the bottom of the combined card ===== --}}
+<div class="form-actions" style="margin-top:28px">
+    <a class="cancel-btn" href="{{ route('material.receiving.index') }}">ย้อนกลับ</a>
+    @if ($isEdit)
+        <button class="submit-btn" type="button" id="finalizeReceivingButton" @disabled(! $record)>บันทึก</button>
+    @else
+        <button class="submit-btn" type="button" id="saveHeaderButtonBottom">บันทึก</button>
+    @endif
+</div>
+
+</div>{{-- end .mat002-combined-card --}}
 
 @if ($record)
     <form id="finalizeForm" action="{{ route('material.receiving.finalize', $record->mat_pro_code) }}" method="POST" style="display:none">
@@ -315,7 +382,7 @@
         </div>
 
         <h3 id="saveReceivingConfirmTitle">ยืนยันการบันทึกข้อมูล</h3>
-        <p>คุณแน่ใจหรือไม่ว่าต้องการบันทึกข้อมูลเอกสารการรับวัสดุนี้</p>
+        <p>คุณแน่ใจหรือไม่ว่าต้องการบันทึกข้อมูลการรับวัสดุนี้</p>
 
         <div class="confirm-actions">
             <button class="modal-cancel-btn" type="button" id="cancelSaveReceivingButton">ยกเลิก</button>
@@ -323,6 +390,24 @@
         </div>
     </div>
 </div>
+
+@if ($isEdit)
+<div class="confirm-overlay" id="updateReceivingOverlay" aria-hidden="true">
+    <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="updateReceivingConfirmTitle">
+        <div class="confirm-icon edit-icon">
+            <svg class="confirm-edit-svg"><use href="#icon-square-pen"></use></svg>
+        </div>
+
+        <h3 id="updateReceivingConfirmTitle">ยืนยันการแก้ไขข้อมูล</h3>
+        <p>คุณแน่ใจหรือไม่ว่าต้องการบันทึกการแก้ไขข้อมูลการรับวัสดุนี้</p>
+
+        <div class="confirm-actions">
+            <button class="modal-cancel-btn" type="button" id="cancelUpdateReceivingButton">ยกเลิก</button>
+            <button class="modal-confirm-btn edit-confirm-btn" type="button" id="confirmUpdateReceivingButton">ยืนยันการแก้ไข</button>
+        </div>
+    </div>
+</div>
+@endif
 
 <div class="confirm-overlay" id="noItemsOverlay" aria-hidden="true">
     <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="noItemsTitle">
@@ -342,6 +427,11 @@
 <script>
     window.matReceivingMaterials = @json($materialJson);
     window.matReceivingRecordSaved = @json((bool) $record);
+    window.matReceivingIsEdit = @json($isEdit);
     window.matReceivingItemsBaseUrl = @json($record ? route('material.receiving.items.store', $record->mat_pro_code) : null);
+    window.matReceivingSaveItemsUrl = @json(route('material.receiving.save-items'));
+    window.matReceivingPreviewCodeUrl = @json(route('material.receiving.preview-code'));
+    window.matReceivingSearchUrl = @json(route('material.search-api'));
     window.matReceivingFinalizeError = @json(session('finalize_error'));
+    window.mat002OldDraftItems = @json(!$isEdit ? (json_decode(old('draft_items_json', '[]'), true) ?? []) : []);
 </script>

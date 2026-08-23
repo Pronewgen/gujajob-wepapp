@@ -1,0 +1,316 @@
+@extends('layouts.app')
+
+@section('title', 'บันทึกรับโอนวัสดุ')
+
+@section('page-style')
+    @vite([
+        'resources/css/material/MAT-004-receive-material-transfer/style.css',
+    ])
+@endsection
+
+@section('page-script')
+    @vite(['resources/js/material/MAT-004-receive-material-transfer/script.js'])
+@endsection
+
+@section('content')
+    @php
+        $code = $withdrawal->mat_wd_code;
+    @endphp
+
+    <div class="page-container">
+        <header class="page-header">
+            <div class="page-title-box">
+                <h2>{{ $pageTitle }}</h2>
+                <div class="header-line"></div>
+            </div>
+        </header>
+
+        @if (session('success'))
+            <div class="form-success-box">{{ session('success') }}</div>
+        @endif
+
+        @if (session('error'))
+            <div class="form-error-box">{{ session('error') }}</div>
+        @endif
+
+        @if (session('info'))
+            <div class="form-info-box" style="background:#eff6ff;border:1px solid #bfdbfe;border-left:4px solid #3b82f6;border-radius:6px;padding:10px 16px;margin-bottom:16px;font-size:13px;color:#1e40af;">
+                {{ session('info') }}
+            </div>
+        @endif
+
+        {{-- ══════════════════════════════════════════════════ --}}
+        {{-- Main Card: บันทึกรับโอนวัสดุใหม่                 --}}
+        {{-- ══════════════════════════════════════════════════ --}}
+        <section class="transfer-card">
+            <div class="transfer-show-header">
+                <h3 class="transfer-show-title">บันทึกรับโอนวัสดุใหม่</h3>
+                @if ($isConfirmed)
+                    <span class="status-badge received">รับโอนแล้ว</span>
+                @else
+                    <span class="status-badge approved">พร้อมรับโอน</span>
+                @endif
+            </div>
+
+            @if ($isConfirmed)
+                <div class="transfer-confirmed-notice">
+                    ใบรับโอนนี้ได้รับการยืนยันเรียบร้อยแล้ว ({{ $inspection?->mat_insp_code }})
+                    — สามารถแก้ไขข้อมูลทั่วไปได้จากปุ่ม "แก้ไขข้อมูลรับโอน"
+                </div>
+            @endif
+
+            {{-- ─── Header fields ─────────────────────────────── --}}
+            <div class="transfer-doc-grid">
+                <div class="transfer-form-field">
+                    <label>เลขที่ใบเบิกวัสดุ</label>
+                    <input type="text" value="{{ $withdrawal->mat_wd_code }}" readonly>
+                </div>
+
+                <div class="transfer-form-field">
+                    <label for="showInspDate">วันที่รับโอน @if(!$isConfirmed)<span style="color:#ef4444">*</span>@endif</label>
+                    <input
+                        id="showInspDate"
+                        type="text"
+                        placeholder="dd/mm/yyyy"
+                        value="{{ $isConfirmed ? optional($inspection?->mat_insp_date)->format('d/m/Y') : $defaultDate }}"
+                        @if ($isConfirmed) readonly @endif
+                        autocomplete="off"
+                    >
+                </div>
+
+                <div class="transfer-form-field">
+                    <label for="showInspPerson">ชื่อผู้รับโอนวัสดุ @if(!$isConfirmed)<span style="color:#ef4444">*</span>@endif</label>
+                    <input
+                        id="showInspPerson"
+                        type="text"
+                        placeholder="ชื่อ-นามสกุล"
+                        value="{{ $isConfirmed ? ($inspection?->mat_insp_person ?? '') : $defaultPerson }}"
+                        @if ($isConfirmed) readonly @endif
+                        maxlength="150"
+                    >
+                </div>
+
+            </div>
+
+            <div class="mat004-remark-row transfer-form-field">
+                <label for="showInspRemark">หมายเหตุ</label>
+                <textarea
+                    id="showInspRemark"
+                    placeholder="หมายเหตุ (ถ้ามี)"
+                    maxlength="500"
+                    @if ($isConfirmed) readonly @endif
+                >{{ $isConfirmed ? ($inspection?->mat_insp_remark ?? '') : $defaultRemark }}</textarea>
+            </div>
+
+            {{-- ─── Items table ────────────────────────────────── --}}
+            <div class="transfer-section-title">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M9 11l3 3L22 4"/>
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                </svg>
+                รายการวัสดุที่รับโอน
+            </div>
+
+            <div class="transfer-table-wrapper">
+                <table class="transfer-items-table">
+                    <thead>
+                        <tr class="mat004-group-header">
+                            <th colspan="4" class="mat004-gen-col"></th>
+                            <th colspan="3" class="mat004-qty-col">หน่วยงานปลายทาง (เพิ่มยอดคงเหลือ)</th>
+                        </tr>
+                        <tr>
+                            <th>ลำดับ</th>
+                            <th>รหัสวัสดุ</th>
+                            <th>รายการวัสดุ</th>
+                            <th>หน่วย</th>
+                            <th>จำนวนคงเหลือเดิม</th>
+                            <th>เพิ่มยอด</th>
+                            <th>คงเหลือหลังรับโอน</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @php
+                            $detailsToShow = $isConfirmed
+                                ? $inspection->details
+                                : $withdrawal->details;
+                        @endphp
+
+                        @forelse ($detailsToShow as $index => $detail)
+                            @php
+                                $matId   = (int) $detail->mat_id;
+                                $amount  = $isConfirmed
+                                    ? (int) $detail->isp_amount
+                                    : (int) $detail->wd_amount;
+                                $bal     = $inventoryMap[$matId] ?? null;
+                                $balAttr = $bal !== null ? (string) $bal : '';
+                            @endphp
+                            <tr
+                                data-transfer-row
+                                data-current-balance="{{ $balAttr }}"
+                            >
+                                <td>{{ $index + 1 }}</td>
+                                <td>
+                                    <span class="transfer-mat-code">
+                                        {{ $detail->material?->mat_code ?? '-' }}
+                                    </span>
+                                </td>
+                                <td>{{ $detail->material?->mat_name ?? '-' }}</td>
+                                <td>{{ $detail->material?->unit ?? '-' }}</td>
+                                <td>
+                                    @if ($bal !== null)
+                                        {{ number_format($bal) }}
+                                    @else
+                                        <span style="color:#94a3b8">-</span>
+                                    @endif
+                                </td>
+                                <td class="col-increase">
+                                    <span data-transfer-increase>{{ $amount }}</span>
+                                </td>
+                                <td class="col-balance-after" data-balance-after-transfer>
+                                    @if ($bal !== null)
+                                        {{ number_format($bal + $amount) }}
+                                    @else
+                                        –
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td class="transfer-no-data" colspan="7">ไม่มีรายการวัสดุ</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            {{-- ─── Action buttons ─────────────────────────────── --}}
+            <div class="transfer-actions">
+                <a class="transfer-cancel-link" href="{{ route('material.transfer.index') }}">ยกเลิก</a>
+
+                @if ($isConfirmed)
+                    {{-- Confirmed: allow editing metadata only --}}
+                    <a class="transfer-edit-btn" style="text-decoration:none;display:inline-flex;align-items:center;"
+                       href="{{ route('material.transfer.edit', $code) }}">แก้ไขข้อมูลรับโอน</a>
+                @else
+                    {{-- Not confirmed yet --}}
+                    <button type="button" id="transferEditBtn" class="transfer-edit-btn">
+                        แก้ไขข้อมูลรับโอน
+                    </button>
+                    <button type="button" id="transferConfirmBtn" class="transfer-confirm-btn">
+                        ยืนยันการรับโอน
+                    </button>
+                @endif
+            </div>
+        </section>
+
+        {{-- ══════════════════════════════════════════════════ --}}
+        {{-- Stock history section                             --}}
+        {{-- ══════════════════════════════════════════════════ --}}
+        <section class="transfer-stock-card">
+            <div class="transfer-stock-title">ข้อมูลคลังวัสดุ</div>
+
+            <div class="transfer-table-wrapper">
+                <table class="transfer-stock-table">
+                    <thead>
+                        <tr>
+                            <th>วันที่รับ</th>
+                            <th>รหัสวัสดุ</th>
+                            <th>รายการวัสดุ</th>
+                            <th>หน่วย</th>
+                            <th>จำนวนรับเข้า</th>
+                            <th>ราคา/หน่วย</th>
+                            <th>จำนวนคงเหลือ</th>
+                            <th>ใบรับวัสดุ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($stockHistory as $row)
+                            @php
+                                $matId  = (int) $row->mat_id;
+                                $orgId  = $withdrawal->org_id ? (int) $withdrawal->org_id : null;
+                                $bal    = $inventoryMap[$matId] ?? null;
+                            @endphp
+                            <tr>
+                                <td>{{ optional($row->procurement?->mat_pro_date)->format('d/m/Y') ?? '-' }}</td>
+                                <td>{{ $row->material?->mat_code ?? '-' }}</td>
+                                <td>{{ $row->material?->mat_name ?? '-' }}</td>
+                                <td>{{ $row->material?->unit ?? '-' }}</td>
+                                <td>{{ $row->mat_amt ? number_format($row->mat_amt) : '-' }}</td>
+                                <td>{{ $row->mat_price ? number_format($row->mat_price, 2) : '-' }}</td>
+                                <td>{{ $bal !== null ? number_format($bal) : '-' }}</td>
+                                <td>
+                                    @if ($row->procurement?->mat_pro_code)
+                                        <span class="transfer-receipt-link">
+                                            {{ $row->procurement->mat_pro_code }}
+                                        </span>
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td class="transfer-no-data" colspan="8">ไม่พบข้อมูลคลังวัสดุ</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    {{-- ══════════════════════════════════════════════════ --}}
+    {{-- Hidden forms (draft + confirm) — outside main card --}}
+    {{-- ══════════════════════════════════════════════════ --}}
+    @unless ($isConfirmed)
+        {{-- Draft form --}}
+        <form id="transferDraftForm" method="POST" action="{{ route('material.transfer.draft', $code) }}" style="display:none">
+            @csrf
+            <input type="hidden" name="mat_insp_date"   value="">
+            <input type="hidden" name="mat_insp_person" value="">
+            <input type="hidden" name="mat_insp_remark" value="">
+        </form>
+
+        {{-- Confirm form --}}
+        <form id="transferConfirmForm" method="POST" action="{{ route('material.transfer.confirm', $code) }}" style="display:none">
+            @csrf
+            <input type="hidden" name="mat_insp_date"   value="">
+            <input type="hidden" name="mat_insp_person" value="">
+            <input type="hidden" name="mat_insp_remark" value="">
+        </form>
+    @endunless
+
+    {{-- ══════════════════════════════════════════════════ --}}
+    {{-- Confirm Transfer Modal                            --}}
+    {{-- ══════════════════════════════════════════════════ --}}
+    @unless ($isConfirmed)
+        <div
+            id="transferConfirmOverlay"
+            class="transfer-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="transferConfirmModalTitle"
+            aria-hidden="true"
+        >
+            <div class="transfer-modal">
+                <div class="transfer-modal-icon confirm-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M20 6 9 17l-5-5"/>
+                    </svg>
+                </div>
+
+                <h3 id="transferConfirmModalTitle">ยืนยันการรับโอน</h3>
+
+                <p>
+                    คุณแน่ใจหรือไม่ว่าต้องการยืนยันการรับโอนนี้<br>
+                    ใบเบิก <strong>{{ $code }}</strong>
+                </p>
+
+                <div class="transfer-modal-actions">
+                    <button type="button" id="transferConfirmCancelBtn" class="transfer-modal-cancel">ยกเลิก</button>
+                    <button type="button" id="transferConfirmModalBtn" class="transfer-modal-confirm-green">ยืนยันการรับโอน</button>
+                </div>
+            </div>
+        </div>
+    @endunless
+@endsection

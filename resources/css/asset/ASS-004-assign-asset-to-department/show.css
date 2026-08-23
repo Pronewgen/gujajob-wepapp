@@ -199,9 +199,9 @@ svg.svg-sprite {
 
 .page-container {
     width: 100%;
-    max-width: 980px;
+    max-width: 1136px;
     margin: 0 auto;
-    padding: 34px 22px 44px;
+    padding: 56px 28px 60px;
 }
 
 .page-header {
@@ -215,10 +215,10 @@ svg.svg-sprite {
 .page-header h2 {
     margin: 0 0 12px;
     color: var(--primary);
-    font-size: 34px;
+    font-size: 24px;
     font-weight: 900;
     line-height: 1;
-    letter-spacing: -0.3px;
+    letter-spacing: -0.4px;
 }
 
 .header-line {
@@ -228,10 +228,11 @@ svg.svg-sprite {
 }
 
 .assignment-show-card {
-    background: #f8fbff;
-    border: 1px solid #d6deea;
+    background: #ffffff;
+    border: 1.5px solid #173b8f;
+    border-top-width: 4px;
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
     padding: 14px 14px 16px;
 }
 
@@ -417,7 +418,21 @@ svg.svg-sprite {
     gap: 6px;
 }
 
-.cancel-btn,
+.cancel-btn {
+    height: 40px;
+    min-width: 104px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 800;
+    padding: 0 20px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
 .delete-action-btn,
 .edit-action-btn {
     height: 33px;
@@ -435,7 +450,6 @@ svg.svg-sprite {
 }
 
 .cancel-btn {
-    min-width: 88px;
     border: 1.5px solid #ef4444;
     background: #ffffff;
     color: #ef4444;
@@ -689,4 +703,157 @@ svg.svg-sprite {
         font-size: 13px;
         border-radius: 6px;
     }
+}
+
+/* ── Additional styles for rewritten show blade ── */
+
+/* card heading — matches create.css card-form-heading */
+.card-form-heading {
+    margin: 0 0 16px;
+    padding-bottom: 12px;
+    color: #111827;
+    font-size: 16px;
+    font-weight: 900;
+    border-bottom: 1px solid #e4eaf3;
+}
+
+/* grid layouts matching create page */
+.form-grid.three-col {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.show-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 20px;
+    max-width: 760px;
+}
+
+.show-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.show-label {
+    color: #334155;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.show-value {
+    color: #374151;
+    font-size: 13px;
+    font-weight: 500;
+    min-height: 38px;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    background: #f1f5f9;
+    border: 1px solid #dde3eb;
+    border-radius: 4px;
+}
+
+.section-block {
+    padding: 12px 0 8px;
+    border-bottom: 1px solid #e9eff7;
+    margin-bottom: 10px;
+}
+
+.section-block:last-of-type {
+    border-bottom: 0;
+}
+
+.back-btn {
+    height: 32px;
+    min-width: auto;
+    padding: 0 16px;
+    border-radius: 4px;
+    border: 1px solid #9ca3af;
+    background: #ffffff;
+    color: #374151;
+    font-size: 10px;
+    font-weight: 800;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.back-btn:hover {
+    background: #f3f4f6;
+}
+
+.form-actions {
+    padding-top: 8px;
+    border-top: 1px solid #dde4ee;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.table-wrapper {
+    overflow: hidden;
+    border: 1px solid #d7e0ea;
+    border-radius: 6px;
+    margin-top: 8px;
+}
+
+.asset-show-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+/* ── Detail: asset list (code | name | category | value) ── */
+.asset-show-table th:nth-child(1),
+.asset-show-table td:nth-child(1) { width: 20%; }
+
+.asset-show-table th:nth-child(2),
+.asset-show-table td:nth-child(2) { width: 38%; }
+
+.asset-show-table th:nth-child(3),
+.asset-show-table td:nth-child(3) { width: 22%; }
+
+.asset-show-table th:nth-child(4),
+.asset-show-table td:nth-child(4) { width: 20%; }
+
+.asset-show-table thead tr {
+    background: #eef3f9;
+}
+
+.asset-show-table th {
+    padding: 8px;
+    border-bottom: 1px solid #d4deea;
+    color: #475569;
+    font-size: 10px;
+    font-weight: 800;
+    text-align: left;
+}
+
+.asset-show-table td {
+    padding: 7px 8px;
+    border-bottom: 1px solid #e6ecf3;
+    color: #334155;
+    font-size: 10px;
+    font-weight: 500;
+    vertical-align: middle;
+}
+
+.asset-show-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.col-seq { width: 40px; text-align: center; }
+.col-value { text-align: right; }
+/* Specificity boost over .asset-show-table th { text-align: left } */
+.asset-show-table th.col-value { text-align: right; }
+.right { text-align: right; }
+.center { text-align: center; }
+.no-data {
+    text-align: center;
+    color: #9ca3af;
+    font-style: italic;
+    padding: 18px;
 }

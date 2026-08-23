@@ -1,17 +1,19 @@
 @extends('layouts.app')
 
+@section('title', 'บันทึกข้อมูลการรับวัสดุเข้าคลัง')
+
 @section('page-style')
-    @vite(['resources/css/material/MAT-002-record-material-receiving/style.css'])
+    @vite([
+        'resources/css/components/pagination.css',
+        'resources/css/components/table-actions.css',
+        'resources/css/components/search-autocomplete.css',
+        'resources/css/material/MAT-002-record-material-receiving/style.css',
+    ])
 @endsection
 
 @section('content')
     <div class="page-container receiving-create-page">
-        <header class="page-header">
-            <div class="page-title-box">
-                <h2>{{ $pageTitle }}</h2>
-                <div class="header-line"></div>
-            </div>
-        </header>
+        <x-page-header :title="$pageTitle" />
 
         @include('material.MAT-002-record-material-receiving._form', [
             'mode' => 'create',
@@ -21,5 +23,8 @@
 @endsection
 
 @section('page-script')
-    @vite(['resources/js/material/MAT-002-record-material-receiving/script.js'])
+    @vite([
+        'resources/js/components/pagination.js',
+        'resources/js/material/MAT-002-record-material-receiving/script.js',
+    ])
 @endsection

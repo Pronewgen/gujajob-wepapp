@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('page-style')
     @vite(['resources/css/asset/ASS-006-request-asset-disposal/style.css'])
@@ -6,12 +6,7 @@
 
 @section('content')
     <div class="page-container disposal-page disposal-create-page">
-        <header class="page-header">
-            <div class="page-title-box">
-                <h2>{{ $pageTitle }}</h2>
-                <div class="header-line"></div>
-            </div>
-        </header>
+        <x-page-header :title="$pageTitle" />
 
         <section class="detail-card disposal-create-card">
             <h3 class="create-title">รายละเอียดการแจ้งขอจำหน่ายครุภัณฑ์</h3>
@@ -109,7 +104,7 @@
                 </section>
 
                 <div class="form-actions create-actions">
-                    <a class="cancel-btn" href="{{ route('asset.disposals.index') }}">ยกเลิก</a>
+                    <a class="cancel-btn" href="{{ route('asset.disposals.index') }}">\u0e22\u0e49\u0e2d\u0e19\u0e01\u0e25\u0e31\u0e1a</a>
                     <button class="save-btn" id="saveDisposalButton" type="button" data-redirect-url="{{ route('asset.disposals.index') }}">บันทึกการแจ้งขอจำหน่าย</button>
                 </div>
             </div>

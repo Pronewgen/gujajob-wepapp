@@ -1,99 +1,136 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('page-style')
-    @vite(['resources/css/asset/ASS-004-assign-asset-to-department/create.css'])
+    @vite([
+        'resources/css/components/search-autocomplete.css',
+        'resources/css/components/searchable-select.css',
+        'resources/css/components/table-actions.css',
+        'resources/css/asset/ASS-004-assign-asset-to-department/create.css',
+    ])
 @endsection
 
 @section('content')
-    <div class="page-container assignment-create-page assignment-edit-page">
-        <header class="page-header">
-            <div class="page-title-box">
-                <h2>{{ $pageTitle }}</h2>
-                <div class="header-line"></div>
-            </div>
-        </header>
+    <div class="page-container assignment-create-page">
+        <x-page-header :title="$pageTitle" />
 
         <section class="assignment-create-card">
-            <form class="assignment-form" action="javascript:void(0);" autocomplete="off">
-                <h3 class="section-title">1. เลือกหน่วยงานที่จะจัดสรรให้</h3>
+            <form method="POST" action="{{ route('asset.assignments.update', $assignment->id) }}" id="editAssignmentForm"
+                  data-asset-search-url="{{ route('asset.assignments.assets.search') }}?exclude_assignment={{ $assignment->id }}">
+                @csrf
+                @method('PUT')
 
-                <div class="form-grid two-col">
-                    <div class="field-group">
-                        <label for="requestDepartment">หน่วยงานผู้จัดสรร</label>
-                        <input id="requestDepartment" type="text" value="Auto filled ตามผู้ใช้ login" readonly>
-                    </div>
+                <h3 class="card-form-heading">แก้ไขการจัดสรร</h3>
 
-                    <div class="field-group">
-                        <label for="targetDepartment">หน่วยงานผู้รับจัดสรร</label>
-                        <select id="targetDepartment">
-                            <option value="">-- เลือกหน่วยงาน --</option>
-                            <option {{ $targetDepartment === 'หน่วยงาน ก.' ? 'selected' : '' }}>หน่วยงาน ก.</option>
-                            <option {{ $targetDepartment === 'หน่วยงาน ข.' ? 'selected' : '' }}>หน่วยงาน ข.</option>
-                            <option {{ $targetDepartment === 'หน่วยงาน ค.' ? 'selected' : '' }}>หน่วยงาน ค.</option>
-                        </select>
-                    </div>
-                </div>
+                {{-- Section 1: Header info --}}
+                <div class="section-block">
+                    <h3 class="section-title">1. เลือกหน่วยงานที่จะจัดสรรให้</h3>
 
-                <h3 class="section-title">2. ครุภัณฑ์ที่ยังไม่ได้จัดสรร - คัดเลือกรายการครุภัณฑ์ที่ต้องการ</h3>
+                    <div class="form-grid two-col">
+                        <div class="form-group">
+                            <label class="form-label">หน่วยงานผู้จัดสรร</label>
+                            <div class="form-control-readonly">{{ $userOrg->org_name ?? '-' }}</div>
+                        </div>
 
-                <div class="asset-source-panel">
-                    <div class="panel-toolbar">
-                        <div class="panel-title">รายการครุภัณฑ์ที่ยังไม่จัดสรร</div>
-
-                        <div class="panel-search">
-                            <div class="panel-search-field">
-                                <label for="sourceSearchType">ค้นหาจาก</label>
-                                <select id="sourceSearchType">
-                                    <option value="asset_name">ชื่อครุภัณฑ์</option>
-                                    <option value="asset_code">รหัสครุภัณฑ์</option>
-                                    <option value="category">หมวดครุภัณฑ์</option>
-                                </select>
+                        <div class="form-group">
+                            <label class="form-label">หน่วยงานผู้รับจัดสรร <span class="required">*</span></label>
+                            <div class="guja-autocomplete @error('target_org_id') is-invalid @enderror"
+                                 data-server-select
+                                 data-endpoint="{{ route('search.suggestions') }}?entity=assign_org&limit=20&q="
+                                 data-initial-label="{{ old('_target_org_label', $targetOrg->org_name ?? '') }}">
+                                <input type="text"   class="guja-autocomplete__input" placeholder="พิมพ์ชื่อหน่วยงาน" autocomplete="off">
+                                <span               class="guja-autocomplete__arrow">▼</span>
+                                <div               class="guja-autocomplete__items"></div>
+                                <input type="hidden" class="guja-autocomplete__value" name="target_org_id" value="{{ old('target_org_id', $assignment->target_org_id) }}" required>
                             </div>
-
-                            <div class="panel-search-field">
-                                <label for="sourceSearchKeyword">คำค้นหา</label>
-                                <input id="sourceSearchKeyword" type="text" placeholder="กรอกชื่อครุภัณฑ์">
-                            </div>
-
-                            <button class="small-search-btn" id="sourceSearchButton" type="button">ค้นหา</button>
+                            @error('target_org_id')<p class="field-error">{{ $message }}</p>@enderror
                         </div>
                     </div>
 
-                    <div class="table-shell">
-                        <table class="assignment-table source-table">
+                    <div class="form-grid two-col" style="max-width:760px;margin-top:10px;">
+                        <div class="form-group">
+                            <label class="form-label">ผู้จัดสรร <span class="required">*</span></label>
+                            <div class="guja-autocomplete @error('assigner_id') is-invalid @enderror"
+                                 data-server-select
+                                 data-endpoint="{{ route('search.suggestions') }}?entity=assign_user&limit=20&q="
+                                 data-initial-label="{{ old('_assigner_label', $assigner->user_name ?? '') }}">
+                                <input type="text"   class="guja-autocomplete__input" placeholder="พิมพ์ชื่อผู้จัดสรร" autocomplete="off">
+                                <span               class="guja-autocomplete__arrow">▼</span>
+                                <div               class="guja-autocomplete__items"></div>
+                                <input type="hidden" class="guja-autocomplete__value" name="assigner_id" value="{{ old('assigner_id', $assignment->assigner_id) }}" required>
+                            </div>
+                            @error('assigner_id')<p class="field-error">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="assign_date">วันที่จัดสรร <span class="required">*</span></label>
+                            <input class="form-control js-date-picker @error('assign_date') is-invalid @enderror"
+                                   type="text" id="assign_date" name="assign_date"
+                                   placeholder="วว-ดด-ปปปป"
+                                   value="{{ old('assign_date', $assignment->assign_date ? \Carbon\Carbon::parse($assignment->assign_date)->format('Y-m-d') : '') }}"
+                                   autocomplete="off" required>
+                            @error('assign_date')<p class="field-error">{{ $message }}</p>@enderror
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Section 2: Available assets --}}
+                <div class="section-block asset-selection-frame">
+                    <h3 class="section-title">2. ครุภัณฑ์ที่ยังไม่ได้จัดสรร - เลือกรายการที่ต้องการ</h3>
+                    <div class="asset-search-bar">
+                        <div class="form-group">
+                            <label class="form-label" for="assetSearchField">ค้นหาจาก</label>
+                            <select id="assetSearchField" class="search-field-select">
+                                <option value="">ทั้งหมด</option>
+                                <option value="name">ชื่อครุภัณฑ์</option>
+                                <option value="code">รหัสครุภัณฑ์</option>
+                                <option value="category">หมวดครุภัณฑ์</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="assetSearchInput">คำค้นหา</label>
+                            <input type="text" id="assetSearchInput" class="asset-search-input" placeholder="พิมพ์เพื่อค้นหา" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" style="visibility:hidden">&nbsp;</label>
+                            <button type="button" id="assetSearchBtn" class="asset-search-btn">ค้นหา</button>
+                        </div>
+                    </div>
+
+                    @error('asset_ids')<p class="field-error">{{ $message }}</p>@enderror
+
+                    <div class="table-wrapper">
+                        <table class="asset-select-table" id="availableAssetsTable">
                             <thead>
                                 <tr>
-                                    <th></th>
+                                    <th class="col-check"><input type="checkbox" id="selectAllAvailable"></th>
                                     <th>รหัสครุภัณฑ์</th>
                                     <th>ชื่อครุภัณฑ์</th>
                                     <th>หมวดครุภัณฑ์</th>
-                                    <th>มูลค่า</th>
+                                    <th class="col-value">มูลค่า (บาท)</th>
                                     <th>วันที่ตรวจรับ</th>
                                 </tr>
                             </thead>
-
-                            <tbody id="sourceAssetTableBody">
+                            <tbody id="availableAssetsBody">
                                 @foreach ($availableAssets as $asset)
-                                    @php
-                                        $isDefaultSelected = in_array($asset['asset_code'], $defaultSelectedAssetCodes, true);
-                                    @endphp
-
-                                    <tr
-                                        class="js-source-row {{ $isDefaultSelected ? 'is-selected' : '' }}"
-                                        data-asset-code="{{ $asset['asset_code'] }}"
-                                        data-asset-name="{{ $asset['asset_name'] }}"
-                                        data-category="{{ $asset['category'] }}"
-                                        data-value="{{ $asset['value'] }}"
-                                        data-check-date="{{ $asset['check_date'] }}"
-                                    >
-                                        <td class="center">
-                                            <input class="js-source-checkbox" type="checkbox" {{ $isDefaultSelected ? 'checked' : '' }}>
+                                    <tr data-asset-id="{{ $asset->id }}"
+                                        data-asset-code="{{ $asset->asset_code }}"
+                                        data-asset-name="{{ $asset->asset_name }}"
+                                        data-category="{{ $asset->category_name }}">
+                                        <td class="col-check">
+                                            <input class="asset-checkbox" type="checkbox"
+                                                   value="{{ $asset->id }}"
+                                                   data-asset-code="{{ $asset->asset_code }}"
+                                                   data-asset-name="{{ $asset->asset_name }}"
+                                                   data-category="{{ $asset->category_name }}"
+                                                   data-asset-value="{{ number_format((float)($asset->asset_value ?? 0), 2) }}"
+                                                   data-inspect-date="{{ $asset->inspect_date_th ?? '-' }}"
+                                                   {{ in_array($asset->id, $currentAssetIds) ? 'checked' : '' }}>
                                         </td>
-                                        <td class="asset-code">{{ $asset['asset_code'] }}</td>
-                                        <td>{{ $asset['asset_name'] }}</td>
-                                        <td>{{ $asset['category'] }}</td>
-                                        <td class="number">{{ $asset['value'] }}</td>
-                                        <td class="number">{{ $asset['check_date'] }}</td>
+                                        <td>{{ $asset->asset_code }}</td>
+                                        <td>{{ $asset->asset_name }}</td>
+                                        <td>{{ $asset->category_name }}</td>
+                                        <td class="right">{{ number_format((float)($asset->asset_value ?? 0), 2) }}</td>
+                                        <td>{{ $asset->inspect_date_th ?? '-' }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -101,56 +138,50 @@
                     </div>
                 </div>
 
-                <h3 class="section-title">3. รายการครุภัณฑ์ที่เลือกจัดสรร</h3>
-
-                <div class="table-shell selected-shell">
-                    <table class="assignment-table selected-table">
-                        <thead>
-                            <tr>
-                                <th>ลำดับ</th>
-                                <th>รหัสครุภัณฑ์</th>
-                                <th>ชื่อครุภัณฑ์</th>
-                                <th>หมวดครุภัณฑ์</th>
-                                <th>มูลค่า</th>
-                                <th>นำออก</th>
-                            </tr>
-                        </thead>
-
-                        <tbody id="selectedAssetTableBody"></tbody>
-                    </table>
+                {{-- Section 3: Selected assets --}}
+                <div class="section-block">
+                    <h3 class="section-title">3. รายการครุภัณฑ์ที่เลือกจัดสรร</h3>
+                    <div class="table-wrapper">
+                        <table class="asset-selected-table" id="selectedAssetsTable">
+                            <thead>
+                                <tr>
+                                    <th>รหัสครุภัณฑ์</th>
+                                    <th>ชื่อครุภัณฑ์</th>
+                                    <th>หมวดครุภัณฑ์</th>
+                                    <th class="col-value">มูลค่า (บาท)</th>
+                                    <th class="col-action">นำออก</th>
+                                </tr>
+                            </thead>
+                            <tbody id="selectedAssetsBody">
+                                <tr class="no-selection-row" id="noSelectionRow" style="display:none;">
+                                    <td colspan="5" class="no-data">ยังไม่ได้เลือกรายการ</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="selected-count">เลือกแล้ว: <strong id="selectedCount">0</strong> รายการ</p>
                 </div>
 
-                <p class="selected-count" id="selectedCountText">เลือกแล้ว 0 รายการ</p>
-
+                {{-- Actions --}}
                 <div class="form-actions">
-                    <a class="cancel-btn" href="{{ route('asset.assignments.show', $assignmentSequence) }}">ยกเลิก</a>
-                    <button
-                        class="save-btn"
-                        id="saveAssignmentButton"
-                        type="button"
-                        data-redirect-url="{{ route('asset.assignments.show', $assignmentSequence) }}"
-                        data-save-label="บันทึกรายการการจัดสรร"
-                        data-confirm-message="คุณแน่ใจหรือไม่ว่าต้องการแก้ไขข้อมูลการจัดสรร"
-                    >
-                        บันทึกรายการการจัดสรร (0 รายการ)
-                    </button>
+                    <a class="cancel-btn" href="{{ route('asset.assignments.index') }}">ย้อนกลับ</a>
+                    <button class="save-btn" type="button" id="saveAssignmentBtn">บันทึก</button>
                 </div>
             </form>
         </section>
+    </div>
 
-        <div class="confirm-overlay" id="saveAssignmentOverlay" aria-hidden="true">
-            <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="saveAssignmentConfirmTitle">
-                <div class="confirm-icon success-confirm-icon">
-                    <svg><use href="#icon-square-pen"></use></svg>
-                </div>
-
-                <h3 id="saveAssignmentConfirmTitle">ยืนยันการแก้ไขข้อมูล</h3>
-                <p id="saveAssignmentConfirmMessage">คุณแน่ใจหรือไม่ว่าต้องการแก้ไขข้อมูลการจัดสรร</p>
-
-                <div class="confirm-actions">
-                    <button class="modal-cancel-btn" id="cancelSaveAssignmentButton" type="button">ยกเลิก</button>
-                    <button class="modal-confirm-btn success-confirm-btn" id="confirmSaveAssignmentButton" type="button">ยืนยันการแก้ไข</button>
-                </div>
+    {{-- Save confirmation modal --}}
+    <div class="confirm-overlay" id="saveConfirmOverlay" aria-hidden="true">
+        <div class="confirm-modal" role="dialog" aria-modal="true">
+            <div class="confirm-icon edit-icon">
+                <svg class="confirm-edit-svg"><use href="#icon-square-pen"></use></svg>
+            </div>
+            <h3>ยืนยันการแก้ไข</h3>
+            <p>คุณต้องการบันทึกการแก้ไขการจัดสรรครุภัณฑ์นี้ใช่หรือไม่</p>
+            <div class="confirm-actions">
+                <button class="modal-cancel-btn" type="button" id="cancelSaveBtn">ยกเลิก</button>
+                <button class="modal-confirm-btn edit-confirm-btn" type="button" id="confirmSaveBtn">ยืนยันการแก้ไข</button>
             </div>
         </div>
     </div>

@@ -1,4 +1,6 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
+
+@section('title', 'บันทึกการรับวัสดุเข้าคลัง')
 
 @section('page-style')
     @vite(['resources/css/material/MAT-002-record-material-receiving/style.css'])
@@ -10,17 +12,14 @@
     @endphp
 
     <div class="page-container receiving-create-page">
-        <header class="page-header">
-            <div class="page-title-box">
-                <h2>{{ $pageTitle }}</h2>
-                <div class="header-line"></div>
-            </div>
-        </header>
+        <x-page-header :title="$pageTitle" />
+
+        <div class="mat002-combined-card">
 
         <section class="document-card">
             <div class="section-title">
                 <svg class="section-icon"><use href="#icon-document"></use></svg>
-                <span>ข้อมูลเอกสารการรับวัสดุ</span>
+                <span>ข้อมูลการรับวัสดุ</span>
             </div>
 
             <div class="mat002-document-grid">
@@ -31,7 +30,7 @@
 
                 <div class="mat002-field">
                     <label>วันที่รับวัสดุ</label>
-                    <input type="text" value="{{ optional($record->mat_pro_date)->format('d/m/Y') }}" readonly>
+                    <input type="text" value="{{ thai_date($record->mat_pro_date) }}" readonly>
                 </div>
 
                 <div class="mat002-field">
@@ -46,11 +45,6 @@
                             ->firstWhere('value', (int) $record->dealer_id);
                     @endphp
                     <input type="text" value="{{ $dealerLabel['label'] ?? ($record->dealer?->dealer_name ?? '-') }}" readonly>
-                </div>
-
-                <div class="mat002-field">
-                    <label>ผู้บันทึก</label>
-                    <input type="text" value="{{ $record->created_by ?? '-' }}" readonly>
                 </div>
 
                 <div class="mat002-field">
@@ -70,7 +64,7 @@
 
                 <div class="mat002-field">
                     <label>วันที่ของสัญญา</label>
-                    <input type="text" value="{{ optional($record->mat_pro_contact_date)->format('d/m/Y') }}" readonly>
+                    <input type="text" value="{{ thai_date($record->mat_pro_contact_date) }}" readonly>
                 </div>
             </div>
 
@@ -78,15 +72,14 @@
                 <div>
                     <p class="vat-title">ภาษีมูลค่าเพิ่ม (VAT)</p>
 
-                    <label class="radio-label">
-                        <input type="radio" checked disabled>
-                        <span>{{ $vatOptions[(int) ($record->vat_type ?? 0)] ?? '-' }}</span>
-                    </label>
-
-                    <label class="radio-label">
-                        <input type="radio" disabled>
-                        <span>-</span>
-                    </label>
+                    @foreach ([1 => 'รวม VAT', 2 => 'ไม่รวม VAT', 3 => 'ไม่มีภาษี'] as $typeVal => $typeLabel)
+                        <label class="radio-label">
+                            <input type="radio"
+                                   @if ((int) ($record->vat_type ?? 0) === $typeVal) checked @endif
+                                   disabled>
+                            <span>{{ $typeLabel }}</span>
+                        </label>
+                    @endforeach
                 </div>
 
                 <div class="vat-rate">
@@ -96,6 +89,8 @@
                 </div>
             </div>
         </section>
+
+        <hr class="mat002-section-divider">
 
         <section class="items-card">
             <div class="section-title">
@@ -145,12 +140,11 @@
             </div>
 
             <div class="form-actions">
-                <a class="cancel-btn" href="{{ route('material.receiving.index') }}">ยกเลิก</a>
-                <a class="edit-receiving-btn link-button" href="{{ route('material.receiving.edit', $record->mat_pro_code) }}">
-                    แก้ไขข้อมูลการรับวัสดุ
-                </a>
+                <a class="cancel-btn" href="{{ route('material.receiving.index') }}">ย้อนกลับ</a>
             </div>
         </section>
+
+        </div>{{-- end .mat002-combined-card --}}
     </div>
 @endsection
 

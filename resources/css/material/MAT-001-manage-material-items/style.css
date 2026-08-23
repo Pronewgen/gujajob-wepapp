@@ -1,4 +1,4 @@
-* {
+﻿* {
     box-sizing: border-box;
 }
 
@@ -201,7 +201,7 @@ textarea {
 
 .page-container {
     width: 100%;
-    max-width: 1040px;
+    max-width: 1136px;
     margin: 0 auto;
     padding: 56px 28px;
 }
@@ -232,7 +232,7 @@ textarea {
 .material-card,
 .material-form-card {
     width: 100%;
-    max-width: 1040px;
+    max-width: 1136px;
     background: #ffffff;
     border: 1.5px solid var(--card-border);
     border-top-width: 4px;
@@ -242,7 +242,7 @@ textarea {
 }
 
 .edit-mode-card {
-    background: #fff4c2;
+    background: #ffffff;
 }
 
 .card-header {
@@ -541,37 +541,6 @@ textarea {
 
 .table-footer p {
     margin: 0;
-    color: var(--text-muted);
-    font-size: 12px;
-    font-weight: 400;
-}
-
-.pagination {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.page-btn {
-    width: 27px;
-    height: 30px;
-    border: 1px solid #d7e0ea;
-    border-radius: 6px;
-    background: #ffffff;
-    color: #334155;
-    font-size: 13px;
-    cursor: pointer;
-}
-
-.page-btn.active-page {
-    background: var(--primary);
-    color: #ffffff;
-    border-color: var(--primary);
-}
-
-.page-btn.disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
 }
 
 .no-data {
@@ -882,4 +851,12 @@ textarea {
     opacity: 1 !important;
     cursor: pointer !important;
     filter: none !important;
+}
+
+@media (max-width: 768px) {
+    .table-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
 }

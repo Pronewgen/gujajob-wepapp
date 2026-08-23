@@ -1,0 +1,295 @@
+/* ===== MAT-003 Approval pages — shared styles ===== */
+
+/* ─── Approval detail table ─────────────────────────────────────────────── */
+
+.approval-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+    border: 1px solid #d7e0ea;
+    border-radius: 7px;
+    overflow: hidden;
+}
+
+.approval-table thead tr {
+    background: #f1f5f9;
+}
+
+.approval-table th {
+    padding: 13px 14px;
+    color: #52627a;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: left;
+    border-bottom: 1px solid #d7e0ea;
+}
+
+.approval-table td {
+    padding: 11px 14px;
+    color: #1f2937;
+    font-size: 13px;
+    border-bottom: 1px solid #d7e0ea;
+    vertical-align: middle;
+}
+
+.approval-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+/* Column widths: ลำดับ | รายการวัสดุ | จำนวนที่เบิก | หน่วยนับ | จำนวนคงเหลือ | คงเหลือหลังอนุมัติ */
+.approval-table th:nth-child(1),
+.approval-table td:nth-child(1) { width: 7%; text-align: center; }
+
+.approval-table th:nth-child(2),
+.approval-table td:nth-child(2) { width: 29%; }
+
+.approval-table th:nth-child(3),
+.approval-table td:nth-child(3) { width: 22%; text-align: center; }
+
+.approval-table th:nth-child(4),
+.approval-table td:nth-child(4) { width: 12%; text-align: center; }
+
+.approval-table th:nth-child(5),
+.approval-table td:nth-child(5) { width: 15%; text-align: center; }
+
+.approval-table th:nth-child(6),
+.approval-table td:nth-child(6) { width: 15%; text-align: center; }
+
+/* Row highlight when approved qty exceeds balance */
+.approval-table tbody tr.row-over-balance {
+    background: #fff1f2;
+}
+
+/* ─── Editable quantity input ────────────────────────────────────────────── */
+
+.approval-qty-input {
+    width: 80px;
+    height: 34px;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+    text-align: center;
+    font-size: 13px;
+    font-family: inherit;
+    color: #1f2937;
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.approval-qty-input:focus {
+    border-color: #173b8f;
+}
+
+.approval-qty-input.is-invalid {
+    border-color: #ef4444;
+    background: #fff7f7;
+}
+
+.approval-qty-input:read-only,
+.approval-qty-input:disabled {
+    background: #f1f5f9;
+    color: #94a3b8;
+    cursor: not-allowed;
+    border-color: #e2e8f0;
+}
+
+/* Inline pen/check icon cell layout */
+.approval-qty-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.approval-qty-cell .table-action-icon {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+}
+
+.approval-qty-cell .table-action-icon svg {
+    width: 15px;
+    height: 15px;
+}
+
+.qty-check-icon {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.qty-check-icon:hover {
+    background: #bbf7d0;
+}
+
+/* Error message beneath input */
+.qty-error-msg {
+    display: block;
+    margin-top: 4px;
+    color: #ef4444;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.3;
+    text-align: center;
+}
+
+/* ─── Remaining balance column ───────────────────────────────────────────── */
+
+.remaining-after-cell {
+    font-weight: 600;
+}
+
+.remaining-after-cell.text-negative {
+    color: #ef4444;
+    font-weight: 800;
+}
+
+/* ─── Action buttons ─────────────────────────────────────────────────────── */
+
+.approval-actions {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.approve-btn {
+    height: 40px;
+    min-width: 110px;
+    padding: 0 18px;
+    border: none;
+    border-radius: 4px;
+    background: #059669;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.15s ease;
+}
+
+.approve-btn:hover:not(:disabled) {
+    background: #047857;
+}
+
+.approve-btn:disabled {
+    background: #6ee7b7;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.reject-btn {
+    height: 40px;
+    min-width: 110px;
+    padding: 0 18px;
+    border: none;
+    border-radius: 4px;
+    background: #ef4444;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.15s ease;
+}
+
+.reject-btn:hover:not(:disabled) {
+    background: #dc2626;
+}
+
+.reject-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.cancel-approval-link {
+    height: 40px;
+    min-width: 80px;
+    padding: 0 18px;
+    border: 1.5px solid #ef4444;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #ef4444;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cancel-approval-link:hover {
+    background: #fef2f2;
+}
+
+/* ─── Validation alert above action buttons ──────────────────────────────── */
+
+.approval-validation-alert {
+    margin: 0 0 12px;
+    padding: 10px 16px;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    background: #fff1f2;
+    color: #b91c1c;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+/* ─── Approve confirmation popup icon ────────────────────────────────────── */
+
+.approve-confirm-icon {
+    background: #059669;
+    color: #ffffff;
+}
+
+/* ─── Reject confirmation popup icon ─────────────────────────────────────── */
+
+.reject-confirm-icon {
+    background: #fef2f2;
+    color: #ef4444;
+}
+
+/* ─── Read-only state (already approved / rejected) ─────────────────────── */
+
+.approval-readonly-notice {
+    margin-bottom: 18px;
+    padding: 10px 16px;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 6px;
+    color: #0369a1;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* ─── Compact material name cell ─────────────────────────────────────────── */
+
+.approval-mat-code {
+    display: block;
+    color: #173b8f;
+    font-weight: 800;
+    font-size: 12px;
+    margin-bottom: 2px;
+}
+
+.approval-mat-name {
+    color: #1f2937;
+    font-size: 13px;
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 980px) {
+    .approval-table {
+        min-width: 780px;
+    }
+
+    .approval-actions {
+        flex-wrap: wrap;
+    }
+}

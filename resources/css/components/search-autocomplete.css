@@ -1,0 +1,121 @@
+/* ============================================================
+   Search Autocomplete Component
+   Reusable live-search dropdown for any search input.
+   ============================================================ */
+
+/* Wrapper keeps dropdown anchored relative to the input */
+.sac-wrapper {
+    position: relative;
+    display: inline-block;
+    vertical-align: top;
+}
+
+/* Full-width variant when the parent is a flex/grid column */
+.sac-wrapper.sac-full {
+    display: block;
+    width: 100%;
+}
+
+/* Ensure the input inherits the full wrapper width in block mode */
+.sac-wrapper.sac-full > input {
+    width: 100%;
+}
+
+/* ─────── Dropdown panel ─────── */
+
+.sac-results {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 100%;
+    width: max-content;
+    max-width: min(420px, 90vw);
+    z-index: 1200;
+
+    max-height: 260px;
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
+
+    /* Custom scrollbar — matches project palette */
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.sac-results::-webkit-scrollbar {
+    width: 4px;
+}
+
+.sac-results::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+/* ─────── Individual result item ─────── */
+
+.sac-item {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 7px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #1f2937;
+    border-bottom: 1px solid #f1f5f9;
+    user-select: none;
+    line-height: 1.4;
+}
+
+.sac-item:last-child {
+    border-bottom: none;
+}
+
+.sac-item:hover,
+.sac-item.sac-active {
+    background: #eff4ff;
+}
+
+.sac-code {
+    flex-shrink: 0;
+    font-weight: 700;
+    font-size: 12px;
+    color: #173b8f;
+    white-space: nowrap;
+}
+
+.sac-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sac-meta {
+    font-size: 11px;
+    color: #687386;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* ─────── Status messages ─────── */
+
+.sac-status {
+    padding: 9px 14px;
+    font-size: 13px;
+    color: #687386;
+    text-align: center;
+}
+
+.sac-empty {
+    color: #687386;
+}
+
+.sac-error {
+    color: #991b1b;
+}

@@ -1,0 +1,1025 @@
+﻿/* =============================================================
+   MAT-004 รับโอนวัสดุ — Stylesheet
+   Layout CSS (app-shell, sidebar, page-container) shared with
+   all other modules — must be included in every module's CSS.
+   Index: .transfer-*  |  Show/Edit: .mat004-*
+   ============================================================= */
+
+/* ─── Global Reset ──────────────────────────────────────────── */
+* {
+    box-sizing: border-box;
+}
+
+/* ─── CSS Variables ─────────────────────────────────────────── */
+:root {
+    /* Layout / Sidebar */
+    --sidebar-bg:         #0f172a;
+    --sidebar-border:     #243044;
+    --sidebar-text:       #d6deec;
+    --sidebar-muted:      #7f8da5;
+    --active-blue:        #2548bd;
+    --active-blue-light:  #4b7cff;
+    --page-bg:            #eef3f8;
+    --primary:            #173b8f;
+    --card-border:        #173b8f;
+    --table-line:         #dde5ef;
+    --text-main:          #1f2937;
+    --text-muted:         #687386;
+    --pending-bg:         #fff3cd;
+    --pending-text:       #b7791f;
+    --approved-bg:        #d1fae5;
+    --approved-text:      #065f46;
+    --rejected-bg:        #fee2e2;
+    --rejected-text:      #991b1b;
+    /* MAT-004 specific */
+    --mat004-primary:     #173b8f;
+    --mat004-page-bg:     #eef3f8;
+    --mat004-card-bg:     #ffffff;
+    --mat004-card-border: #173b8f;
+    --mat004-shadow:      0 1px 2px rgba(15, 23, 42, .06);
+    --mat004-text:        #1f2937;
+    --mat004-muted:       #64748b;
+    --mat004-border:      #c5ced9;
+    --mat004-green:       #16a34a;
+    --mat004-green-lt:    #d1fae5;
+    --mat004-green-dk:    #065f46;
+    --mat004-amber:       #d97706;
+    --mat004-red:         #ef4444;
+}
+
+/* ─── Base ──────────────────────────────────────────────────── */
+html {
+    font-family: "Noto Sans Thai", Arial, Helvetica, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: geometricPrecision;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--page-bg);
+    font-family: "Noto Sans Thai", Arial, Helvetica, sans-serif;
+    color: var(--text-main);
+}
+
+button,
+input,
+select,
+textarea {
+    font-family: inherit;
+}
+
+/* ─── SVG Sprite (hidden container) ─────────────────────────── */
+.svg-sprite {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+}
+
+/* ─── App Shell ──────────────────────────────────────────────── */
+.app-shell {
+    min-height: 100vh;
+    display: flex;
+}
+
+/* ─── Sidebar ────────────────────────────────────────────────── */
+.sidebar {
+    width: 220px;
+    min-height: 100vh;
+    background: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    flex-shrink: 0;
+}
+
+.brand {
+    height: 72px;
+    padding: 16px 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    border-bottom: 1px solid var(--sidebar-border);
+}
+
+.brand-icon {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    color: #60a5fa;
+}
+
+.brand-icon svg {
+    width: 24px;
+    height: 24px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.brand h1,
+.brand p {
+    margin: 0;
+    line-height: 1.3;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+/* ─── Menu ───────────────────────────────────────────────────── */
+.menu {
+    padding: 18px 0 24px;
+}
+
+.menu-group + .menu-group {
+    margin-top: 22px;
+}
+
+.menu-group-toggle {
+    width: 100%;
+    height: 38px;
+    padding: 0 16px;
+    border: 0;
+    background: transparent;
+    color: var(--sidebar-muted);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.group-chevron {
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 0.18s ease;
+}
+
+.menu-group.is-collapsed .group-chevron {
+    transform: rotate(-90deg);
+}
+
+.menu-group.is-collapsed .menu-group-panel {
+    display: none;
+}
+
+.menu-item {
+    position: relative;
+    min-height: 38px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    color: var(--sidebar-text);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 400;
+    white-space: nowrap;
+}
+
+.menu-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.menu-item.active {
+    background: var(--active-blue);
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.menu-item.active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--active-blue-light);
+}
+
+.menu-item.disabled-link {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.menu-icon {
+    width: 17px;
+    height: 17px;
+    flex-shrink: 0;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* ─── Content Area ───────────────────────────────────────────── */
+.content {
+    flex: 1;
+    min-height: 100vh;
+    background: var(--page-bg);
+}
+
+/* ─── Page Container / Header ────────────────────────────────── */
+.page-container {
+    width: 100%;
+    max-width: 1136px;
+    margin: 0 auto;
+    padding: 56px 28px;
+}
+
+.page-header {
+    margin-bottom: 48px;
+}
+
+.page-title-box {
+    width: 100%;
+}
+
+.page-header h2 {
+    margin: 0 0 16px;
+    color: var(--primary);
+    font-size: 23px;
+    line-height: 1;
+    font-weight: 800;
+    letter-spacing: -0.4px;
+}
+
+.header-line {
+    width: 100%;
+    height: 1px;
+    background: #c8d3e2;
+}
+
+/* ─── Flash / Alert Boxes ────────────────────────────────────── */
+.form-success-box {
+    margin-bottom: 16px;
+    padding: 10px 16px;
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.form-error-box {
+    margin-bottom: 16px;
+    padding: 10px 16px;
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+/* ─── Status Badges (index page) ─────────────────────────────── */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 22px;
+    padding: 0 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.status-badge.approved {
+    background: var(--approved-bg);
+    color: var(--approved-text);
+}
+
+/* รอรับโอน — light green pill */
+.status-badge.pending {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-badge.received {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+/* =============================================================
+   INDEX PAGE — .transfer-* classes
+   ============================================================= */
+
+.transfer-card {
+    background: #fff;
+    border: 1.5px solid #173b8f;
+    border-top-width: 4px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
+}
+
+/* Card heading matches MAT-003 .card-title pattern */
+.card-title {
+    padding: 26px 28px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #111827;
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.card-title-icon {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: var(--primary);
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex-shrink: 0;
+}
+
+.transfer-toolbar {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 0 28px 26px;
+}
+
+.transfer-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.transfer-field-group label {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.transfer-field-group select,
+.transfer-field-group input[type="search"],
+.transfer-field-group input[type="text"],
+.transfer-field-group input[type="date"] {
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 13px;
+    color: #1e293b;
+    background: #f8fafc;
+    outline: none;
+    transition: border-color .15s;
+}
+
+.transfer-field-group select:focus,
+.transfer-field-group input:focus {
+    border-color: #3b82f6;
+    background: #fff;
+}
+
+.transfer-search-group input {
+    width: 220px;
+}
+
+/* Standard search button — same spec as MAT-001 / MAT-002 / MAT-003 */
+.search-btn {
+    height: 38px;
+    min-width: 84px;
+    padding: 0 20px;
+    border: 1.5px solid #111827;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #111827;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    align-self: flex-end;
+}
+
+.search-btn:hover {
+    background: #f3f4f6;
+}
+
+.transfer-table-wrapper {
+    padding: 0 28px 28px;
+    overflow-x: auto;
+}
+
+.transfer-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 13px;
+    border: 1px solid #d7e0ea;
+    border-radius: 7px;
+    overflow: hidden;
+}
+
+.transfer-table thead tr {
+    background: #f1f5f9;
+}
+
+.transfer-table th {
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #475569;
+    white-space: nowrap;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.transfer-table td {
+    padding: 10px 12px;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.transfer-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.transfer-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.transfer-table th:nth-child(1),
+.transfer-table td:nth-child(1),
+.transfer-table th:nth-child(5),
+.transfer-table td:nth-child(5) {
+    text-align: center;
+}
+
+.transfer-col-action {
+    text-align: center;
+}
+
+.transfer-detail-btn {
+    display: inline-flex;
+    align-items: center;
+    height: 25px;
+    padding: 0 12px;
+    border: 1.5px solid #111827;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #111827;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.transfer-detail-btn:hover {
+    background: #f3f4f6;
+}
+
+.transfer-no-data {
+    text-align: center;
+    color: #7f8da5;
+    padding: 24px 8px;
+}
+
+/* Table footer: summary + pagination */
+.transfer-table-footer {
+    min-height: 54px;
+    margin-top: 0;
+    padding: 12px 16px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f7f9fc;
+    border-top: 1px solid #edf1f6;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.transfer-table-footer p,
+.transfer-table-footer .app-pagination-summary {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 400;
+}
+
+/* Keep old class as alias for backward compatibility */
+.transfer-pagination-row {
+    margin-top: 16px;
+    font-size: 12px;
+    color: #64748b;
+}
+
+/* ─── Layout Responsive ──────────────────────────────────────── */
+@media (max-width: 980px) {
+    .app-shell {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        min-height: auto;
+    }
+
+    .menu {
+        max-height: 320px;
+        overflow-y: auto;
+    }
+
+    .page-container {
+        max-width: none;
+        padding: 40px 24px;
+    }
+}
+
+/* =============================================================
+   SHOW / EDIT PAGE — .mat004-* classes
+   ============================================================= */
+
+/* ── Page wrapper ───────────────────────────────────────────── */
+.mat004-page {
+    max-width: 1136px;
+    margin: 0 auto;
+    padding: 56px 28px 60px;
+}
+
+/* ── Page header ────────────────────────────────────────────── */
+.mat004-page-header {
+    margin-bottom: 32px;
+}
+
+.mat004-page-title {
+    margin: 0 0 14px;
+    color: var(--mat004-primary);
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    line-height: 1;
+}
+
+.mat004-header-line {
+    width: 100%;
+    height: 1px;
+    background: #c8d3e2;
+}
+
+/* ── Flash messages ─────────────────────────────────────────── */
+.mat004-flash {
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+.mat004-flash-success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+.mat004-flash-error   { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+.mat004-flash-info    { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+
+/* ── Card ───────────────────────────────────────────────────── */
+.mat004-card {
+    width: 100%;
+    background: var(--mat004-card-bg);
+    border: 1.5px solid var(--mat004-card-border);
+    border-top-width: 4px;
+    border-radius: 8px;
+    padding: 26px 32px 32px;
+    margin-bottom: 24px;
+    box-shadow: var(--mat004-shadow);
+}
+
+/* ── Card head (title + badge row) ─────────────────────────── */
+.mat004-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #e5eaf0;
+}
+
+.mat004-card-title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: #111827;
+}
+
+/* ── Status badges ──────────────────────────────────────────── */
+.mat004-status-badge {
+    display: inline-flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.mat004-status-confirmed { background: #dbeafe; color: #1d4ed8; }
+.mat004-status-pending   { background: #d1fae5; color: #065f46; }
+.mat004-status-draft     { background: #fef3c7; color: #92400e; }
+
+/* ── Notices ────────────────────────────────────────────────── */
+.mat004-notice {
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 18px;
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.mat004-notice-info {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-left: 4px solid var(--mat004-primary);
+    color: #1e40af;
+}
+
+/* ── Header grid (3 equal columns) ─────────────────────────── */
+.mat004-header-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px 20px;
+    margin-bottom: 18px;
+}
+
+/* ── Document row: ISP code | WD ref | Date (3 equal cols) ─── */
+.mat004-doc-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px 20px;
+    margin-bottom: 16px;
+}
+
+/* ── Receiver + Remark row (1 part : 2 parts) ────────────────── */
+.mat004-receiver-remark-grid {
+    display: grid;
+    grid-template-columns: minmax(200px, 1fr) minmax(0, 2fr);
+    gap: 18px 20px;
+    align-items: start;
+    margin-bottom: 24px;
+}
+
+.mat004-receiver-remark-grid .mat004-textarea {
+    min-height: 50px;
+    resize: vertical;
+}
+
+/* ── Form fields ────────────────────────────────────────────── */
+.mat004-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.mat004-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.mat004-req {
+    color: var(--mat004-red);
+    margin-left: 2px;
+}
+
+.mat004-input,
+.mat004-textarea {
+    border: 1px solid var(--mat004-border);
+    border-radius: 4px;
+    background: #ffffff;
+    color: var(--mat004-text);
+    font-size: 13px;
+    padding: 8px 11px;
+    outline: none;
+    transition: border-color .15s;
+    font-family: inherit;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.mat004-input {
+    height: 38px;
+}
+
+.mat004-input:not([readonly]):focus,
+.mat004-textarea:not([readonly]):focus {
+    border-color: var(--mat004-primary);
+    background: #fff;
+}
+
+.mat004-input-ro,
+.mat004-input[readonly],
+.mat004-textarea[readonly] {
+    background: #edf0f3;
+    color: #6b7280;
+    cursor: default;
+}
+
+.mat004-textarea {
+    min-height: 72px;
+    resize: vertical;
+}
+
+/* Remark field: legacy standalone row (kept for backward compat) */
+.mat004-remark-field {
+    margin-bottom: 24px;
+}
+
+/* ── Section sub-heading ────────────────────────────────────── */
+.mat004-section-head {
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+    margin: 4px 0 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed #d1d5db;
+}
+
+/* ── Table wrapper ──────────────────────────────────────────── */
+.mat004-table-wrap {
+    overflow-x: auto;
+    margin-bottom: 4px;
+}
+
+/* ── Tables (items + stock share base styles) ───────────────── */
+.mat004-items-table,
+.mat004-stock-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+/* Group header row */
+.mat004-group-row .mat004-th-gen {
+    background: #f1f5f9;
+    color: #64748b;
+    padding: 5px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    border-bottom: 1px solid #d7e0ea;
+}
+
+.mat004-group-row .mat004-th-qty {
+    background: var(--mat004-green-lt);
+    color: var(--mat004-green-dk);
+    text-align: center;
+    padding: 5px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    border-bottom: 1px solid #a7f3d0;
+}
+
+/* Column header row */
+.mat004-th {
+    padding: 9px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #52627a;
+    white-space: nowrap;
+    background: #f1f5f9;
+    border-bottom: 2px solid #d7e0ea;
+    font-size: 12.5px;
+}
+
+/* Qty sub-header columns keep green tint */
+.mat004-items-table thead tr:not(.mat004-group-row) th:nth-child(5),
+.mat004-items-table thead tr:not(.mat004-group-row) th:nth-child(6),
+.mat004-items-table thead tr:not(.mat004-group-row) th:nth-child(7) {
+    background: #ecfdf5;
+    color: var(--mat004-green-dk);
+}
+
+/* Body cells */
+.mat004-td {
+    padding: 10px 12px;
+    color: var(--mat004-text);
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+    font-size: 13px;
+}
+
+.mat004-td-center { text-align: center; }
+.mat004-td-num    { text-align: right;  font-variant-numeric: tabular-nums; }
+
+.mat004-items-table tbody tr:last-child td,
+.mat004-stock-table  tbody tr:last-child td { border-bottom: none; }
+
+.mat004-items-table tbody tr:hover,
+.mat004-stock-table  tbody tr:hover { background: #f8fafc; }
+
+/* Column widths for items table */
+.mat004-col-no   { width: 5%;  text-align: center; }
+.mat004-col-code { width: 13%; }
+.mat004-col-name { width: 32%; }
+.mat004-col-unit { width: 8%;  text-align: center; }
+.mat004-col-num  { width: 14%; text-align: right; }
+
+/* Colour helpers */
+.mat004-mat-code      { color: var(--mat004-primary); font-weight: 600; }
+.mat004-increase      { color: var(--mat004-green);   font-weight: 700; }
+.mat004-balance-after { color: #0369a1;               font-weight: 700; }
+.mat004-ref-code      { color: var(--mat004-primary); font-weight: 500; }
+.mat004-muted         { color: #94a3b8; }
+
+/* Editable เพิ่มยอด input in edit page (draft state) */
+.mat004-qty-input {
+    width: 80px;
+    height: 30px;
+    padding: 0 6px;
+    border: 1.5px solid #c5ced9;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--mat004-green);
+    text-align: right;
+    background: #f0fdf4;
+}
+
+.mat004-qty-input:focus {
+    border-color: var(--mat004-green);
+    outline: none;
+    background: #ffffff;
+}
+
+.mat004-no-rows {
+    text-align: center;
+    padding: 28px 12px;
+    color: #7f8da5;
+    font-size: 13px;
+}
+
+/* ── Action buttons ─────────────────────────────────────────── */
+.mat004-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 1px solid #e5eaf0;
+    flex-wrap: wrap;
+}
+
+.mat004-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
+    padding: 0 20px;
+    border-radius: 5px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    border: none;
+    font-family: inherit;
+    transition: background .15s, box-shadow .15s;
+}
+
+.mat004-btn-cancel {
+    background: #ffffff;
+    border: 1.5px solid var(--mat004-red);
+    color: var(--mat004-red);
+}
+
+.mat004-btn-cancel:hover { background: #fef2f2; }
+
+.mat004-btn-edit {
+    background: var(--mat004-amber);
+    color: #ffffff;
+}
+
+.mat004-btn-edit:hover:not(:disabled) { background: #b45309; }
+
+.mat004-btn-primary {
+    background: var(--mat004-primary);
+    color: #ffffff;
+}
+
+.mat004-btn-primary:hover:not(:disabled) { background: #102d70; }
+
+.mat004-btn:disabled { opacity: .5; cursor: default; }
+
+/* ── Modal / Overlay ────────────────────────────────────────── */
+.mat004-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .45);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+
+.mat004-overlay.is-visible { display: flex; }
+
+.mat004-modal {
+    background: #fff;
+    border-radius: 12px;
+    padding: 32px 28px 24px;
+    width: 90%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .25);
+    text-align: center;
+}
+
+.mat004-modal-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+}
+
+.mat004-modal-icon svg {
+    width: 26px;
+    height: 26px;
+    fill: none;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.mat004-modal-icon-green           { background: #dcfce7; }
+.mat004-modal-icon-green svg       { stroke: #16a34a; }
+.mat004-modal-icon-amber           { background: #fef3c7; }
+.mat004-modal-icon-amber svg       { stroke: var(--mat004-amber); }
+
+.mat004-modal-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 10px;
+}
+
+.mat004-modal-body {
+    font-size: 13px;
+    color: #64748b;
+    margin: 0 0 22px;
+    line-height: 1.6;
+}
+
+.mat004-modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.mat004-modal-btn {
+    flex: 1;
+    max-width: 160px;
+    height: 38px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+    transition: background .15s;
+}
+
+.mat004-modal-btn-cancel          { background: #f1f5f9; color: #475569; }
+.mat004-modal-btn-cancel:hover    { background: #e2e8f0; }
+
+.mat004-modal-btn-green           { background: #16a34a; color: #fff; }
+.mat004-modal-btn-green:hover:not(:disabled) { background: #15803d; }
+
+.mat004-modal-btn-amber           { background: var(--mat004-amber); color: #fff; }
+.mat004-modal-btn-amber:hover:not(:disabled) { background: #b45309; }
+
+.mat004-modal-btn:disabled        { opacity: .5; cursor: default; }
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 900px) {
+    .mat004-page                    { padding: 36px 20px 48px; }
+    .mat004-card                    { padding: 20px 22px 26px; }
+    .mat004-header-grid             { grid-template-columns: repeat(2, 1fr); }
+    .mat004-doc-grid                { grid-template-columns: repeat(2, 1fr); }
+    .mat004-receiver-remark-grid    { grid-template-columns: repeat(2, 1fr); }
+    .mat004-remark-field            { max-width: 100%; }
+}
+
+@media (max-width: 600px) {
+    .mat004-page                    { padding: 24px 14px 40px; }
+    .mat004-card                    { padding: 16px 14px 22px; }
+    .mat004-header-grid             { grid-template-columns: 1fr; }
+    .mat004-doc-grid                { grid-template-columns: 1fr; }
+    .mat004-receiver-remark-grid    { grid-template-columns: 1fr; }
+    .mat004-remark-field            { max-width: 100%; }
+    .mat004-actions                 { flex-direction: column; align-items: stretch; }
+    .mat004-btn                     { width: 100%; }
+    .mat004-items-table,
+    .mat004-stock-table             { min-width: 600px; }
+}

@@ -202,9 +202,9 @@ svg.svg-sprite {
 
 .page-container {
     width: 100%;
-    max-width: 1120px;
+    max-width: 1136px;
     margin: 0 auto;
-    padding: 34px 26px 60px;
+    padding: 56px 28px 60px;
 }
 
 .page-header {
@@ -227,21 +227,44 @@ svg.svg-sprite {
 }
 
 .assignment-card {
-    background: #f8fbff;
-    border: 1px solid #d2dbe7;
-    border-radius: 7px;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    background: #ffffff;
+    border: 1.5px solid #173b8f;
+    border-top-width: 4px;
+    border-radius: 8px;
+    box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
     overflow: hidden;
+}
+
+.card-title {
+    padding: 20px 28px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #111827;
+    font-size: 15px;
+    font-weight: 800;
+    border-bottom: 1px solid #e4eaf3;
+}
+
+.card-title-icon {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: var(--primary);
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex-shrink: 0;
 }
 
 .toolbar {
     padding: 10px 16px 9px;
     display: grid;
-    grid-template-columns: 210px 210px 210px 84px 1fr 156px;
+    grid-template-columns: 210px 210px 84px 1fr 160px;
     gap: 6px;
     align-items: end;
     border-bottom: 1px solid #d7e0ea;
-    background: #f8fbff;
+    background: #ffffff;
 }
 
 .field-group {
@@ -251,16 +274,16 @@ svg.svg-sprite {
 }
 
 .field-group label {
-    color: #334155;
-    font-size: 9px;
-    font-weight: 700;
+    color: #111827;
+    font-size: 12px;
+    font-weight: 800;
 }
 
 .field-group select {
     height: 28px;
     border: 1px solid #c5ced9;
     border-radius: 3px;
-    background: #ffffff;
+    background: #edf0f3;
     color: #334155;
     font-size: 11px;
     font-weight: 500;
@@ -273,13 +296,15 @@ svg.svg-sprite {
 }
 
 .search-btn {
-    height: 28px;
-    border: 1.4px solid #111827;
+    height: 34px;
+    min-width: auto;
+    padding: 0 14px;
+    border: 1.5px solid #111827;
     border-radius: 4px;
     background: #ffffff;
     color: #111827;
-    font-size: 11px;
-    font-weight: 800;
+    font-size: 12px;
+    font-weight: 900;
     cursor: pointer;
 }
 
@@ -288,18 +313,22 @@ svg.svg-sprite {
 }
 
 .create-btn {
-    grid-column: 6;
+    grid-column: 5;
     justify-self: end;
-    height: 28px;
-    min-width: 156px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    height: 38px;
+    min-width: auto;
+    padding: 0 14px;
     border: none;
     border-radius: 4px;
     background: var(--primary);
     color: #ffffff;
-    font-size: 11px;
-    font-weight: 800;
+    font-size: 12px;
+    font-weight: 600;
     cursor: pointer;
-    padding: 0 10px;
 }
 
 .create-btn:hover {
@@ -307,9 +336,9 @@ svg.svg-sprite {
 }
 
 .table-wrapper {
-    margin: 0 16px 10px;
+    margin: 16px 28px 10px;
     border: 1px solid #d7e0ea;
-    border-radius: 6px;
+    border-radius: 7px;
     overflow: hidden;
     background: #ffffff;
 }
@@ -348,38 +377,33 @@ svg.svg-sprite {
 
 .assignment-table th:nth-child(1),
 .assignment-table td:nth-child(1) {
-    width: 8%;
-    text-align: center;
+    width: 14%;
 }
 
 .assignment-table th:nth-child(2),
 .assignment-table td:nth-child(2) {
-    width: 16%;
+    width: 30%;
 }
 
 .assignment-table th:nth-child(3),
 .assignment-table td:nth-child(3) {
-    width: 22%;
+    width: 12%;
+    text-align: center;
 }
 
 .assignment-table th:nth-child(4),
 .assignment-table td:nth-child(4) {
-    width: 18%;
-}
-
-.assignment-table th:nth-child(5),
-.assignment-table td:nth-child(5) {
     width: 8%;
     text-align: center;
 }
 
-.assignment-table th:nth-child(6),
-.assignment-table td:nth-child(6) {
-    width: 14%;
+.assignment-table th:nth-child(5),
+.assignment-table td:nth-child(5) {
+    width: 16%;
 }
 
-.assignment-table th:nth-child(7),
-.assignment-table td:nth-child(7) {
+.assignment-table th:nth-child(6),
+.assignment-table td:nth-child(6) {
     width: 14%;
     text-align: center;
 }
@@ -392,6 +416,16 @@ svg.svg-sprite {
 .qty-text {
     color: #1d3f91;
     font-weight: 700;
+}
+
+.date-link {
+    color: #173b8f;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.date-link:hover {
+    text-decoration: underline;
 }
 
 .detail-btn {
@@ -466,6 +500,126 @@ svg.svg-sprite {
     padding: 20px 8px !important;
 }
 
+/* ── Cancel confirmation modal ── */
+.confirm-overlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(17, 24, 39, 0.42);
+    z-index: 1000;
+}
+
+.confirm-overlay.is-visible {
+    display: flex;
+}
+
+.confirm-modal {
+    width: 430px;
+    min-height: 310px;
+    padding: 38px 34px 30px;
+    background: #ffffff;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+}
+
+.confirm-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+}
+
+.confirm-icon svg {
+    width: 25px;
+    height: 25px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.delete-confirm-icon {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.delete-confirm-icon svg {
+    width: 27px;
+    height: 27px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.confirm-modal h3 {
+    margin: 0;
+    color: #111827;
+    font-size: 20px;
+    font-weight: 900;
+}
+
+.confirm-modal p {
+    margin: 26px 0 30px;
+    color: #667085;
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.confirm-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.modal-cancel-btn,
+.modal-confirm-btn {
+    height: 44px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.modal-cancel-btn {
+    border: 1px solid #d8dee8;
+    background: #ffffff;
+    color: #374151;
+}
+
+.delete-confirm-btn {
+    border: 1px solid #991b1b;
+    background: #991b1b;
+    color: #ffffff;
+}
+
+.delete-confirm-btn:hover {
+    background: #7f1d1d;
+}
+
+/* ── Override guja-autocomplete to match ASS-003 search input standard ── */
+.assignment-card .guja-autocomplete__input {
+    height: 34px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 4px;
+    border-color: #c5ced9;
+    padding-left: 11px;
+    padding-right: 32px;
+}
+
+.assignment-card .guja-autocomplete__item,
+.assignment-card .guja-autocomplete__empty {
+    font-size: 12px;
+}
+
 @media (max-width: 1100px) {
     .toolbar {
         grid-template-columns: 1fr 1fr;
@@ -509,4 +663,26 @@ svg.svg-sprite {
     .page-header h2 {
         font-size: 28px;
     }
+}
+
+/* ── Status badge ─────────────────────────────────────── */
+.status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.status-badge.status-active {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #6ee7b7;
+}
+
+.status-badge.status-cancelled {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
 }

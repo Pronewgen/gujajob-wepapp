@@ -1,0 +1,153 @@
+/* ==========================================================================
+   Table Action Buttons  —  shared across all modules
+   Usage:
+     <div class="table-action-buttons">
+       <a class="table-action-icon table-action-edit"
+          aria-label="แก้ไข" title="แก้ไข" data-tooltip="แก้ไข" href="...">
+         <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
+       </a>
+       <button class="table-action-icon table-action-delete"
+               aria-label="ลบ" title="ลบ" data-tooltip="ลบ" type="submit">
+         <svg aria-hidden="true"><use href="#icon-trash"></use></svg>
+       </button>
+     </div>
+   ========================================================================== */
+
+.table-action-buttons {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+/* Allow tooltip pseudo-elements to escape table overflow: hidden boundary */
+td:has(> .table-action-buttons) {
+    overflow: visible;
+}
+
+.table-action-icon {
+    position: relative;
+
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    box-sizing: border-box;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    border: none;
+    border-radius: 6px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    flex-shrink: 0;
+}
+
+/* ---------- Tooltip text ---------- */
+.table-action-icon::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 8px);
+    transform: translateX(-50%);
+
+    padding: 5px 8px;
+    border-radius: 5px;
+
+    background-color: #1e293b;
+    color: #ffffff;
+
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1;
+    white-space: nowrap;
+
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    z-index: 1000;
+
+    transition:
+        opacity 0.15s ease,
+        visibility 0.15s ease;
+}
+
+/* ---------- Tooltip arrow ---------- */
+.table-action-icon::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 3px);
+    transform: translateX(-50%);
+
+    border: 5px solid transparent;
+    border-top-color: #1e293b;
+
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+/* ---------- Show on hover / keyboard focus ---------- */
+.table-action-icon:hover::after,
+.table-action-icon:hover::before,
+.table-action-icon:focus-visible::after,
+.table-action-icon:focus-visible::before {
+    opacity: 1;
+    visibility: visible;
+}
+
+.table-action-icon svg {
+    width: 15px;
+    height: 15px;
+    flex: 0 0 auto;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Edit  —  amber/orange */
+.table-action-edit {
+    background: #d97706;
+    color: #ffffff;
+}
+
+.table-action-edit:hover {
+    background: #b45309;
+    color: #ffffff;
+}
+
+/* Delete  —  red */
+.table-action-delete {
+    background: #ef4444;
+    color: #ffffff;
+}
+
+.table-action-delete:hover {
+    background: #dc2626;
+    color: #ffffff;
+}
+
+/* Save / Confirm  —  green (used when inline-edit is active) */
+.table-action-save {
+    background: #16a34a;
+    color: #ffffff;
+}
+
+.table-action-save:hover {
+    background: #15803d;
+    color: #ffffff;
+}
+
+/* Keep delete-form inline so it doesn't break row layout */
+.inline-delete-form {
+    display: inline-flex;
+    margin: 0;
+    padding: 0;
+}

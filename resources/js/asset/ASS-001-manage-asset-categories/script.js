@@ -1,3 +1,5 @@
+import { SearchAutocomplete } from '../../components/search-autocomplete.js';
+
 const sidebarStorageKey = 'gujajob.sidebar.groupState';
 
 function getSidebarState() {
@@ -78,114 +80,13 @@ function preventDisabledMenuReload() {
 }
 
 function initializeAssetCategorySearch() {
-    const searchType = document.getElementById('assetSearchType');
-    const searchInput = document.getElementById('assetSearchInput');
-    const searchButton = document.getElementById('assetSearchButton');
-    const tableBody = document.getElementById('assetCategoryTableBody');
-    const resultText = document.getElementById('assetCategoryResultText');
-
-    if (!searchType || !searchInput || !searchButton || !tableBody || !resultText) {
-        return;
-    }
-
-    const originalRows = Array.from(tableBody.querySelectorAll('tr'));
-
-    function updatePlaceholder() {
-        if (searchType.value === 'asset_name') {
-            searchInput.placeholder = 'กรอกชื่อครุภัณฑ์';
-            return;
-        }
-
-        if (searchType.value === 'asset_type') {
-            searchInput.placeholder = 'กรอกชนิดครุภัณฑ์';
-            return;
-        }
-
-        if (searchType.value === 'asset_group') {
-            searchInput.placeholder = 'กรอกหมวดครุภัณฑ์';
-            return;
-        }
-
-        searchInput.placeholder = 'กรอกรหัสประเภทครุภัณฑ์';
-    }
-
-    function getTargetText(row) {
-        if (searchType.value === 'asset_name') {
-            return row.dataset.assetName.toLowerCase();
-        }
-
-        if (searchType.value === 'asset_type') {
-            return row.dataset.assetType.toLowerCase();
-        }
-
-        if (searchType.value === 'asset_group') {
-            return row.dataset.assetGroup.toLowerCase();
-        }
-
-        return row.dataset.categoryCode.toLowerCase();
-    }
-
-    function updateResultText(visibleCount) {
-        if (visibleCount === 0) {
-            resultText.textContent = 'ไม่พบรายการครุภัณฑ์ในระบบ';
-            return;
-        }
-
-        resultText.textContent = `แสดง 1 จากทั้งหมด ${visibleCount} รายการ`;
-    }
-
-    function searchRecords() {
-        const keyword = searchInput.value.trim().toLowerCase();
-        let visibleCount = 0;
-
-        originalRows.forEach((row) => {
-            const isVisible = getTargetText(row).includes(keyword);
-
-            row.style.display = isVisible ? '' : 'none';
-
-            if (isVisible) {
-                visibleCount += 1;
-            }
-        });
-
-        const oldNoDataRow = tableBody.querySelector('.no-data-row');
-
-        if (oldNoDataRow) {
-            oldNoDataRow.remove();
-        }
-
-        if (visibleCount === 0) {
-            const noDataRow = document.createElement('tr');
-            noDataRow.className = 'no-data-row';
-            noDataRow.innerHTML = '<td class="no-data" colspan="7">ไม่พบข้อมูลที่ค้นหา</td>';
-            tableBody.appendChild(noDataRow);
-        }
-
-        updateResultText(visibleCount);
-    }
-
-    searchType.addEventListener('change', () => {
-        searchInput.value = '';
-        updatePlaceholder();
-        searchRecords();
+    // Search is handled by SearchAutocomplete (see initializeAssetCategoryAutocomplete)
+    const form = document.getElementById('assetCategorySearchForm');
+    const input = document.getElementById('assetSearchInput');
+    if (!input || !form) return;
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); form.submit(); }
     });
-
-    searchButton.addEventListener('click', searchRecords);
-
-    searchInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            searchRecords();
-        }
-    });
-
-    searchInput.addEventListener('input', () => {
-        if (searchInput.value.trim() === '') {
-            searchRecords();
-        }
-    });
-
-    updatePlaceholder();
-    searchRecords();
 }
 
 function openOverlay(overlay) {
@@ -203,32 +104,46 @@ function closeOverlay(overlay) {
 }
 
 function initializeAssetCategoryCreatePopup() {
-    const saveButton = document.getElementById('saveAssetCategoryButton');
-    const overlay = document.getElementById('saveAssetCategoryOverlay');
-    const cancelButton = document.getElementById('cancelSaveAssetCategoryButton');
-    const confirmButton = document.getElementById('confirmSaveAssetCategoryButton');
-
-    if (!saveButton || !overlay || !cancelButton || !confirmButton) {
-        return;
+    // Success modal (shown after server-side redirect with flash)
+    const successClose = document.getElementById('closeAssetCategorySuccessModal');
+    const successOverlay = document.getElementById('assetCategorySuccessOverlay');
+    if (successClose && successOverlay) {
+        successClose.addEventListener('click', () => closeOverlay(successOverlay));
+        successOverlay.addEventListener('click', (e) => {
+            if (e.target === successOverlay) closeOverlay(successOverlay);
+        });
     }
 
-    saveButton.addEventListener('click', () => {
-        openOverlay(overlay);
+    // Delete modal
+    const deleteOverlay   = document.getElementById('deleteAssetCategoryOverlay');
+    const cancelDeleteBtn = document.getElementById('cancelDeleteAssetCategoryButton');
+    const confirmDeleteBtn= document.getElementById('confirmDeleteAssetCategoryButton');
+    const deleteForm      = document.getElementById('deleteAssetCategoryForm');
+    const deleteMessage   = document.getElementById('deleteAssetCategoryMessage');
+
+    if (!deleteOverlay || !cancelDeleteBtn || !confirmDeleteBtn || !deleteForm) return;
+
+    // Open delete modal when a delete button is clicked
+    document.querySelectorAll('[data-delete-url]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const url  = btn.dataset.deleteUrl;
+            const code = btn.dataset.deleteCode ?? '';
+            if (deleteMessage) {
+                deleteMessage.textContent = `คุณต้องการลบประเภทครุภัณฑ์ "${code}" ใช่หรือไม่?\nการดำเนินการนี้ไม่สามารถเรียกคืนได้`;
+            }
+            deleteForm.action = url;
+            openOverlay(deleteOverlay);
+        });
     });
 
-    cancelButton.addEventListener('click', () => {
-        closeOverlay(overlay);
+    cancelDeleteBtn.addEventListener('click', () => closeOverlay(deleteOverlay));
+    deleteOverlay.addEventListener('click', (e) => {
+        if (e.target === deleteOverlay) closeOverlay(deleteOverlay);
     });
 
-    overlay.addEventListener('click', (event) => {
-        if (event.target === overlay) {
-            closeOverlay(overlay);
-        }
-    });
-
-    confirmButton.addEventListener('click', () => {
-        closeOverlay(overlay);
-        window.location.href = '/asset/ASS-001-manage-asset-categories';
+    confirmDeleteBtn.addEventListener('click', () => {
+        confirmDeleteBtn.disabled = true;
+        deleteForm.submit();
     });
 }
 
@@ -246,6 +161,58 @@ initializeSidebarGroups();
 preventDisabledMenuReload();
 initializeAssetCategorySearch();
 initializeAssetCategoryCreatePopup();
+initializeAssetCategoryAutocomplete();
+
+/* ===== Autocomplete for ASS-001 search bar ===== */
+
+function initializeAssetCategoryAutocomplete() {
+    const searchInput = document.getElementById('assetSearchInput');
+    const searchType  = document.getElementById('assetSearchType');
+    const form        = document.getElementById('assetCategorySearchForm');
+
+    if (!searchInput) return;
+
+    const ac = new SearchAutocomplete({
+        inputEl:      searchInput,
+        searchTypeEl: searchType,
+        endpoint:     '/search/suggestions',
+        extraParams:  { entity: 'asset_category' },
+        minChars:     1,
+        debounceMs:   300,
+        maxResults:   15,
+        onSelect: (item) => {
+            const type = searchType ? searchType.value : 'code';
+            if (type === 'all') {
+                // For 'all', put code in the input (code+name shown in suggestion)
+                searchInput.value = item.code;
+            } else if (type === 'name') {
+                searchInput.value = item.name || item.code;
+            } else {
+                searchInput.value = item.code;
+            }
+            ac.close();
+            if (form) form.submit();
+        },
+        renderItem: (item) => {
+            const type = searchType ? searchType.value : 'code';
+            if (type === 'all' || type === 'name') {
+                const name = item.name ? ` <span class="sac-sub">${item.name}</span>` : '';
+                return `<span>${item.code}</span>${name}`;
+            }
+            return `<span>${item.code}</span>`;
+        },
+    });
+
+    // Reset dropdown when search type changes
+    if (searchType) {
+        searchType.addEventListener('change', () => ac.close());
+    }
+
+    const wrapper = searchInput.closest('.sac-wrapper') ?? searchInput.parentElement;
+    if (wrapper && wrapper.classList.contains('sac-wrapper')) {
+        wrapper.classList.add('sac-full');
+    }
+}
 
 
 /* ===== Global save validation for create/edit pages ===== */

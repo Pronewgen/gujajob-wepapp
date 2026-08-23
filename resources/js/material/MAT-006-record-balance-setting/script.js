@@ -1,3 +1,5 @@
+import { SearchAutocomplete } from '../../components/search-autocomplete.js';
+
 const sidebarStorageKey = 'gujajob.sidebar.groupState';
 
 function getSidebarState() {
@@ -78,121 +80,40 @@ function preventDisabledMenuReload() {
 }
 
 function initializeBalanceSearch() {
-    const budgetYear = document.getElementById('budgetYear');
-    const departmentName = document.getElementById('departmentName');
-    const searchType = document.getElementById('searchType');
+    const searchByEl  = document.getElementById('searchBy');
     const searchInput = document.getElementById('searchInput');
-    const searchButton = document.getElementById('searchBalanceButton');
-    const tableBody = document.getElementById('balanceTableBody');
-    const resultText = document.getElementById('balanceResultText');
+    const form        = document.getElementById('balanceSearchForm');
 
-    if (!budgetYear || !departmentName || !searchType || !searchInput || !searchButton || !tableBody || !resultText) {
-        return;
-    }
+    if (! searchInput) return;
 
-    const originalRows = Array.from(tableBody.querySelectorAll('tr'));
-
+    // Update placeholder when search type changes
     function updatePlaceholder() {
-        if (searchType.value === 'code') {
-            searchInput.placeholder = 'กรอกรหัสวัสดุ';
-            return;
-        }
-
-        if (searchType.value === 'department') {
-            searchInput.placeholder = 'กรอกชื่อหน่วยงาน';
-            return;
-        }
-
-        searchInput.placeholder = 'กรอกชื่อวัสดุ';
+        searchInput.placeholder = searchByEl && searchByEl.value === 'code'
+            ? 'กรอกรหัสวัสดุ'
+            : 'กรอกชื่อวัสดุ';
     }
 
-    function getTargetText(row) {
-        if (searchType.value === 'code') {
-            return row.dataset.materialCode.toLowerCase();
-        }
-
-        if (searchType.value === 'department') {
-            return row.dataset.department.toLowerCase();
-        }
-
-        return row.dataset.materialName.toLowerCase();
+    if (searchByEl) {
+        searchByEl.addEventListener('change', updatePlaceholder);
     }
-
-    function updateResultText(visibleCount) {
-        if (visibleCount === 0) {
-            resultText.textContent = 'ไม่พบรายการตั้งยอดคงเหลือ';
-            return;
-        }
-
-        resultText.textContent = `แสดง 1–${visibleCount} จากทั้งหมด ${visibleCount} รายการ`;
-    }
-
-    function searchRecords() {
-        const yearKeyword = budgetYear.value.trim();
-        const selectedDepartment = departmentName.value.trim();
-        const keyword = searchInput.value.trim().toLowerCase();
-
-        let visibleCount = 0;
-
-        originalRows.forEach((row) => {
-            const yearMatched = !yearKeyword || row.dataset.budgetYear.includes(yearKeyword);
-            const departmentMatched = !selectedDepartment || row.dataset.department === selectedDepartment;
-            const keywordMatched = getTargetText(row).includes(keyword);
-
-            const isVisible = yearMatched && departmentMatched && keywordMatched;
-
-            row.style.display = isVisible ? '' : 'none';
-
-            if (isVisible) {
-                visibleCount += 1;
-            }
-        });
-
-        const oldNoDataRow = tableBody.querySelector('.no-data-row');
-
-        if (oldNoDataRow) {
-            oldNoDataRow.remove();
-        }
-
-        if (visibleCount === 0) {
-            const noDataRow = document.createElement('tr');
-            noDataRow.className = 'no-data-row';
-            noDataRow.innerHTML = '<td class="no-data" colspan="8">ไม่พบข้อมูลที่ค้นหา</td>';
-            tableBody.appendChild(noDataRow);
-        }
-
-        updateResultText(visibleCount);
-    }
-
-    searchType.addEventListener('change', () => {
-        searchInput.value = '';
-        updatePlaceholder();
-        searchRecords();
-    });
-
-    departmentName.addEventListener('change', searchRecords);
-    searchButton.addEventListener('click', searchRecords);
-
-    budgetYear.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            searchRecords();
-        }
-    });
-
-    searchInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            searchRecords();
-        }
-    });
-
-    searchInput.addEventListener('input', () => {
-        if (searchInput.value.trim() === '') {
-            searchRecords();
-        }
-    });
 
     updatePlaceholder();
-    searchRecords();
+
+    // Autocomplete — queries /search/suggestions, entity=material
+    new SearchAutocomplete({
+        inputEl:      searchInput,
+        searchTypeEl: searchByEl,
+        endpoint:     '/search/suggestions',
+        extraParams:  { entity: 'material' },
+        minChars:     1,
+        debounceMs:   300,
+        maxResults:   20,
+        onSelect: (item) => {
+            const byName = searchByEl && searchByEl.value === 'name';
+            searchInput.value = byName ? (item.name || '') : (item.code || '');
+            if (form) form.submit();
+        },
+    });
 }
 
 function openOverlay(overlay) {
@@ -209,33 +130,220 @@ function closeOverlay(overlay) {
     overlay.setAttribute('aria-hidden', 'true');
 }
 
-function initializeBalanceEditPopup() {
-    const saveButton = document.getElementById('saveBalanceEditButton');
-    const overlay = document.getElementById('balanceEditOverlay');
-    const cancelButton = document.getElementById('cancelBalanceEditButton');
-    const confirmButton = document.getElementById('confirmBalanceEditButton');
+/* ===== Draft tracking for bulk save ===== */
 
-    if (!saveButton || !overlay || !cancelButton || !confirmButton) {
+/** Map of materialId → {balance, materialCode} for rows pending save. */
+const draftMap = new Map();
+
+function updateBulkButton() {
+    const btn = document.getElementById('bulkUpdateButton');
+    if (!btn) return;
+    btn.disabled = draftMap.size === 0;
+}
+
+function markRowDraft(row, matId, matCode, newBalance) {
+    draftMap.set(matId, { balance: newBalance, materialCode: matCode });
+    row.classList.add('row-modified');
+    updateBulkButton();
+}
+
+function enterBalanceEditMode(editBtn, qtyInput) {
+    qtyInput.dataset.originalValue = qtyInput.value;
+    qtyInput.disabled = false;
+    qtyInput.focus();
+    qtyInput.select();
+    editBtn.querySelector('use').setAttribute('href', '#icon-success');
+    editBtn.setAttribute('aria-label', 'ยืนยันค่า');
+    editBtn.setAttribute('title', 'ยืนยันค่า');
+    editBtn.setAttribute('data-tooltip', 'ยืนยันค่า');
+    editBtn.classList.remove('table-action-edit');
+    editBtn.classList.add('table-action-save');
+    editBtn.dataset.mode = 'save';
+}
+
+function exitBalanceDraftMode(editBtn, qtyInput) {
+    const raw = qtyInput.value.trim();
+    const qty = Number(raw);
+
+    if (raw === '' || Number.isNaN(qty) || qty < 0 || !Number.isInteger(qty)) {
+        qtyInput.focus();
+        qtyInput.select();
         return;
     }
 
-    saveButton.addEventListener('click', () => {
-        openOverlay(overlay);
-    });
+    const row    = editBtn.closest('tr');
+    const matId  = row?.dataset.materialId;
+    const matCode= row?.dataset.materialCode;
 
-    cancelButton.addEventListener('click', () => {
-        closeOverlay(overlay);
-    });
+    if (matId) {
+        markRowDraft(row, matId, matCode, qty);
+    }
 
-    overlay.addEventListener('click', (event) => {
-        if (event.target === overlay) {
-            closeOverlay(overlay);
+    qtyInput.disabled = true;
+    editBtn.querySelector('use').setAttribute('href', '#icon-square-pen');
+    editBtn.setAttribute('aria-label', 'แก้ไขยอดคงเหลือ');
+    editBtn.setAttribute('title', 'แก้ไขยอดคงเหลือ');
+    editBtn.setAttribute('data-tooltip', 'แก้ไขยอดคงเหลือ');
+    editBtn.classList.remove('table-action-save');
+    editBtn.classList.add('table-action-edit');
+    editBtn.dataset.mode = 'edit';
+}
+
+function initializeBalanceInlineEdit() {
+    const tableBody = document.querySelector('.balance-table tbody');
+    if (!tableBody) return;
+
+    tableBody.addEventListener('click', (event) => {
+        const editBtn = event.target.closest('.table-action-edit, .table-action-save');
+        if (!editBtn) return;
+
+        const row      = editBtn.closest('tr');
+        const qtyInput = row?.querySelector('.balance-qty-input');
+        if (!qtyInput) return;
+
+        if (editBtn.dataset.mode === 'save') {
+            exitBalanceDraftMode(editBtn, qtyInput);
+        } else {
+            enterBalanceEditMode(editBtn, qtyInput);
         }
     });
 
-    confirmButton.addEventListener('click', () => {
+    tableBody.addEventListener('keydown', (event) => {
+        const qtyInput = event.target;
+        if (!qtyInput.classList.contains('balance-qty-input')) return;
+
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            const row     = qtyInput.closest('tr');
+            const editBtn = row?.querySelector('.table-action-save');
+            if (editBtn) exitBalanceDraftMode(editBtn, qtyInput);
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            const row     = qtyInput.closest('tr');
+            const editBtn = row?.querySelector('.table-action-save');
+            if (!editBtn) return;
+
+            qtyInput.value    = qtyInput.dataset.originalValue ?? qtyInput.value;
+            qtyInput.disabled = true;
+            editBtn.querySelector('use').setAttribute('href', '#icon-square-pen');
+            editBtn.setAttribute('aria-label', 'แก้ไขยอดคงเหลือ');
+            editBtn.setAttribute('title', 'แก้ไขยอดคงเหลือ');
+            editBtn.setAttribute('data-tooltip', 'แก้ไขยอดคงเหลือ');
+            editBtn.classList.remove('table-action-save');
+            editBtn.classList.add('table-action-edit');
+            editBtn.dataset.mode = 'edit';
+        }
+    });
+}
+
+/* ===== Bulk Update (ปรับปรุง) modal + submit ===== */
+
+function initializeBulkUpdate() {
+    const bulkBtn     = document.getElementById('bulkUpdateButton');
+    const overlay     = document.getElementById('bulkUpdateOverlay');
+    const cancelBtn   = document.getElementById('cancelBulkUpdateButton');
+    const confirmBtn  = document.getElementById('confirmBulkUpdateButton');
+
+    if (!bulkBtn || !overlay || !cancelBtn || !confirmBtn) return;
+
+    bulkBtn.addEventListener('click', () => {
+        if (draftMap.size === 0) return;
+        openOverlay(overlay);
+    });
+
+    cancelBtn.addEventListener('click', () => closeOverlay(overlay));
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeOverlay(overlay); });
+
+    confirmBtn.addEventListener('click', async () => {
         closeOverlay(overlay);
-        window.location.href = '/material/MAT-006-record-balance-setting';
+        confirmBtn.disabled = true;
+        bulkBtn.disabled = true;
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+        const bulkUrl   = bulkBtn.dataset.bulkUrl;
+        const fiscalYear= parseInt(bulkBtn.dataset.fiscalYear ?? '0', 10);
+        const orgId     = parseInt(bulkBtn.dataset.orgId ?? '0', 10);
+
+        const items = Array.from(draftMap.entries()).map(([matId, data]) => ({
+            material_id:   parseInt(matId, 10),
+            material_code: data.materialCode,
+            balance:       data.balance,
+        }));
+
+        try {
+            const res  = await fetch(bulkUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept':        'application/json',
+                },
+                body: JSON.stringify({ fiscal_year: fiscalYear, organization_id: orgId, items }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok || !data.success) {
+                alert('บันทึกไม่สำเร็จ: ' + (data.error ?? 'ข้อผิดพลาดไม่ทราบสาเหตุ'));
+                bulkBtn.disabled = false;
+                confirmBtn.disabled = false;
+                return;
+            }
+
+            // Clear draft state and reload to reflect DB values
+            draftMap.clear();
+            document.querySelectorAll('.row-modified').forEach((r) => r.classList.remove('row-modified'));
+            bulkBtn.disabled = true;
+            // Brief success feedback then reload
+            alert(`บันทึกสำเร็จ: ${data.count} รายการ`);
+            window.location.reload();
+
+        } catch (err) {
+            alert('เกิดข้อผิดพลาด กรุณาลองใหม่');
+            bulkBtn.disabled = false;
+            confirmBtn.disabled = false;
+        }
+    });
+}
+
+/* ===== Print ===== */
+
+function initializePrint() {
+    const printBtn = document.getElementById('printBalanceButton');
+    if (!printBtn) return;
+
+    printBtn.addEventListener('click', () => {
+        const fiscalYear = printBtn.dataset.fiscalYear ?? '';
+        const orgName    = printBtn.dataset.orgName ?? 'ทุกหน่วยงาน';
+
+        // Build print-friendly content
+        const tableEl = document.querySelector('.balance-table');
+        if (!tableEl) return;
+
+        const win = window.open('', '_blank');
+        win.document.write(`<!DOCTYPE html><html lang="th"><head>
+            <meta charset="UTF-8">
+            <title>รายการตั้งยอดคงเหลือ</title>
+            <style>
+                body{font-family:Sarabun,sans-serif;font-size:13px;margin:20px;}
+                h2{font-size:16px;margin:0 0 6px;}
+                .meta{font-size:12px;color:#555;margin-bottom:12px;}
+                table{border-collapse:collapse;width:100%;}
+                th,td{border:1px solid #ccc;padding:5px 8px;text-align:left;}
+                th{background:#f3f4f6;}
+                input{border:none;background:transparent;width:100%;}
+            </style>
+        </head><body>
+            <h2>รายการตั้งยอดคงเหลือ</h2>
+            <div class="meta">
+                หน่วยงาน: ${orgName}<br>
+                ปีงบประมาณ: ${fiscalYear}
+            </div>
+            ${tableEl.outerHTML}
+        </body></html>`);
+        win.document.close();
+        win.focus();
+        setTimeout(() => win.print(), 400);
     });
 }
 
@@ -252,8 +360,12 @@ document.addEventListener('keydown', (event) => {
 initializeSidebarGroups();
 preventDisabledMenuReload();
 initializeBalanceSearch();
-initializeBalanceEditPopup();
+initializeBalanceInlineEdit();
+initializeBulkUpdate();
+initializePrint();
 
+
+/* ===== Inline Balance Edit ===== */
 
 /* ===== Global save validation for create/edit pages ===== */
 

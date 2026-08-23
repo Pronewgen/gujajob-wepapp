@@ -1,5 +1,13 @@
 <?php
 
+// PHP 8.4 removed mb_strcut; Laravel's exception renderer still calls it for long SQL strings
+if (! function_exists('mb_strcut')) {
+    function mb_strcut(string $str, int $start, ?int $length = null, string $encoding = 'UTF-8'): string
+    {
+        return $length !== null ? substr($str, $start, $length) : substr($str, $start);
+    }
+}
+
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -12,7 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->redirectGuestsTo(fn () => route('login'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

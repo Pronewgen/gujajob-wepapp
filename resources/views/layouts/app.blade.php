@@ -3,13 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $pageTitle ?? 'GUJAJOB WebApp' }}</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>@yield('title', $pageTitle ?? 'GUJAJOB WebApp')</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
+    <style>
+        /* ── Sidebar submenu (อนุมัติการเบิกวัสดุ) ───────────────────────── */
+        .menu-sublist { margin: 0; }
+        .menu-subitem {
+            position: relative;
+            display: flex;
+            align-items: center;
+            min-height: 32px;
+            padding: 5px 16px 5px 44px;
+            color: #7f8da5;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 400;
+            white-space: nowrap;
+            transition: background 0.15s, color 0.15s;
+        }
+        .menu-subitem::before {
+            content: '';
+            position: absolute;
+            left: 30px;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: currentColor;
+            opacity: 0.5;
+        }
+        .menu-subitem:hover {
+            background: rgba(255,255,255,0.05);
+            color: #d6deec;
+        }
+        .menu-subitem.active {
+            color: #93c5fd;
+            font-weight: 600;
+            background: rgba(37,72,189,0.2);
+        }
+        .menu-subitem.active::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 3px;
+            height: 100%;
+            background: #4b7cff;
+            border-radius: 0 2px 2px 0;
+        }
+        /* Parent menu item when a child submenu is active */
+        .menu-item.menu-item-parent-active {
+            background: rgba(37,72,189,0.15);
+            color: #d6deec;
+            font-weight: 500;
+        }
+        .menu-item.menu-item-parent-active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 4px;
+            height: 100%;
+            background: rgba(75,124,255,0.45);
+        }
+
+        /* ── Page header row (title + user badge on same row) ───────── */
+        .page-header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px 16px;
+            margin-bottom: 16px;
+        }
+        .page-header-row > h2 {
+            margin: 0 !important;
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+        .page-header-row > .content-topbar-user {
+            flex-shrink: 0;
+        }
+
+        /* ── Content top bar ──────────────────────────────────────────────── */
+        .content-topbar {
+            display: none; /* replaced by x-page-header component */
+        }
+
+        /* ── User badge (display-only, no dropdown) ───────────────────── */
+        .content-topbar-user {
+            position: relative;
+        }
+
+        .user-badge {
+            display: inline-flex;
+            align-items: center;
+            background: #dbeafe;
+            color: #1d4ed8;
+            border: 1.5px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 5px 12px;
+            font-size: 13.5px;
+            font-weight: 600;
+            white-space: nowrap;
+            line-height: 1.4;
+            cursor: default;
+        }
+
+        /* ── Sidebar logout button ───────────────────────────────────────── */
+        .sidebar-logout {
+            padding: 10px 16px 12px;
+            border-bottom: 1px solid #243044;
+        }
+
+        .sidebar-logout form { margin: 0; }
+
+        .logout-btn {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 6px;
+            color: rgba(214,222,236,0.85);
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 5px 12px;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s, color 0.15s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(255,255,255,0.3);
+            color: #ffffff;
+        }
+    </style>
     @yield('page-style')
+    @vite(['resources/css/components/form-buttons.css'])
 </head>
 <body>
     <svg class="svg-sprite" xmlns="http://www.w3.org/2000/svg">
@@ -110,6 +243,10 @@
         <symbol id="icon-check-circle" viewBox="0 0 24 24">
             <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
             <path d="m9 12 2 2 4-4"/>
+        </symbol>
+
+        <symbol id="icon-check" viewBox="0 0 24 24">
+            <path d="M20 6 9 17l-5-5"/>
         </symbol>
 
         <symbol id="icon-list-check" viewBox="0 0 24 24">
@@ -215,6 +352,14 @@
             <path d="M10 19h4"/>
         </symbol>
 
+        <symbol id="icon-trash" viewBox="0 0 24 24">
+            <path d="M3 6h18"/>
+            <path d="M8 6V4h8v2"/>
+            <path d="M19 6l-1 14H6L5 6"/>
+            <path d="M10 11v6"/>
+            <path d="M14 11v6"/>
+        </symbol>
+
     </svg>
 
     <div class="app-shell">
@@ -228,6 +373,13 @@
                     <h1>ระบบบริหารจัดการ</h1>
                     <p>คลังวัสดุและครุภัณฑ์</p>
                 </div>
+            </div>
+
+            <div class="sidebar-logout">
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit" class="logout-btn">ออกจากระบบ</button>
+                </form>
             </div>
 
             <nav class="menu">
@@ -248,12 +400,16 @@
                             <span>บันทึกการรับวัสดุเข้าคลัง</span>
                         </a>
 
-                        <a class="menu-item {{ request()->routeIs('material.withdraw.*') ? 'active' : '' }}" href="{{ route('material.withdraw.index') }}">
+                        <a class="menu-item {{ request()->routeIs('material.withdraw.*') && !request()->routeIs('material.withdraw.approval.*') ? 'active' : (request()->routeIs('material.withdraw.approval.*') ? 'menu-item-parent-active' : '') }}" href="{{ route('material.withdraw.index') }}">
                             <svg class="menu-icon"><use href="#icon-upload"></use></svg>
                             <span>เบิกวัสดุ</span>
                         </a>
 
-                        <a class="menu-item disabled-link" href="#">
+                        <div class="menu-sublist">
+                            <a class="menu-subitem {{ request()->routeIs('material.withdraw.approval.*') ? 'active' : '' }}" href="{{ route('material.withdraw.approval.index') }}">อนุมัติการเบิกวัสดุ</a>
+                        </div>
+
+                        <a class="menu-item {{ request()->routeIs('material.transfer.*') ? 'active' : '' }}" href="{{ route('material.transfer.index') }}">
                             <svg class="menu-icon"><use href="#icon-transfer"></use></svg>
                             <span>รับโอนวัสดุ</span>
                         </a>
@@ -332,6 +488,12 @@
         </aside>
 
         <main class="content">
+            <div class="content-topbar">
+                <div class="content-topbar-user">
+                    <span class="user-badge">{{ auth()->user()->user_name ?? '' }}</span>
+                </div>
+            </div>
+
             @yield('content')
         </main>
     </div>

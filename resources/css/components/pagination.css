@@ -1,0 +1,155 @@
+/* ===== Global App Pagination Component ===== */
+
+.app-pagination-summary {
+    margin: 0;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 400;
+    white-space: nowrap;
+}
+
+.app-pagination-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-left: auto;
+    flex-wrap: nowrap;
+}
+
+.app-pagination-link {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #d7deea;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1;
+    text-decoration: none;
+    background-color: #ffffff;
+    color: #173f90;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+a.app-pagination-link:hover {
+    background-color: #f4f7fb;
+    border-color: #173f90;
+    text-decoration: none;
+}
+
+.app-pagination-link.is-active {
+    background-color: #173f90;
+    color: #ffffff;
+    border-color: #173f90;
+}
+
+.app-pagination-link.is-disabled {
+    color: #cbd5e1;
+    background-color: #f8fafc;
+    border-color: #e2e8f0;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.app-pagination-ellipsis {
+    width: 24px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    font-size: 14px;
+    line-height: 1;
+    border: 0;
+    background: transparent;
+    pointer-events: none;
+    cursor: default;
+}
+
+.app-page-jump-form {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 0 4px;
+}
+
+.app-page-jump-label {
+    margin: 0;
+    color: #475569;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.app-page-jump-input {
+    width: 60px;
+    height: 32px;
+    padding: 0 6px;
+    box-sizing: border-box;
+    border: 1px solid #d7deea;
+    border-radius: 6px;
+    background-color: #ffffff;
+    color: #1e293b;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 400;
+    font-family: inherit;
+    line-height: 1;
+    outline: none;
+    /* Hide number spinners */
+    -moz-appearance: textfield;
+}
+
+.app-page-jump-input::-webkit-outer-spin-button,
+.app-page-jump-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.app-page-jump-input:focus {
+    border-color: #173f90;
+    box-shadow: 0 0 0 2px rgba(23, 63, 144, 0.12);
+}
+
+.app-page-jump-button {
+    min-width: 44px;
+    height: 32px;
+    padding: 0 10px;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #173f90;
+    border-radius: 6px;
+    background-color: #173f90;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.app-page-jump-button:hover {
+    background-color: #123473;
+    border-color: #123473;
+}
+
+@media (max-width: 768px) {
+    .app-pagination-actions {
+        width: 100%;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .app-page-jump-form {
+        flex-wrap: nowrap;
+    }
+}

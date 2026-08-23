@@ -1,3 +1,6 @@
+import { SearchAutocomplete } from '../../components/search-autocomplete.js';
+import { initSearchableSelects } from '../../components/searchable-select.js';
+
 const sidebarStorageKey = 'gujajob.sidebar.groupState';
 
 function getSidebarState() {
@@ -78,253 +81,222 @@ function preventDisabledMenuReload() {
 }
 
 function initializeAssetRegistrationSearch() {
-    const searchType = document.getElementById('assetSearchType');
-    const searchInput = document.getElementById('assetSearchInput');
-    const statusFilter = document.getElementById('assetStatusFilter');
-    const searchButton = document.getElementById('assetSearchButton');
-    const tableBody = document.getElementById('assetRegistrationTableBody');
-    const resultText = document.getElementById('assetRegistrationResultText');
+    const searchTypeEl  = document.getElementById('assetSearchType');
+    const searchInputEl = document.getElementById('assetSearchInput');
 
-    if (!searchType || !searchInput || !statusFilter || !searchButton || !tableBody || !resultText) {
+    if (!searchTypeEl || !searchInputEl) {
         return;
     }
 
-    const originalRows = Array.from(tableBody.querySelectorAll('tr'));
+    const ac = new SearchAutocomplete({
+        inputEl:      searchInputEl,
+        searchTypeEl: searchTypeEl,
+        endpoint:     '/search/suggestions',
+        extraParams:  { entity: 'asset' },
+        minChars:     1,
+        debounceMs:   300,
+        maxResults:   15,
+        onSelect: (item) => {
+            searchInputEl.value = item.code;
+            searchInputEl.closest('form')?.submit();
+        },
+    });
 
-    function updatePlaceholder() {
-        const placeholders = {
-            asset_code: 'กรอกรหัสครุภัณฑ์',
-            asset_name: 'กรอกชื่อครุภัณฑ์',
-            department: 'กรอกชื่อหน่วยงาน',
-        };
+    searchTypeEl.addEventListener('change', () => {
+        searchInputEl.value = '';
+        ac.clear?.();
+    });
+}
 
-        searchInput.placeholder = placeholders[searchType.value] || 'กรอกรหัสครุภัณฑ์';
+function initializeDeleteModal() {
+    const overlay       = document.getElementById('deleteAssetOverlay');
+    const cancelButton  = document.getElementById('cancelDeleteAssetButton');
+    const confirmButton = document.getElementById('confirmDeleteAssetButton');
+    const deleteForm    = document.getElementById('deleteAssetForm');
+    const messageEl     = document.getElementById('deleteAssetMessage');
+
+    if (!overlay || !deleteForm) {
+        return;
     }
 
-    function getTargetText(row) {
-        const keyMap = {
-            asset_code: 'assetCode',
-            asset_name: 'assetName',
-            department: 'department',
-        };
+    document.querySelectorAll('[data-delete-url]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const code = btn.dataset.deleteCode || '';
+            deleteForm.action = btn.dataset.deleteUrl;
+            if (messageEl && code) {
+                messageEl.innerHTML = `คุณแน่ใจหรือไม่ว่าต้องการลบครุภัณฑ์ : '${code}'<br>การดำเนินการนี้ไม่สามารถเรียกคืนได้`;
+            }
+            overlay.classList.add('is-visible');
+            overlay.setAttribute('aria-hidden', 'false');
+        });
+    });
 
-        const key = keyMap[searchType.value] || 'assetCode';
-
-        return String(row.dataset[key] || '').toLowerCase();
+    function closeModal() {
+        overlay.classList.remove('is-visible');
+        overlay.setAttribute('aria-hidden', 'true');
     }
 
-    function updateResultText(visibleCount) {
-        if (visibleCount === 0) {
-            resultText.textContent = 'ไม่พบทะเบียนครุภัณฑ์';
+    cancelButton?.addEventListener('click', closeModal);
+    confirmButton?.addEventListener('click', () => {
+        deleteForm.submit();
+    });
+
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            closeModal();
+        }
+    });
+}
+
+function initializeForecastToggle() {
+    const toggleBtn       = document.getElementById('forecastToggleBtn');
+    const closeBtn        = document.getElementById('forecastCloseBtn');
+    const forecastSection = document.getElementById('forecastSection');
+    const calcBtn         = document.getElementById('forecastCalcBtn');
+    const resultEl        = document.getElementById('forecastResult');
+    const yearsEl         = document.getElementById('forecastYears');
+    // forecastCatId and forecastOrgId are now hidden inputs managed by x-searchable-select
+    const catIdEl  = document.getElementById('forecastCatId');
+    const orgIdEl  = document.getElementById('forecastOrgId');
+
+    if (!forecastSection) return;
+
+    function showForecast() {
+        forecastSection.style.display = '';
+        forecastSection.setAttribute('aria-hidden', 'false');
+    }
+
+    function hideForecast() {
+        forecastSection.style.display = 'none';
+        forecastSection.setAttribute('aria-hidden', 'true');
+    }
+
+    toggleBtn?.addEventListener('click', () => {
+        if (forecastSection.style.display === 'none' || forecastSection.style.display === '') {
+            showForecast();
+        } else {
+            hideForecast();
+        }
+    });
+
+    closeBtn?.addEventListener('click', hideForecast);
+
+    let lastForecastData = [];
+
+    calcBtn?.addEventListener('click', async () => {
+        if (!resultEl) return;
+        resultEl.innerHTML = '<p style="color:#6d28d9;font-size:12px;font-weight:700;">กำลังคำนวณ...</p>';
+
+        const years = yearsEl?.value || '1';
+        const catId = catIdEl?.value || '';
+        const orgId = orgIdEl?.value || '';
+        const url   = new URL('/asset/ASS-003-manage-asset-registration/forecast-data', window.location.origin);
+        url.searchParams.set('years_ahead', years);
+        if (catId) url.searchParams.set('filter_cat_id', catId);
+        if (orgId) url.searchParams.set('filter_org_id', orgId);
+
+        try {
+            const res  = await fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const json = await res.json();
+            lastForecastData = json.data ?? [];
+            renderForecast(json, resultEl, lastForecastData);
+        } catch {
+            resultEl.innerHTML = '<p style="color:#dc2626;font-size:12px;font-weight:700;">เกิดข้อผิดพลาด กรุณาลองอีกครั้ง</p>';
+        }
+    });
+
+    document.getElementById('forecastPrintBtn')?.addEventListener('click', () => window.print());
+}
+
+function renderForecast(res, container, allRows) {
+    const rows = allRows ?? res.data ?? [];
+    if (!rows.length) {
+        container.innerHTML = '<p style="color:#6d28d9;font-size:12px;font-weight:700;">ไม่พบครุภัณฑ์ที่คาดว่าจะหมดอายุในช่วงเวลาที่เลือก</p>';
+        return;
+    }
+
+    const totalBudget = (res.summary?.total_budget ?? 0).toLocaleString('th-TH', { minimumFractionDigits: 2 });
+    const totalCount  = res.summary?.total_count ?? 0;
+
+    const searchBarHtml = `<div class="forecast-search-bar">
+        <div class="forecast-search-field"><label>ค้นหาจาก</label><select id="forecastTableSearchType"><option value="code">รหัสครุภัณฑ์</option><option value="name">ชื่อครุภัณฑ์</option><option value="org">หน่วยงาน</option></select></div>
+        <div class="forecast-search-field"><label>คำค้นหา</label><input id="forecastTableSearchInput" type="search" autocomplete="off" placeholder="ค้นหา..."></div>
+        <button class="forecast-search-btn" type="button" id="forecastTableSearchBtn">ค้นหา</button>
+    </div>`;
+
+    const summaryHtml = `<div class="forecast-summary">
+        <div class="summary-box"><span>ครุภัณฑ์ที่คาดจะหมดอายุ</span><strong>${totalCount} รายการ</strong></div>
+        <div class="summary-box"><span>งบประมาณรวม</span><strong>${totalBudget} บาท</strong></div>
+    </div>`;
+
+    container.innerHTML = summaryHtml + `<div class="forecast-table-card">
+        ${searchBarHtml}
+        <div id="forecastTableBody"></div>
+    </div>`;
+
+    renderForecastRows(rows);
+
+    document.getElementById('forecastTableSearchBtn')?.addEventListener('click', () => {
+        const type    = document.getElementById('forecastTableSearchType')?.value || 'code';
+        const keyword = (document.getElementById('forecastTableSearchInput')?.value || '').trim().toUpperCase();
+        if (!keyword) {
+            renderForecastRows(allRows);
             return;
         }
-
-        resultText.textContent = `แสดง ${visibleCount} รายการ จากทั้งหมด 100 รายการ`;
-    }
-
-    function removeNoDataRow() {
-        const oldNoDataRow = tableBody.querySelector('.no-data-row');
-
-        if (oldNoDataRow) {
-            oldNoDataRow.remove();
-        }
-    }
-
-    function searchRecords() {
-        const keyword = searchInput.value.trim().toLowerCase();
-        const selectedStatus = statusFilter.value;
-        let visibleCount = 0;
-
-        removeNoDataRow();
-
-        originalRows.forEach((row) => {
-            const matchKeyword = getTargetText(row).includes(keyword);
-            const matchStatus = selectedStatus === 'all' || row.dataset.status === selectedStatus;
-            const isVisible = matchKeyword && matchStatus;
-
-            row.style.display = isVisible ? '' : 'none';
-
-            if (isVisible) {
-                visibleCount += 1;
-            }
-        });
-
-        if (visibleCount === 0) {
-            const noDataRow = document.createElement('tr');
-            noDataRow.className = 'no-data-row';
-            noDataRow.innerHTML = '<td class="no-data" colspan="8">ไม่พบข้อมูลที่ค้นหา</td>';
-            tableBody.appendChild(noDataRow);
-        }
-
-        updateResultText(visibleCount);
-    }
-
-    searchType.addEventListener('change', () => {
-        searchInput.value = '';
-        updatePlaceholder();
-        searchRecords();
+        const keyMap = { code: 'code', name: 'name', org: 'org' };
+        const key    = keyMap[type] || 'code';
+        const filtered = allRows.filter((r) => String(r[key] ?? '').toUpperCase().includes(keyword));
+        renderForecastRows(filtered);
     });
-
-    statusFilter.addEventListener('change', searchRecords);
-    searchButton.addEventListener('click', searchRecords);
-
-    searchInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            searchRecords();
-        }
-    });
-
-    searchInput.addEventListener('input', () => {
-        if (searchInput.value.trim() === '') {
-            searchRecords();
-        }
-    });
-
-    const createButton = document.getElementById('createAssetRegistrationButton');
-
-    if (createButton) {
-        createButton.addEventListener('click', () => {
-            const createUrl = createButton.dataset.createUrl;
-
-            if (createUrl) {
-                window.location.href = createUrl;
-                return;
-            }
-
-            alert('ไม่พบเส้นทางหน้าบันทึกทะเบียนใหม่');
-        });
-    }
-
-    updatePlaceholder();
-    searchRecords();
 }
 
-function initializeForecastPanel() {
-    const openButton = document.getElementById('forecastOpenButton');
-    const panel = document.getElementById('forecastPanel');
-    const calculateButton = document.getElementById('calculateForecastButton');
-    const printButton = document.getElementById('printForecastButton');
+function renderForecastRows(rows) {
+    const tbody = document.getElementById('forecastTableBody');
+    if (!tbody) return;
 
-    if (!openButton || !panel) {
+    if (!rows.length) {
+        tbody.innerHTML = '<table class="forecast-table"><tbody><tr><td class="no-data" colspan="8">ไม่พบข้อมูล</td></tr></tbody></table>';
         return;
     }
 
-    openButton.addEventListener('click', () => {
-        panel.classList.toggle('is-hidden');
+    let html = `<table class="forecast-table">
+        <thead><tr>
+            <th>รหัสครุภัณฑ์</th>
+            <th>ชื่อครุภัณฑ์</th>
+            <th>หน่วยงาน</th>
+            <th>อายุ (ปี)</th>
+            <th>วันที่ตรวจรับ</th>
+            <th>วันหมดอายุ</th>
+            <th>หมดใน</th>
+            <th style="text-align:right;">ราคาทดแทน</th>
+        </tr></thead>
+        <tbody>`;
 
-        if (!panel.classList.contains('is-hidden')) {
-            panel.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start',
-            });
-        }
-    });
-
-    if (calculateButton) {
-        calculateButton.addEventListener('click', () => {
-            alert('คำนวณพยากรณ์งบประมาณเรียบร้อย');
-        });
+    for (const r of rows) {
+        const yrs     = (r.years_remaining ?? 0);
+        const yrsText = yrs <= 0 ? 'หมดอายุแล้ว' : `${yrs.toFixed(1)} ปี`;
+        const price   = (r.price ?? 0).toLocaleString('th-TH', { minimumFractionDigits: 2 });
+        html += `<tr>
+            <td class="asset-code">${r.code ?? '-'}</td>
+            <td>${r.name ?? '-'}</td>
+            <td>${r.org ?? '-'}</td>
+            <td style="text-align:center;">${r.lifetime ?? '-'}</td>
+            <td>${r.inspect_date ?? '-'}</td>
+            <td class="expire-date">${r.end_date ?? '-'}</td>
+            <td style="text-align:center;">${yrsText}</td>
+            <td style="text-align:right;">${price}</td>
+        </tr>`;
     }
 
-    if (printButton) {
-        printButton.addEventListener('click', () => {
-            alert('ปุ่มนี้เตรียมไว้สำหรับจัดพิมพ์รายงานพยากรณ์');
-        });
-    }
+    html += '</tbody></table>';
+    tbody.innerHTML = html;
 }
 
-function initializeForecastSearch() {
-    const searchType = document.getElementById('forecastSearchType');
-    const searchInput = document.getElementById('forecastSearchInput');
-    const searchButton = document.getElementById('forecastSearchButton');
-    const tableBody = document.getElementById('forecastTableBody');
-
-    if (!searchType || !searchInput || !searchButton || !tableBody) {
-        return;
-    }
-
-    const originalRows = Array.from(tableBody.querySelectorAll('tr'));
-
-    function updatePlaceholder() {
-        const placeholders = {
-            category: 'กรอกหมวดครุภัณฑ์',
-            name: 'กรอกชื่อครุภัณฑ์',
-            department: 'กรอกชื่อหน่วยงาน',
-        };
-
-        searchInput.placeholder = placeholders[searchType.value] || 'กรอกหมวดครุภัณฑ์';
-    }
-
-    function getForecastTarget(row) {
-        const keyMap = {
-            category: 'category',
-            name: 'name',
-            department: 'department',
-        };
-
-        const key = keyMap[searchType.value] || 'category';
-
-        return String(row.dataset[key] || '').toLowerCase();
-    }
-
-    function removeNoDataRow() {
-        const oldNoDataRow = tableBody.querySelector('.no-data-row');
-
-        if (oldNoDataRow) {
-            oldNoDataRow.remove();
-        }
-    }
-
-    function searchForecast() {
-        const keyword = searchInput.value.trim().toLowerCase();
-        let visibleCount = 0;
-
-        removeNoDataRow();
-
-        originalRows.forEach((row) => {
-            const target = getForecastTarget(row);
-            const isVisible = target.includes(keyword);
-
-            row.style.display = isVisible ? '' : 'none';
-
-            if (isVisible) {
-                visibleCount += 1;
-            }
-        });
-
-        if (visibleCount === 0) {
-            const noDataRow = document.createElement('tr');
-            noDataRow.className = 'no-data-row';
-            noDataRow.innerHTML = '<td class="no-data" colspan="8">ไม่พบข้อมูลที่ค้นหา</td>';
-            tableBody.appendChild(noDataRow);
-        }
-    }
-
-    searchType.addEventListener('change', () => {
-        searchInput.value = '';
-        updatePlaceholder();
-        searchForecast();
-    });
-
-    searchButton.addEventListener('click', searchForecast);
-
-    searchInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            searchForecast();
-        }
-    });
-
-    searchInput.addEventListener('input', () => {
-        if (searchInput.value.trim() === '') {
-            searchForecast();
-        }
-    });
-
-    updatePlaceholder();
-}
-
-initializeSidebarGroups();
-preventDisabledMenuReload();
-initializeAssetRegistrationSearch();
-initializeForecastPanel();
-initializeForecastSearch();
+document.addEventListener('DOMContentLoaded', () => {
+    initializeSidebarGroups();
+    preventDisabledMenuReload();
+    initSearchableSelects();
+    initializeAssetRegistrationSearch();
+    initializeDeleteModal();
+    initializeForecastToggle();
+});

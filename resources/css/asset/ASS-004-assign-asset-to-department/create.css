@@ -199,9 +199,9 @@ svg.svg-sprite {
 
 .page-container {
     width: 100%;
-    max-width: 980px;
+    max-width: 1136px;
     margin: 0 auto;
-    padding: 34px 22px 44px;
+    padding: 56px 28px 60px;
 }
 
 .page-header {
@@ -215,10 +215,10 @@ svg.svg-sprite {
 .page-header h2 {
     margin: 0 0 12px;
     color: var(--primary);
-    font-size: 34px;
+    font-size: 24px;
     font-weight: 900;
     line-height: 1;
-    letter-spacing: -0.3px;
+    letter-spacing: -0.4px;
 }
 
 .header-line {
@@ -228,10 +228,11 @@ svg.svg-sprite {
 }
 
 .assignment-create-card {
-    background: #f8fbff;
-    border: 1px solid #d6deea;
+    background: #ffffff;
+    border: 1.5px solid #173b8f;
+    border-top-width: 4px;
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
     padding: 14px 14px 16px;
 }
 
@@ -557,11 +558,11 @@ svg.svg-sprite {
 
 .cancel-btn,
 .save-btn {
-    height: 28px;
+    height: 40px;
     border-radius: 4px;
-    font-size: 10px;
+    font-size: 13px;
     font-weight: 800;
-    padding: 0 12px;
+    padding: 0 20px;
     text-decoration: none;
     display: inline-flex;
     align-items: center;
@@ -570,16 +571,18 @@ svg.svg-sprite {
 }
 
 .cancel-btn {
-    border: 1px solid #ef4444;
+    min-width: 104px;
+    border: 1.5px solid #ef4444;
     background: #ffffff;
     color: #ef4444;
 }
 
 .cancel-btn:hover {
-    background: #fef2f2;
+    background: #fff5f5;
 }
 
 .save-btn {
+    min-width: 126px;
     border: 0;
     background: var(--primary);
     color: #ffffff;
@@ -825,4 +828,400 @@ svg.svg-sprite {
         font-size: 13px;
         border-radius: 6px;
     }
+}
+
+/* ── Additional styles for rewritten blades ── */
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.form-label {
+    color: #334155;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.required {
+    color: #dc2626;
+}
+
+.form-control {
+    height: 38px;
+    border: 1px solid #c5ced9;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #111827;
+    font-size: 13px;
+    font-weight: 400;
+    padding: 0 12px;
+    outline: none;
+    width: 100%;
+}
+
+.form-control.is-invalid {
+    border-color: #ef4444;
+}
+
+.form-control-readonly {
+    height: 38px;
+    border: 1px solid #dde3eb;
+    border-radius: 4px;
+    background: #f1f5f9;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 400;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+}
+
+.field-error {
+    margin: 0;
+    color: #dc2626;
+    font-size: 9px;
+    font-weight: 600;
+}
+
+.back-btn {
+    height: 38px;
+    min-width: auto;
+    padding: 0 20px;
+    border-radius: 4px;
+    border: 1.5px solid #111827;
+    background: #ffffff;
+    color: #111827;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.back-btn:hover {
+    background: #f3f4f6;
+}
+
+/* Asset search bar in Section 2 */
+.asset-search-bar {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    padding: 8px 0 10px;
+    flex-wrap: wrap;
+}
+
+.asset-search-bar .form-group {
+    gap: 5px;
+}
+
+/* search type = 1 part, keyword = 2 parts, button = auto */
+.asset-search-bar .form-group:nth-child(1) { flex: 1; min-width: 90px; }
+.asset-search-bar .form-group:nth-child(2) { flex: 2; min-width: 120px; }
+.asset-search-bar .form-group:nth-child(3) { flex: 0 0 auto; }
+
+.asset-search-bar .form-label {
+    font-size: 12px;
+    font-weight: 800;
+    color: #111827;
+}
+
+
+.search-field-select {
+    height: 34px;
+    width: 100%;
+    border: 1px solid #c5ced9;
+    border-radius: 4px;
+    background: #edf0f3;
+    color: #111827;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 0 11px;
+    outline: none;
+}
+
+.asset-search-input {
+    height: 34px;
+    width: 100%;
+    border: 1px solid #c5ced9;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #111827;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 0 11px;
+    outline: none;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.asset-search-btn {
+    height: 34px;
+    padding: 0 14px;
+    border: 1.5px solid #111827;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #111827;
+    font-size: 12px;
+    font-weight: 900;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.asset-search-btn:hover {
+    background: #f3f4f6;
+}
+
+/* Asset selection tables */
+.asset-select-table,
+.asset-selected-table,
+.asset-show-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+/* Inner list frame matching MAT-001 bordered table pattern */
+.table-wrapper {
+    border: 1px solid #d7e0ea;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+
+/* ── Section 2: available assets (checkbox | code | name | category | value | date) ── */
+.asset-select-table th:nth-child(1),
+.asset-select-table td:nth-child(1) { width: 34px; }
+
+.asset-select-table th:nth-child(2),
+.asset-select-table td:nth-child(2) { width: 16%; }
+
+.asset-select-table th:nth-child(3),
+.asset-select-table td:nth-child(3) { width: 26%; }
+
+.asset-select-table th:nth-child(4),
+.asset-select-table td:nth-child(4) { width: 20%; }
+
+.asset-select-table th:nth-child(5),
+.asset-select-table td:nth-child(5) { width: 20%; }
+
+/* nth-child(6) = วันที่ตรวจรับ — takes remaining space */
+
+/* ── Section 3: selected assets (code | name | category | value | remove) ── */
+.asset-selected-table th:nth-child(1),
+.asset-selected-table td:nth-child(1) { width: 18%; }
+
+.asset-selected-table th:nth-child(2),
+.asset-selected-table td:nth-child(2) { width: 36%; }
+
+.asset-selected-table th:nth-child(3),
+.asset-selected-table td:nth-child(3) { width: 22%; }
+
+.asset-selected-table th:nth-child(4),
+.asset-selected-table td:nth-child(4) { width: 16%; }
+
+.asset-selected-table th:nth-child(5),
+.asset-selected-table td:nth-child(5) { width: 8%; }
+
+.asset-select-table thead tr,
+.asset-selected-table thead tr,
+.asset-show-table thead tr {
+    background: #eef3f9;
+}
+
+.asset-select-table th,
+.asset-selected-table th,
+.asset-show-table th {
+    padding: 8px;
+    border-bottom: 1px solid #d4deea;
+    color: #475569;
+    font-size: 10px;
+    font-weight: 800;
+    text-align: left;
+}
+
+.asset-select-table td,
+.asset-selected-table td,
+.asset-show-table td {
+    padding: 7px 8px;
+    border-bottom: 1px solid #e6ecf3;
+    color: #334155;
+    font-size: 10px;
+    font-weight: 500;
+    vertical-align: middle;
+}
+
+.asset-select-table tbody tr:last-child td,
+.asset-selected-table tbody tr:last-child td,
+.asset-show-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.col-check {
+    width: 34px;
+    text-align: center;
+}
+
+.col-value {
+    text-align: right;
+}
+
+/* Specificity boost: override the .asset-*-table th { text-align: left } rule */
+.asset-select-table th.col-value,
+.asset-selected-table th.col-value,
+.asset-show-table th.col-value { text-align: right; }
+
+.asset-selected-table th.col-action,
+.asset-select-table th.col-action { text-align: center; }
+
+.col-action {
+    width: 60px;
+    text-align: center;
+}
+
+.right {
+    text-align: right;
+}
+
+.no-data {
+    text-align: center;
+    color: #9ca3af;
+    font-style: italic;
+    padding: 18px;
+}
+
+.section-block {
+    padding: 12px 0 8px;
+    border-bottom: 1px solid #e9eff7;
+    margin-bottom: 10px;
+}
+
+.section-block:last-of-type {
+    border-bottom: 0;
+}
+
+/* bordered panel for Section 2 — heading + search + table inside same frame */
+.asset-selection-frame {
+    border: 1px solid #d7e0ea;
+    border-radius: 6px;
+    padding: 14px 14px 10px;
+    margin-bottom: 14px;
+}
+
+.save-confirm-icon {
+    background: #059669;
+    color: #ffffff;
+}
+
+.edit-icon {
+    background: #fde68a;
+    color: #111827;
+}
+
+.edit-confirm-icon {
+    background: #fde68a;
+    color: #111827;
+}
+
+.modal-cancel-btn {
+    height: 44px;
+    padding: 0 20px;
+    border-radius: 6px;
+    border: 1px solid #d8dee8;
+    background: #ffffff;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.modal-cancel-btn:hover {
+    background: #f3f4f6;
+}
+
+.modal-confirm-btn {
+    height: 44px;
+    padding: 0 20px;
+    border-radius: 6px;
+    border: 0;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    color: #ffffff;
+}
+
+.save-confirm-btn {
+    background: #059669;
+}
+
+.save-confirm-btn:hover {
+    background: #047857;
+}
+
+.edit-confirm-btn {
+    border: 1px solid #fde68a;
+    background: #fde68a;
+    color: #111827;
+}
+
+.edit-confirm-btn:hover {
+    background: #facc15;
+}
+
+/* pencil SVG inside edit-icon */
+.confirm-edit-svg {
+    width: 26px;
+    height: 26px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.link-button {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ── Frame heading inside card (like เพิ่มผู้ประกอบการใหม่) ── */
+.card-form-heading {
+    margin: 0 0 16px;
+    padding-bottom: 12px;
+    color: #111827;
+    font-size: 16px;
+    font-weight: 900;
+    border-bottom: 1px solid #e4eaf3;
+}
+
+/* ── 3-column grid for Section 1 org fields ── */
+.form-grid.three-col {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+/* ── guja-autocomplete sizes to match MAT-001 standard ── */
+.assignment-create-card .guja-autocomplete__input {
+    height: 36px;
+    font-size: 13px;
+    border-radius: 4px;
+    border-color: #c5ced9;
+    padding-left: 12px;
+    padding-right: 32px;
+}
+
+.assignment-create-card .guja-autocomplete__item,
+.assignment-create-card .guja-autocomplete__empty {
+    font-size: 13px;
+}
+
+/* ── Sequence number column in Section 3 ── */
+.col-seq {
+    width: 7%;
+    text-align: center;
 }

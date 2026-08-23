@@ -333,9 +333,27 @@ function initializeDisposalItemManager() {
                 <td class="center">-</td>
                 <td class="center">-</td>
                 <td class="center">
-                    <div class="item-action-group">
-                        <button type="button" class="edit-item-btn" data-index="${index}">แก้ไข</button>
-                        <button type="button" class="remove-item-btn" data-index="${index}">ลบ</button>
+                    <div class="table-action-buttons">
+                        <button
+                            type="button"
+                            class="table-action-icon table-action-edit"
+                            data-index="${index}"
+                            aria-label="แก้ไข"
+                            title="แก้ไข"
+                            data-tooltip="แก้ไข"
+                        >
+                            <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
+                        </button>
+                        <button
+                            type="button"
+                            class="table-action-icon table-action-delete remove-item-btn"
+                            data-index="${index}"
+                            aria-label="ลบ"
+                            title="ลบ"
+                            data-tooltip="ลบ"
+                        >
+                            <svg aria-hidden="true"><use href="#icon-trash"></use></svg>
+                        </button>
                     </div>
                 </td>
             `;
@@ -381,7 +399,7 @@ function initializeDisposalItemManager() {
     });
 
     tableBody.addEventListener('click', (event) => {
-        const editButton = event.target.closest('.edit-item-btn');
+        const editButton = event.target.closest('.table-action-edit');
         const removeButton = event.target.closest('.remove-item-btn');
 
         if (editButton) {

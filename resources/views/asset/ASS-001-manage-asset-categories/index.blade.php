@@ -1,112 +1,181 @@
 @extends('layouts.app')
 
 @section('page-style')
-    @vite(['resources/css/asset/ASS-001-manage-asset-categories/style.css'])
+    @vite([
+        'resources/css/components/search-autocomplete.css',
+        'resources/css/components/table-actions.css',
+        'resources/css/components/pagination.css',
+        'resources/css/components/sort-icon.css',
+        'resources/css/asset/ASS-001-manage-asset-categories/style.css',
+    ])
 @endsection
 
 @section('content')
     <div class="page-container">
-        <header class="page-header">
-            <div class="page-title-box">
-                <h2>{{ $pageTitle }}</h2>
-                <div class="header-line"></div>
-            </div>
-        </header>
+        <x-page-header :title="$pageTitle" />
+
+        @if (session('asset_category_error'))
+            <div class="form-error-box" style="margin-bottom:12px;">{{ session('asset_category_error') }}</div>
+        @endif
 
         <section class="asset-category-card">
             <div class="card-title">
-                <svg class="card-title-icon"><use href="#icon-panel"></use></svg>
-                <span>รายการครุภัณฑ์ในระบบ</span>
+                <svg class="card-title-icon"><use href="#icon-material-list"></use></svg>
+                <span>รายการประเภทครุภัณฑ์ในระบบ</span>
             </div>
 
-            <div class="toolbar">
-                <div class="field-group">
-                    <label for="assetSearchType">ค้นหาจาก</label>
-                    <select id="assetSearchType">
-                        <option value="category_code">รหัสประเภทครุภัณฑ์</option>
-                        <option value="asset_name">ชื่อครุภัณฑ์</option>
-                        <option value="asset_type">ชนิดครุภัณฑ์</option>
-                        <option value="asset_group">หมวดครุภัณฑ์</option>
-                    </select>
+            <form method="GET" action="{{ route('asset.categories.index') }}" id="assetCategorySearchForm">
+                <div class="toolbar">
+                    <div class="field-group">
+                        <label for="assetSearchType">ค้นหาจาก</label>
+                        <select id="assetSearchType" name="search_by">
+                            <option value="all"   @selected(($searchBy ?? 'all') === 'all')>ทั้งหมด</option>
+                            <option value="name"  @selected($searchBy === 'name')>ชื่อครุภัณฑ์</option>
+                            <option value="code"  @selected($searchBy === 'code')>รหัสประเภทครุภัณฑ์</option>
+                            <option value="type"  @selected($searchBy === 'type')>ชนิดครุภัณฑ์</option>
+                            <option value="group" @selected($searchBy === 'group')>หมวดครุภัณฑ์</option>
+                            <option value="unit"  @selected($searchBy === 'unit')>หน่วยนับ</option>
+                        </select>
+                    </div>
+
+                    <div class="field-group search-group">
+                        <label for="assetSearchInput">คำค้นหา</label>
+                        <input
+                            id="assetSearchInput"
+                            name="keyword"
+                            type="search"
+                            placeholder="กรอกคำค้นหา"
+                            value="{{ $keyword }}"
+                            autocomplete="off"
+                            autocorrect="off"
+                            autocapitalize="off"
+                            spellcheck="false"
+                        >
+                    </div>
+
+                    <button class="search-btn" type="submit">ค้นหา</button>
+
+                    @if ($sort)
+                        <input type="hidden" name="sort" value="{{ $sort }}">
+                        <input type="hidden" name="direction" value="{{ $direction }}">
+                    @endif
+
+                    <a class="create-btn link-button" href="{{ route('asset.categories.create') }}">
+                        บันทึกประเภทครุภัณฑ์ใหม่
+                    </a>
                 </div>
-
-                <div class="field-group search-group">
-                    <label for="assetSearchInput">คำค้นหา</label>
-                    <input
-                        id="assetSearchInput"
-                        type="search"
-                        placeholder="กรอกรหัสประเภทครุภัณฑ์"
-                        autocomplete="off"
-                        autocorrect="off"
-                        autocapitalize="off"
-                        spellcheck="false"
-                    >
-                </div>
-
-                <button class="search-btn" type="button" id="assetSearchButton">
-                    ค้นหา
-                </button>
-
-                <a class="create-btn link-button" href="{{ route('asset.categories.create') }}">
-                    บันทึกประเภทครุภัณฑ์ใหม่
-                </a>
-            </div>
+            </form>
 
             <div class="table-wrapper">
                 <table class="asset-category-table">
                     <thead>
                         <tr>
-                            <th>รหัสประเภทครุภัณฑ์</th>
-                            <th>ชื่อครุภัณฑ์</th>
-                            <th>ชนิดครุภัณฑ์</th>
-                            <th>หมวดครุภัณฑ์</th>
-                            <th>หน่วยนับ</th>
-                            <th>อัตราค่าเสื่อม</th>
+                            <x-sortable-th label="รหัสประเภทครุภัณฑ์" key="code"  :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword]" />
+                            <x-sortable-th label="ชื่อครุภัณฑ์"        key="name"  :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword]" />
+                            <x-sortable-th label="ชนิดครุภัณฑ์"        key="type"  :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword]" />
+                            <x-sortable-th label="หมวดครุภัณฑ์"        key="group" :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword]" />
+                            <x-sortable-th label="หน่วยนับ"           key="unit"             :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword]" />
+                            <x-sortable-th label="อัตราค่าเสื่อม (%)" key="depreciation_rate" :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword]" />
                             <th class="action-column">จัดการ</th>
                         </tr>
                     </thead>
 
-                    <tbody id="assetCategoryTableBody">
-                        @foreach ($assetCategories as $asset)
-                            <tr
-                                data-category-code="{{ $asset['category_code'] }}"
-                                data-asset-name="{{ $asset['asset_name'] }}"
-                                data-asset-type="{{ $asset['asset_type'] }}"
-                                data-asset-group="{{ $asset['asset_group'] }}"
-                            >
+                    <tbody>
+                        @forelse ($categories as $cat)
+                            <tr>
                                 <td>
-                                    <span class="asset-code">{{ $asset['category_code'] }}</span>
-                                </td>
-                                <td>{{ $asset['asset_name'] }}</td>
-                                <td>{{ $asset['asset_type'] }}</td>
-                                <td>{{ $asset['asset_group'] }}</td>
-                                <td>{{ $asset['unit'] }}</td>
-                                <td>{{ $asset['depreciation_rate'] }}</td>
-                                <td class="action-column">
-                                    <a
-                                        class="detail-btn link-button"
-                                        href="{{ route('asset.categories.show', $asset['category_code']) }}"
-                                    >
-                                        ดูรายละเอียด
+                                    <a class="asset-code-link" href="{{ route('asset.categories.show', $cat->id) }}">
+                                        <span class="asset-code">{{ $cat->asscat_code }}</span>
                                     </a>
                                 </td>
+                                <td>{{ $cat->asscat_name }}</td>
+                                <td>{{ $cat->asscat_type }}</td>
+                                <td>{{ $cat->asscat_group }}</td>
+                                <td>{{ $cat->asscat_unit ?? '-' }}</td>
+                                <td>{{ $cat->depreciation_rate !== null ? number_format((float)$cat->depreciation_rate, 0) . '%' : '-' }}</td>
+                                <td class="action-column">
+                                    <div class="table-action-buttons">
+                                        <a class="table-action-icon table-action-edit"
+                                           aria-label="แก้ไข" title="แก้ไข" data-tooltip="แก้ไข"
+                                           href="{{ route('asset.categories.edit', $cat->id) }}"
+                                        >
+                                            <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
+                                        </a>
+                                        <button
+                                            class="table-action-icon table-action-delete"
+                                            type="button"
+                                            aria-label="ลบ" title="ลบ" data-tooltip="ลบ"
+                                            data-delete-id="{{ $cat->id }}"
+                                            data-delete-code="{{ $cat->asscat_code }}"
+                                            data-delete-url="{{ route('asset.categories.destroy', $cat->id) }}"
+                                        >
+                                            <svg aria-hidden="true"><use href="#icon-trash"></use></svg>
+                                        </button>
+                                    </div>
+                                </td>
                             </tr>
-                        @endforeach
+                        @empty
+                            <tr>
+                                <td class="no-data" colspan="7">ไม่พบข้อมูลประเภทครุภัณฑ์</td>
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
 
             <div class="table-footer">
-                <p id="assetCategoryResultText">แสดง 1 จากทั้งหมด 1 รายการ</p>
-
-                <div class="pagination">
-                    <button class="page-btn disabled" type="button">‹</button>
-                    <button class="page-btn active-page" type="button">1</button>
-                    <button class="page-btn" type="button">›</button>
-                </div>
+                <p class="app-pagination-summary">
+                    @if ($categories->total() > 0)
+                        แสดง {{ $categories->firstItem() }}–{{ $categories->lastItem() }} จากทั้งหมด {{ $categories->total() }} รายการ
+                    @else
+                        ไม่พบรายการประเภทครุภัณฑ์
+                    @endif
+                </p>
+                <x-app-pagination :paginator="$categories" />
             </div>
         </section>
     </div>
+
+    {{-- Success modal --}}
+    @if (session('asset_category_success'))
+        <div class="confirm-overlay is-visible" id="assetCategorySuccessOverlay" aria-hidden="false">
+            <div class="confirm-modal" role="dialog" aria-modal="true">
+                <div class="confirm-icon success-confirm-icon">
+                    <svg><use href="#icon-success"></use></svg>
+                </div>
+                <h3>ดำเนินการสำเร็จ</h3>
+                <p>{{ session('asset_category_success') }}</p>
+                <div class="confirm-actions" style="grid-template-columns:1fr;">
+                    <button class="modal-confirm-btn success-confirm-btn" type="button" id="closeAssetCategorySuccessModal">
+                        ตกลง
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Delete confirmation modal --}}
+    <div class="confirm-overlay" id="deleteAssetCategoryOverlay" aria-hidden="true">
+        <div class="confirm-modal" role="dialog" aria-modal="true">
+            <div class="confirm-icon delete-confirm-icon">
+                <svg><use href="#icon-alert-triangle"></use></svg>
+            </div>
+            <h3>ยืนยันการลบข้อมูล</h3>
+            <p id="deleteAssetCategoryMessage">คุณต้องการลบประเภทครุภัณฑ์นี้ใช่หรือไม่?<br>การดำเนินการนี้ไม่สามารถเรียกคืนได้</p>
+            <div class="confirm-actions">
+                <button class="modal-cancel-btn" type="button" id="cancelDeleteAssetCategoryButton">ยกเลิก</button>
+                <button class="modal-confirm-btn delete-confirm-btn" type="button" id="confirmDeleteAssetCategoryButton">
+                    ยืนยันการลบ
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Hidden delete form --}}
+    <form id="deleteAssetCategoryForm" method="POST" style="display:none;">
+        @csrf
+        @method('DELETE')
+    </form>
 @endsection
 
 @section('page-script')

@@ -1,4 +1,4 @@
-* {
+﻿* {
     box-sizing: border-box;
 }
 
@@ -189,7 +189,7 @@ select {
 
 .page-container {
     width: 100%;
-    max-width: 1120px;
+    max-width: 1136px;
     margin: 0 auto;
     padding: 48px 28px 70px;
 }
@@ -217,6 +217,7 @@ select {
     width: 100%;
     background: #ffffff;
     border: 1.5px solid var(--card-border);
+    border-top-width: 4px;
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
@@ -227,17 +228,16 @@ select {
 }
 
 .filter-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(190px, 1.1fr) minmax(140px, 0.65fr) minmax(155px, 0.8fr) minmax(190px, 1.2fr) auto;
+    gap: 12px;
     align-items: end;
-    gap: 18px;
+    padding-bottom: 18px;
 }
 
-.first-row {
-    margin-bottom: 14px;
-}
-
-.second-row {
-    margin-bottom: 18px;
+.filter-row .field-group select,
+.filter-row .search-field input {
+    width: 100%;
 }
 
 .field-group {
@@ -314,13 +314,56 @@ select {
     padding-bottom: 12px;
     border-bottom: 2px solid var(--primary);
     color: #111827;
-    font-size: 19px;
-    font-weight: 800;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.card-title-icon {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: var(--primary);
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex-shrink: 0;
 }
 
 .table-wrapper {
-    padding: 0 16px;
+    padding: 0 28px;
     overflow-x: auto;
+}
+
+.print-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 13px;
+    border: none;
+    border-radius: 4px;
+    background: var(--primary);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.print-btn:hover {
+    background: #102d70;
+    color: #ffffff;
+}
+
+.print-btn-icon {
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 .balance-table {
@@ -401,6 +444,26 @@ select {
     font-weight: 800;
 }
 
+.balance-qty-input {
+    width: 90px;
+    height: 32px;
+    padding: 0 8px;
+    border: 1.5px solid #c5ced9;
+    border-radius: 4px;
+    background: #edf0f3;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: right;
+    outline: none;
+}
+
+.balance-qty-input:not([disabled]) {
+    background: #ffffff;
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
 .material-name {
     line-height: 1.35;
 }
@@ -409,22 +472,7 @@ select {
     text-align: center !important;
 }
 
-.edit-btn {
-    height: 34px;
-    min-width: 54px;
-    padding: 0 13px;
-    border: none;
-    border-radius: 6px;
-    background: var(--orange);
-    color: #ffffff;
-    font-size: 13px;
-    font-weight: 800;
-    cursor: pointer;
-}
-
-.edit-btn:hover {
-    background: #b45309;
-}
+/* .edit-btn replaced by .table-action-icon .table-action-edit from table-actions.css */
 
 .table-footer {
     min-height: 54px;
@@ -480,11 +528,17 @@ select {
 
 @media (max-width: 1100px) {
     .filter-row {
-        flex-wrap: wrap;
+        grid-template-columns: 1fr 1fr;
     }
 
     .balance-table {
         min-width: 980px;
+    }
+}
+
+@media (max-width: 640px) {
+    .filter-row {
+        grid-template-columns: 1fr;
     }
 }
 
@@ -518,7 +572,7 @@ select {
 
 .balance-edit-card {
     width: 100%;
-    background: #fff4c2;
+    background: #ffffff;
     border-radius: 8px;
     padding: 22px 26px 34px;
     box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
@@ -655,9 +709,9 @@ select {
 .balance-edit-input {
     width: 84px;
     height: 34px;
-    border: 2px solid #fde68a;
+    border: 2px solid #d1d5db;
     border-radius: 5px;
-    background: #fffdf2;
+    background: #ffffff;
     color: #111827;
     text-align: center;
     font-size: 13px;
@@ -666,7 +720,7 @@ select {
 }
 
 .balance-edit-input:focus {
-    border-color: #facc15;
+    border-color: var(--primary);
     background: #ffffff;
 }
 
@@ -883,4 +937,38 @@ select {
     opacity: 1 !important;
     cursor: pointer !important;
     filter: none !important;
+}
+
+/* --- MAT-006 additions --- */
+.first-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.adjust-btn {
+    height: 36px;
+    min-width: 100px;
+    padding: 0 20px;
+    border: 1.5px solid #111827;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #111827;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.adjust-btn:hover {
+    background: #f3f4f6;
+}
+
+.adjust-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.row-modified td {
+    background: #fef3c7;
 }

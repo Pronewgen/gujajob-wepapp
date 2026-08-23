@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('page-style')
     @vite([
@@ -9,12 +9,7 @@
 
 @section('content')
     <div class="page-container receiving-confirm-page">
-        <header class="page-header">
-            <div class="page-title-box">
-                <h2>{{ $pageTitle }}</h2>
-                <div class="header-line"></div>
-            </div>
-        </header>
+        <x-page-header :title="$pageTitle" />
 
         <section class="receive-card">
             <h3 class="receive-card-title">ข้อมูลครุภัณฑ์ที่จะรับ</h3>
@@ -92,7 +87,7 @@
             </form>
 
             <div class="form-actions">
-                <a class="cancel-btn" href="{{ route('asset.department-receiving.index') }}">ยกเลิก</a>
+                <a class="cancel-btn" href="{{ route('asset.department-receiving.index') }}">\u0e22\u0e49\u0e2d\u0e19\u0e01\u0e25\u0e31\u0e1a</a>
                 <button class="save-btn" id="openReceiveConfirmButton" type="button" data-redirect-url="{{ route('asset.department-receiving.show', $record['asset_code']) }}">
                     ยืนยันรับครุภัณฑ์
                 </button>

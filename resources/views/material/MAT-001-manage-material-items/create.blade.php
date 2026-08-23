@@ -1,30 +1,35 @@
 @extends('layouts.app')
 
+@section('title', 'จัดการรายการวัสดุ')
+
 @section('page-style')
     @vite(['resources/css/material/MAT-001-manage-material-items/style.css'])
 @endsection
 
 @section('content')
     <div class="page-container">
-        <header class="page-header">
-            <div class="page-title-box">
-                <h2>{{ $pageTitle }}</h2>
-                <div class="header-line"></div>
-            </div>
-        </header>
+        <x-page-header :title="$pageTitle" />
 
         <section class="material-form-card">
             <div class="form-card-title">
                 <svg class="form-title-icon"><use href="#icon-edit-form"></use></svg>
-                <span>ฟอร์มบันทึกข้อมูลวัสดุ</span>
+                <span>บันทึกข้อมูลวัสดุ</span>
             </div>
 
             <form id="materialCreateForm" class="material-form" autocomplete="off" action="{{ route('material.items.store') }}" method="POST">
                 @csrf
                 <div class="form-grid two-column">
                     <div class="form-field">
-                        <label for="materialCode">รหัสวัสดุ</label>
-                        <input id="materialCode" type="text" value="{{ $nextMaterialCode }}" readonly>
+                        <label for="materialCode">รหัสวัสดุ <span class="required">*</span></label>
+                        <input id="materialCode" name="MAT_CODE" type="text"
+                               value="{{ old('MAT_CODE') }}"
+                               placeholder="กรอกรหัสวัสดุ"
+                               maxlength="10"
+                               class="{{ $errors->has('MAT_CODE') ? 'gujajob-is-invalid' : '' }}"
+                               required>
+                        @error('MAT_CODE')
+                            <div class="gujajob-validation-message">{{ $message }}</div>
+                        @enderror
                     </div>
 
                     <div class="form-field">
@@ -63,8 +68,8 @@
                 </div>
 
                 <div class="form-actions">
-                    <a class="cancel-btn" href="{{ route('material.items.index') }}">ยกเลิก</a>
-                    <button class="submit-btn" type="submit">บันทึกรายการวัสดุ</button>
+                    <a class="cancel-btn" href="{{ route('material.items.index') }}">ย้อนกลับ</a>
+                    <button class="submit-btn" type="submit">บันทึก</button>
                 </div>
             </form>
         </section>

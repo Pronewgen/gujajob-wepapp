@@ -25,6 +25,8 @@ class GlbOrganization extends Model
         'org_code',
         'org_name',
         'org_abbr',
+        'zone_flg',
+        'org_org_id',
         'created_by',
         'last_updated_by',
     ];

@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('page-style')
     @vite([
@@ -9,12 +9,7 @@
 
 @section('content')
     <div class="page-container receiving-confirm-page receiving-show-page">
-        <header class="page-header">
-            <div class="page-title-box">
-                <h2>{{ $pageTitle }}</h2>
-                <div class="header-line"></div>
-            </div>
-        </header>
+        <x-page-header :title="$pageTitle" />
 
         <section class="receive-card detail-edit-card">
             <h3 class="receive-card-title">ข้อมูลครุภัณฑ์ที่จะรับ</h3>
@@ -101,7 +96,7 @@
             </div>
 
             <div class="form-actions">
-                <a class="cancel-btn" href="{{ route('asset.department-receiving.index') }}">ยกเลิก</a>
+                <a class="cancel-btn" href="{{ route('asset.department-receiving.index') }}">\u0e22\u0e49\u0e2d\u0e19\u0e01\u0e25\u0e31\u0e1a</a>
                 <button class="detail-save-btn" id="openReceiveEditOverlay" type="button" data-redirect-url="{{ route('asset.department-receiving.index') }}">บันทึกการแก้ไข</button>
             </div>
         </section>

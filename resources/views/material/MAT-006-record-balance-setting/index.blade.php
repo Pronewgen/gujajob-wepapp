@@ -1,134 +1,220 @@
 @extends('layouts.app')
 
 @section('page-style')
-    @vite(['resources/css/material/MAT-006-record-balance-setting/style.css'])
+    @vite([
+        'resources/css/components/pagination.css',
+        'resources/css/components/search-autocomplete.css',
+        'resources/css/components/sort-icon.css',
+        'resources/css/components/table-actions.css',
+        'resources/css/material/MAT-006-record-balance-setting/style.css',
+    ])
 @endsection
 
 @section('content')
     <div class="page-container">
-        <header class="page-header">
-            <div class="page-title-box">
-                <h2>{{ $pageTitle }}</h2>
-                <div class="header-line"></div>
-            </div>
-        </header>
+        <x-page-header :title="$pageTitle" />
 
         <section class="balance-card">
-            <div class="filter-area">
-                <div class="filter-row first-row">
-                    <div class="field-group year-field">
-                        <label for="budgetYear">ปีงบประมาณ</label>
-                        <input id="budgetYear" type="text" value="2568" autocomplete="off">
-                    </div>
+            <form method="GET" action="{{ route('material.balance.index') }}" id="balanceSearchForm">
+                <div class="filter-area">
+                    <div class="filter-row">
+                        <div class="field-group">
+                            <label for="orgId">หน่วยงาน</label>
+                            <select id="orgId" name="org_id">
+                                <option value="0">-- ทุกหน่วยงาน --</option>
+                                @foreach ($organizations as $org)
+                                    <option value="{{ $org->org_id }}" @selected($orgId == $org->org_id)>
+                                        {{ $org->org_name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
 
-                    <div class="field-group department-field">
-                        <label for="departmentName">หน่วยงาน</label>
-                        <select id="departmentName">
-                            <option value="">ทั้งหมด</option>
-                            <option value="กองคลังพัสดุ">กองคลังพัสดุ</option>
-                            <option value="สำนักบริหารกลาง">สำนักบริหารกลาง</option>
-                            <option value="ฝ่ายเทคโนโลยีสารสนเทศ">ฝ่ายเทคโนโลยีสารสนเทศ</option>
-                        </select>
+                        <div class="field-group">
+                            <label for="fiscalYearSelect">ปีงบประมาณ</label>
+                            <select id="fiscalYearSelect" name="fiscal_year">
+                                @foreach ($availableFiscalYears as $fy)
+                                    <option value="{{ $fy }}" @selected($fiscalYear == $fy)>
+                                        {{ $fy }}{{ $fy === $currentFY ? ' (ปัจจุบัน)' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="field-group">
+                            <label for="searchBy">ค้นหาจาก</label>
+                            <select id="searchBy" name="search_by">
+                                <option value="name" {{ $searchBy === 'name' ? 'selected' : '' }}>ชื่อวัสดุ</option>
+                                <option value="code" {{ $searchBy === 'code' ? 'selected' : '' }}>รหัสวัสดุ</option>
+                            </select>
+                        </div>
+
+                        <div class="field-group search-field">
+                            <label for="searchInput">คำค้นหา</label>
+                            <input
+                                id="searchInput"
+                                name="keyword"
+                                type="search"
+                                placeholder="กรอกชื่อวัสดุ"
+                                value="{{ $keyword }}"
+                                autocomplete="off"
+                                autocorrect="off"
+                                autocapitalize="off"
+                                spellcheck="false"
+                            >
+                        </div>
+
+                        <button class="search-btn" type="submit">ค้นหา</button>
                     </div>
                 </div>
 
-                <div class="filter-row second-row">
-                    <div class="field-group">
-                        <label for="searchType">ค้นหาจาก</label>
-                        <select id="searchType">
-                            <option value="name">ชื่อวัสดุ</option>
-                            <option value="code">รหัสวัสดุ</option>
-                            <option value="department">หน่วยงาน</option>
-                        </select>
-                    </div>
+                {{-- preserve sort params through search --}}
+                @if ($sort)
+                    <input type="hidden" name="sort" value="{{ $sort }}">
+                    <input type="hidden" name="direction" value="{{ $direction }}">
+                @endif
+            </form>
 
-                    <div class="field-group search-field">
-                        <label for="searchInput">คำค้นหา</label>
-                        <input
-                            id="searchInput"
-                            type="search"
-                            placeholder="กรอกชื่อวัสดุ"
-                            autocomplete="off"
-                            autocorrect="off"
-                            autocapitalize="off"
-                            spellcheck="false"
+            @if (! $isEditable)
+                <div class="readonly-notice" style="margin:12px 0;padding:10px 14px;background:#fef3c7;border:1px solid #fbbf24;border-radius:6px;font-size:13px;color:#92400e;">
+                    ปีงบประมาณ {{ $fiscalYear }} เป็นปีที่ผ่านมา — ดูได้อย่างเดียว ไม่สามารถแก้ไขได้
+                </div>
+            @endif
+
+            <div class="list-title" style="display:flex;align-items:center;gap:12px;justify-content:space-between;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <svg class="card-title-icon"><use href="#icon-material-list"></use></svg>
+                    <span>รายการ ({{ $materials->total() }} รายการ)
+                        — ปีงบประมาณ {{ $fiscalYear }}
+                        @if ($orgId > 0)
+                            @php $selOrg = $organizations->firstWhere('org_id', $orgId); @endphp
+                            — {{ $selOrg?->org_name ?? '' }}
+                        @endif
+                    </span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button
+                        class="print-btn"
+                        type="button"
+                        id="printBalanceButton"
+                        data-fiscal-year="{{ $fiscalYear }}"
+                        data-org-id="{{ $orgId }}"
+                        data-org-name="{{ $orgId > 0 && isset($selOrg) ? $selOrg->org_name : 'ทุกหน่วยงาน' }}"
+                    >
+                        <svg class="print-btn-icon"><use href="#icon-printer"></use></svg>
+                        จัดพิมพ์รายงาน
+                    </button>
+                    @if ($isEditable)
+                        <button
+                            class="adjust-btn"
+                            type="button"
+                            id="bulkUpdateButton"
+                            disabled
+                            data-bulk-url="{{ $bulkUpdateUrl }}"
+                            data-fiscal-year="{{ $fiscalYear }}"
+                            data-org-id="{{ $orgId }}"
                         >
-                    </div>
-
-                    <button class="search-btn" type="button" id="searchBalanceButton">ค้นหา</button>
+                            ปรับปรุง
+                        </button>
+                    @endif
                 </div>
-            </div>
-
-            <div class="list-title">
-                <span>รายการ</span>
             </div>
 
             <div class="table-wrapper">
                 <table class="balance-table">
                     <thead>
                         <tr>
-                            <th>ปีงบประมาณ</th>
-                            <th>รหัสวัสดุ</th>
-                            <th>ชื่อวัสดุ</th>
-                            <th>หน่วยงาน</th>
+                            <x-sortable-th label="ปีงบประมาณ"         key="fiscal_year" :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'org_id'=>$orgId,'fiscal_year'=>$fiscalYear]" />
+                            <x-sortable-th label="รหัสวัสดุ"           key="code"        :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'org_id'=>$orgId,'fiscal_year'=>$fiscalYear]" />
+                            <x-sortable-th label="ชื่อวัสดุ"           key="name"        :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'org_id'=>$orgId,'fiscal_year'=>$fiscalYear]" />
                             <th>หน่วย</th>
-                            <th>ราคาเฉลี่ย/หน่วย</th>
-                            <th>จำนวนวัสดุคงเหลือ</th>
-                            <th class="action-column">จัดการ</th>
+                            <x-sortable-th label="ราคาเฉลี่ย/หน่วย" key="avg_price" :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'org_id'=>$orgId,'fiscal_year'=>$fiscalYear]" />
+                            <x-sortable-th label="ยอดคงเหลือ"          key="balance"     :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'org_id'=>$orgId,'fiscal_year'=>$fiscalYear]" />
+                            @if ($isEditable)
+                                <th class="action-column">จัดการ</th>
+                            @endif
                         </tr>
                     </thead>
 
-                    <tbody id="balanceTableBody">
-                        @foreach ($balanceRecords as $record)
-                            <tr
-                                data-budget-year="{{ $record['budget_year'] }}"
-                                data-material-code="{{ $record['material_code'] }}"
-                                data-material-name="{{ $record['material_name'] }}"
-                                data-department="{{ $record['department'] }}"
-                            >
-                                <td>{{ $record['budget_year'] }}</td>
+                    <tbody>
+                        @forelse ($materials as $mat)
+                            @php
+                                $invAmt   = $mat->current_balance;
+                                $avgPrice = $avgPrices[(int) $mat->id] ?? null;
+                                $matCode  = $mat->mat_code;
+                            @endphp
+                            <tr data-material-id="{{ $mat->id }}" data-material-code="{{ $matCode }}">
+                                <td>{{ $fiscalYear }}</td>
+                                <td><span class="blue-text">{{ $mat->mat_code }}</span></td>
+                                <td><span class="blue-text material-name">{{ $mat->mat_name }}</span></td>
+                                <td>{{ $mat->unit }}</td>
                                 <td>
-                                    <span class="blue-text">{{ $record['material_code'] }}</span>
+                                    {{ $avgPrice !== null ? number_format($avgPrice, 2) : '-' }}
                                 </td>
                                 <td>
-                                    <span class="blue-text material-name">{{ $record['material_name'] }}</span>
-                                </td>
-                                <td>
-                                    <span class="blue-text">{{ $record['department'] }}</span>
-                                </td>
-                                <td>
-                                    <span class="blue-text">{{ $record['unit'] }}</span>
-                                </td>
-                                <td>
-                                    <span class="blue-text">{{ $record['average_price'] }}</span>
-                                </td>
-                                <td>
-                                    <span class="blue-text">{{ $record['balance_quantity'] }}</span>
-                                </td>
-                                <td class="action-column">
-                                    <a
-                                        class="edit-btn link-button"
-                                        href="{{ route('material.balance.edit', $record['material_code']) }}"
+                                    <input
+                                        class="balance-qty-input"
+                                        type="number"
+                                        value="{{ (int) ($invAmt ?? 0) }}"
+                                        data-original-value="{{ (int) ($invAmt ?? 0) }}"
+                                        min="0"
+                                        step="1"
+                                        {{ ! $isEditable ? 'disabled' : '' }}
                                     >
-                                        แก้ไข
-                                    </a>
                                 </td>
+                                @if ($isEditable)
+                                    <td class="action-column">
+                                        <button
+                                            class="table-action-icon table-action-edit"
+                                            type="button"
+                                            aria-label="แก้ไขยอดคงเหลือ"
+                                            title="แก้ไขยอดคงเหลือ"
+                                            data-tooltip="แก้ไขยอดคงเหลือ"
+                                            data-mode="edit"
+                                            data-material-id="{{ $mat->id }}"
+                                            data-material-code="{{ $matCode }}"
+                                        >
+                                            <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
+                                        </button>
+                                    </td>
+                                @endif
                             </tr>
-                        @endforeach
+                        @empty
+                            <tr>
+                                <td class="no-data" colspan="{{ $isEditable ? 7 : 6 }}">ไม่พบข้อมูลวัสดุ</td>
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
 
             <div class="table-footer">
-                <p id="balanceResultText">แสดง 1–3 จากทั้งหมด 3 รายการ</p>
+                <p>
+                    @if ($materials->total() > 0)
+                        แสดง {{ $materials->firstItem() }}–{{ $materials->lastItem() }} จากทั้งหมด {{ $materials->total() }} รายการ
+                    @else
+                        ไม่พบรายการตั้งยอดคงเหลือ
+                    @endif
+                </p>
 
-                <div class="pagination">
-                    <button class="page-btn disabled" type="button">‹</button>
-                    <button class="page-btn active-page" type="button">1</button>
-                    <button class="page-btn" type="button">›</button>
-                </div>
+                <x-app-pagination :paginator="$materials" />
             </div>
         </section>
+    </div>
+
+    {{-- Bulk Update Confirm Modal --}}
+    <div class="confirm-overlay" id="bulkUpdateOverlay" aria-hidden="true">
+        <div class="confirm-modal" role="dialog" aria-modal="true">
+            <div class="confirm-icon success-confirm-icon">
+                <svg><use href="#icon-success"></use></svg>
+            </div>
+            <h3>ยืนยันการปรับปรุงยอดคงเหลือ</h3>
+            <p>ต้องการบันทึกยอดคงเหลือที่แก้ไขทั้งหมดใช่หรือไม่?</p>
+            <div class="confirm-actions">
+                <button class="modal-cancel-btn" type="button" id="cancelBulkUpdateButton">ยกเลิก</button>
+                <button class="modal-confirm-btn success-confirm-btn" type="button" id="confirmBulkUpdateButton">ปรับปรุง</button>
+            </div>
+        </div>
     </div>
 @endsection
 

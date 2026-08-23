@@ -1,3 +1,5 @@
+import { SearchAutocomplete } from '../../components/search-autocomplete.js';
+
 const sidebarStorageKey = 'gujajob.sidebar.groupState';
 
 function getSidebarState() {
@@ -77,91 +79,19 @@ function preventDisabledMenuReload() {
     });
 }
 
-function initializeMaterialSearch() {
+function initializePlaceholder() {
     const searchInput = document.getElementById('materialSearch');
-    const searchType = document.getElementById('materialType');
-    const searchButton = document.getElementById('searchButton');
-    const tableBody = document.getElementById('materialTableBody');
-    const resultText = document.getElementById('tableResultText');
+    const searchType  = document.getElementById('materialType');
 
-    if (!searchInput || !searchType || !searchButton || !tableBody || !resultText) {
+    if (!searchInput || !searchType) {
         return;
     }
 
-    const originalRows = Array.from(tableBody.querySelectorAll('tr'));
-
     function updatePlaceholder() {
-        if (searchType.value === 'code') {
-            searchInput.placeholder = 'กรอกรหัสวัสดุ';
-            return;
-        }
-
-        searchInput.placeholder = 'กรอกชื่อวัสดุ';
+        searchInput.placeholder = searchType.value === 'code' ? 'กรอกรหัสวัสดุ' : 'กรอกชื่อวัสดุ';
     }
 
-    function updateResultText(visibleCount) {
-        if (visibleCount === 0) {
-            resultText.textContent = 'ไม่พบรายการวัสดุ';
-            return;
-        }
-
-        resultText.textContent = `แสดง 1–${visibleCount} จากทั้งหมด ${visibleCount} รายการ`;
-    }
-
-    function searchMaterials() {
-        const keyword = searchInput.value.trim().toLowerCase();
-        const type = searchType.value;
-        let visibleCount = 0;
-
-        originalRows.forEach((row) => {
-            const code = row.dataset.code.toLowerCase();
-            const name = row.dataset.name.toLowerCase();
-            const targetText = type === 'code' ? code : name;
-            const isVisible = targetText.includes(keyword);
-
-            row.style.display = isVisible ? '' : 'none';
-
-            if (isVisible) {
-                visibleCount += 1;
-            }
-        });
-
-        const oldNoDataRow = tableBody.querySelector('.no-data-row');
-
-        if (oldNoDataRow) {
-            oldNoDataRow.remove();
-        }
-
-        if (visibleCount === 0) {
-            const noDataRow = document.createElement('tr');
-            noDataRow.className = 'no-data-row';
-            noDataRow.innerHTML = '<td class="no-data" colspan="5">ไม่พบข้อมูลวัสดุที่ค้นหา</td>';
-            tableBody.appendChild(noDataRow);
-        }
-
-        updateResultText(visibleCount);
-    }
-
-    searchType.addEventListener('change', () => {
-        updatePlaceholder();
-        searchInput.value = '';
-        searchMaterials();
-    });
-
-    searchButton.addEventListener('click', searchMaterials);
-
-    searchInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            searchMaterials();
-        }
-    });
-
-    searchInput.addEventListener('input', () => {
-        if (searchInput.value.trim() === '') {
-            searchMaterials();
-        }
-    });
-
+    searchType.addEventListener('change', updatePlaceholder);
     updatePlaceholder();
 }
 
@@ -276,6 +206,41 @@ function initializeDeleteModal() {
     });
 }
 
+function initializeIndexDeleteModal() {
+    const overlay        = document.getElementById('indexDeleteOverlay');
+    const cancelButton   = document.getElementById('cancelIndexDeleteButton');
+    const confirmButton  = document.getElementById('confirmIndexDeleteButton');
+    const deleteForm     = document.getElementById('indexDeleteForm');
+    const messageEl      = document.getElementById('indexDeleteMessage');
+
+    if (!overlay || !cancelButton || !confirmButton || !deleteForm) {
+        return;
+    }
+
+    document.querySelectorAll('[data-delete-btn]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const code = btn.dataset.code ?? '';
+            const form = btn.closest('form');
+            if (form) {
+                deleteForm.action = form.action;
+            }
+            if (messageEl) {
+                messageEl.innerHTML = `คุณแน่ใจหรือไม่ว่าต้องการลบรายการ '${code}'<br>การดำเนินการนี้ไม่สามารถเรียกคืนได้`;
+            }
+            openOverlay(overlay);
+        });
+    });
+
+    cancelButton.addEventListener('click', () => closeOverlay(overlay));
+    overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) closeOverlay(overlay);
+    });
+    confirmButton.addEventListener('click', () => {
+        closeOverlay(overlay);
+        deleteForm.submit();
+    });
+}
+
 document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') {
         return;
@@ -288,13 +253,42 @@ document.addEventListener('keydown', (event) => {
 
 initializeSidebarGroups();
 preventDisabledMenuReload();
-initializeMaterialSearch();
+initializePlaceholder();
 initializeCreateForm();
 initializeEditForm();
 initializeDeleteModal();
+initializeIndexDeleteModal();
+initializeMat001ListAutocomplete();
 
+/* ===== Autocomplete for MAT-001 index search bar ===== */
 
-/* ===== Global save validation for create/edit pages ===== */
+function initializeMat001ListAutocomplete() {
+    const searchInput = document.getElementById('materialSearch');
+    const searchType  = document.getElementById('materialType');
+
+    if (!searchInput) return;
+
+    const ac = new SearchAutocomplete({
+        inputEl:      searchInput,
+        searchTypeEl: searchType,
+        endpoint:     '/search/suggestions',
+        extraParams:  { entity: 'material' },
+        minChars:     1,
+        debounceMs:   300,
+        maxResults:   15,
+        onSelect: (item) => {
+            const type = searchType ? searchType.value : 'code';
+            searchInput.value = type === 'name' ? (item.name || item.code) : item.code;
+            ac.close();
+        },
+    });
+
+    // Make the wrapper full-width inside the .field-group layout
+    const wrapper = searchInput.closest('.sac-wrapper') ?? searchInput.parentElement;
+    if (wrapper && wrapper.classList.contains('sac-wrapper')) {
+        wrapper.classList.add('sac-full');
+    }
+}
 
 (function () {
     if (window.__gujajobSaveValidationInstalled) {

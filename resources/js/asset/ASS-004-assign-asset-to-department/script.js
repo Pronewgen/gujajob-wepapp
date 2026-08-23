@@ -1,68 +1,39 @@
+﻿import { initServerSearchableSelects } from '../../components/server-searchable-select.js';
+
 const sidebarStorageKey = 'gujajob.sidebar.groupState';
 
 function getSidebarState() {
     try {
         const storedState = localStorage.getItem(sidebarStorageKey);
-
-        if (!storedState) {
-            return {
-                material: true,
-                asset: true,
-            };
-        }
-
-        return {
-            material: true,
-            asset: true,
-            ...JSON.parse(storedState),
-        };
-    } catch (error) {
-        return {
-            material: true,
-            asset: true,
-        };
+        if (!storedState) return { material: true, asset: true };
+        return { material: true, asset: true, ...JSON.parse(storedState) };
+    } catch {
+        return { material: true, asset: true };
     }
 }
 
 function saveSidebarState(state) {
-    try {
-        localStorage.setItem(sidebarStorageKey, JSON.stringify(state));
-    } catch (error) {
-        console.warn('Cannot save sidebar state.');
-    }
+    try { localStorage.setItem(sidebarStorageKey, JSON.stringify(state)); } catch {}
 }
 
 function applySidebarGroupState(groupElement, isOpen) {
     const toggleButton = groupElement.querySelector('.menu-group-toggle');
-
     groupElement.classList.toggle('is-collapsed', !isOpen);
-
-    if (toggleButton) {
-        toggleButton.setAttribute('aria-expanded', String(isOpen));
-    }
+    if (toggleButton) toggleButton.setAttribute('aria-expanded', String(isOpen));
 }
 
 function initializeSidebarGroups() {
     const state = getSidebarState();
-    const groups = document.querySelectorAll('[data-sidebar-group]');
-
-    groups.forEach((groupElement) => {
+    document.querySelectorAll('[data-sidebar-group]').forEach((groupElement) => {
         const groupName = groupElement.dataset.sidebarGroup;
         const toggleButton = groupElement.querySelector('.menu-group-toggle');
         const isOpen = state[groupName] !== false;
-
         applySidebarGroupState(groupElement, isOpen);
-
-        if (!toggleButton) {
-            return;
-        }
-
+        if (!toggleButton) return;
         toggleButton.addEventListener('click', () => {
             const currentState = getSidebarState();
             const nextIsOpen = groupElement.classList.contains('is-collapsed');
-
             currentState[groupName] = nextIsOpen;
-
             applySidebarGroupState(groupElement, nextIsOpen);
             saveSidebarState(currentState);
         });
@@ -71,103 +42,76 @@ function initializeSidebarGroups() {
 
 function preventDisabledMenuReload() {
     document.querySelectorAll('.disabled-link').forEach((link) => {
-        link.addEventListener('click', (event) => {
-            event.preventDefault();
-        });
+        link.addEventListener('click', (e) => e.preventDefault());
     });
 }
 
-function initializeAssignmentSearch() {
-    const departmentSelect = document.getElementById('assignDepartment');
-    const groupSelect = document.getElementById('assignGroup');
-    const assignerSelect = document.getElementById('assigner');
-    const searchButton = document.getElementById('searchAssignButton');
-    const createButton = document.getElementById('createAssignButton');
-    const tableBody = document.getElementById('assignmentTableBody');
-    const resultText = document.getElementById('resultText');
+function initCancelModal() {
+    const overlay   = document.getElementById('cancelAssignmentOverlay');
+    const cancelBtn = document.getElementById('cancelCancelButton');
+    const confirmBtn = document.getElementById('confirmCancelButton');
+    if (!overlay) return;
 
-    if (!departmentSelect || !groupSelect || !assignerSelect || !searchButton || !tableBody || !resultText) {
-        return;
+    let pendingCancelUrl = null;
+
+    const modalDesc = document.getElementById('cancelModalDesc');
+    document.querySelectorAll('.js-cancel-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            pendingCancelUrl = btn.dataset.cancelUrl;
+            if (modalDesc) {
+                modalDesc.textContent = 'ต้องการยกเลิกการจัดสรรนี้ใช่หรือไม่';
+            }
+            overlay.classList.add('is-visible');
+            overlay.setAttribute('aria-hidden', 'false');
+        });
+    });
+
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+    function closeModal() {
+        overlay.classList.remove('is-visible');
+        overlay.setAttribute('aria-hidden', 'true');
+        pendingCancelUrl = null;
     }
 
-    const originalRows = Array.from(tableBody.querySelectorAll('tr'));
-
-    function removeNoDataRow() {
-        const oldNoDataRow = tableBody.querySelector('.no-data-row');
-
-        if (oldNoDataRow) {
-            oldNoDataRow.remove();
-        }
-    }
-
-    function updateResult(visibleCount) {
-        if (visibleCount === 0) {
-            resultText.textContent = 'ไม่พบข้อมูลการจัดสรรครุภัณฑ์';
-            return;
-        }
-
-        resultText.textContent = `แสดง 0 ถึง ${visibleCount} รายการจัดสรร : ครุภัณฑ์ที่จัดสรรแล้วรวม ${visibleCount} รายการ`;
-    }
-
-    function searchRecords() {
-        const selectedDepartment = departmentSelect.value;
-        const selectedGroup = groupSelect.value;
-        const selectedAssigner = assignerSelect.value;
-        let visibleCount = 0;
-
-        removeNoDataRow();
-
-        originalRows.forEach((row) => {
-            const department = row.dataset.department || '';
-            const group = row.dataset.group || '';
-            const assigner = row.dataset.assigner || '';
-
-            const matchDepartment = selectedDepartment === 'all' || selectedDepartment === department;
-            const matchGroup = selectedGroup === 'all' || selectedGroup === group;
-            const matchAssigner = selectedAssigner === 'all' || selectedAssigner === assigner;
-            const isVisible = matchDepartment && matchGroup && matchAssigner;
-
-            row.style.display = isVisible ? '' : 'none';
-
-            if (isVisible) {
-                visibleCount += 1;
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', async () => {
+            if (!pendingCancelUrl) return;
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = 'กำลังยกเลิก...';
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+                const resp = await fetch(pendingCancelUrl, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                });
+                if (resp.ok) {
+                    window.location.reload();
+                } else {
+                    const json = await resp.json().catch(() => ({}));
+                    alert(json.message ?? 'ไม่สามารถยกเลิกการจัดสรรได้');
+                    confirmBtn.disabled = false;
+                    confirmBtn.textContent = 'ยืนยันยกเลิกการจัดสรร';
+                    closeModal();
+                }
+            } catch {
+                alert('เกิดข้อผิดพลาด กรุณาลองใหม่');
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'ยืนยันยกเลิกการจัดสรร';
+                closeModal();
             }
         });
-
-        if (visibleCount === 0) {
-            const noDataRow = document.createElement('tr');
-            noDataRow.className = 'no-data-row';
-            noDataRow.innerHTML = '<td class="no-data" colspan="7">ไม่พบข้อมูลที่ค้นหา</td>';
-            tableBody.appendChild(noDataRow);
-        }
-
-        updateResult(visibleCount);
     }
-
-    searchButton.addEventListener('click', searchRecords);
-
-    departmentSelect.addEventListener('change', searchRecords);
-    groupSelect.addEventListener('change', searchRecords);
-    assignerSelect.addEventListener('change', searchRecords);
-
-    if (createButton) {
-        createButton.addEventListener('click', () => {
-            const createUrl = createButton.dataset.createUrl;
-
-            if (createUrl) {
-                window.location.href = createUrl;
-                return;
-            }
-
-            alert('ไม่พบเส้นทางหน้าบันทึกการจัดสรรใหม่');
-        });
-    }
-
-    searchRecords();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     initializeSidebarGroups();
     preventDisabledMenuReload();
-    initializeAssignmentSearch();
+    initServerSearchableSelects();
+    initCancelModal();
 });

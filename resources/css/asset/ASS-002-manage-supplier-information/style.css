@@ -1,4 +1,4 @@
-* {
+﻿* {
     box-sizing: border-box;
 }
 
@@ -188,7 +188,7 @@ select {
 
 .page-container {
     width: 100%;
-    max-width: 1040px;
+    max-width: 1136px;
     margin: 0 auto;
     padding: 76px 28px 70px;
 }
@@ -216,9 +216,31 @@ select {
     width: 100%;
     background: #ffffff;
     border: 1.5px solid var(--card-border);
+    border-top-width: 4px;
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
+}
+
+.card-title {
+    padding: 24px 28px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #111827;
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.card-title-icon {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: var(--primary);
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex-shrink: 0;
 }
 
 .toolbar {
@@ -303,7 +325,7 @@ select {
 }
 
 .table-wrapper {
-    width: 100%;
+    padding: 0 28px;
     overflow-x: auto;
 }
 
@@ -312,6 +334,9 @@ select {
     border-collapse: separate;
     border-spacing: 0;
     table-layout: fixed;
+    border: 1px solid #d7e0ea;
+    border-radius: 7px;
+    overflow: hidden;
 }
 
 .supplier-table thead tr {
@@ -343,41 +368,40 @@ select {
 
 .supplier-table th:nth-child(1),
 .supplier-table td:nth-child(1) {
-    width: 10%;
-    text-align: center;
+    width: 25%;
 }
 
 .supplier-table th:nth-child(2),
 .supplier-table td:nth-child(2) {
-    width: 20%;
+    width: 16%;
 }
 
 .supplier-table th:nth-child(3),
 .supplier-table td:nth-child(3) {
-    width: 18%;
+    width: 16%;
 }
 
 .supplier-table th:nth-child(4),
 .supplier-table td:nth-child(4) {
-    width: 16%;
+    width: 12%;
+    text-align: center;
 }
 
 .supplier-table th:nth-child(5),
 .supplier-table td:nth-child(5) {
-    width: 15%;
+    width: 22%;
 }
 
 .supplier-table th:nth-child(6),
 .supplier-table td:nth-child(6) {
-    width: 14%;
-}
-
-.supplier-table th:nth-child(7),
-.supplier-table td:nth-child(7) {
-    width: 13%;
+    width: 9%;
 }
 
 .action-column {
+    text-align: center !important;
+}
+
+.col-center {
     text-align: center !important;
 }
 
@@ -492,7 +516,7 @@ select {
 }
 
 .supplier-create-page {
-    max-width: 1040px;
+    max-width: 1136px;
 }
 
 .supplier-form-card {
@@ -563,6 +587,13 @@ select {
 .form-field select:focus {
     border-color: var(--primary);
     background: #ffffff;
+}
+
+.form-field input[readonly],
+.form-field select[disabled] {
+    background: #f1f5f9;
+    cursor: default;
+    color: #374151;
 }
 
 .supplier-form-actions {
@@ -746,7 +777,7 @@ select {
 /* ===== ASS-002 show/edit supplier page ===== */
 
 .supplier-detail-page {
-    max-width: 1040px;
+    max-width: 1136px;
 }
 
 .supplier-show-card,

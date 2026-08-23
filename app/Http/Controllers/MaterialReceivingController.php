@@ -7,8 +7,12 @@ use App\Models\GlbOrganization;
 use App\Models\Material;
 use App\Models\MaterialProcurement;
 use App\Models\MaterialProcurementList;
+use App\Services\OrganizationVisibilityService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -17,50 +21,117 @@ use Throwable;
 
 class MaterialReceivingController extends Controller
 {
-    public function index(): View
+    public function __construct(private readonly OrganizationVisibilityService $orgVisibility) {}
+    public function index(Request $request): View
     {
-        $records = MaterialProcurement::query()
-            ->with('organization')
-            ->orderByDesc('mat_pro_date')
-            ->orderByDesc('id')
-            ->get();
+        $searchBy  = $request->string('search_by', 'receipt_no')->value();
+        $keyword   = trim($request->string('keyword')->value());
+        $sort      = $request->string('sort', '')->value();
+        $direction = strtolower($request->string('direction', 'asc')->value()) === 'desc' ? 'desc' : 'asc';
+
+        $sortableColumns = [
+            'receipt_no'     => 'mat_pro_code',
+            'received_date'  => 'mat_pro_date',
+            'method'         => 'mat_pro_method',
+            'total_quantity' => 'total_received_qty',
+        ];
+
+        $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
+
+        $query = MaterialProcurement::query()
+            ->whereIn('org_id', $visibleOrgIds)
+            ->withSum('details as total_received_qty', 'mat_amt');
+
+        if ($sort === 'total_quantity') {
+            // Oracle: ORDER BY aggregate alias works when alias is in the SELECT list
+            $query->orderBy('total_received_qty', $direction)->orderBy('id', $direction);
+        } elseif (array_key_exists($sort, $sortableColumns)) {
+            $query->orderBy($sortableColumns[$sort], $direction)->orderBy('id', $direction);
+        } else {
+            $query->orderByRaw('UPPER(mat_pro_code) ASC')->orderBy('id', 'ASC');
+        }
+
+        if ($keyword !== '') {
+            if ($searchBy === 'receipt_no') {
+                $query->whereRaw('UPPER(mat_pro_code) LIKE ?', ['%' . mb_strtoupper($keyword) . '%']);
+            } elseif ($searchBy === 'received_date') {
+                $query->whereRaw("TO_CHAR(mat_pro_date, 'DD/MM/YYYY') LIKE ?", ['%' . $keyword . '%']);
+            } elseif ($searchBy === 'organization') {
+                $query->whereHas('organization', function ($q) use ($keyword) {
+                    $q->whereRaw('UPPER(org_name) LIKE ?', ['%' . mb_strtoupper($keyword) . '%']);
+                });
+            }
+        }
 
         return view('material.MAT-002-record-material-receiving.index', [
-            'pageTitle' => 'บันทึกการรับวัสดุเข้าคลัง',
-            'receivingRecords' => $records,
-            'methodOptions' => $this->methodOptions(),
+            'pageTitle'        => 'บันทึกการรับวัสดุเข้าคลัง',
+            'receivingRecords' => $query->paginate(10)->withQueryString(),
+            'searchBy'         => $searchBy,
+            'keyword'          => $keyword,
+            'sort'             => $sort,
+            'direction'        => $direction,
+            'methodOptions'    => $this->methodOptions(),
         ]);
     }
 
-    public function create(): View
+    public function create(Request $request): View
     {
+        $searchBy = $request->string('search_by', 'name')->value();
+        $keyword  = trim($request->string('keyword')->value());
+
+        $materialsQuery = Material::query()->orderBy('mat_code');
+
+        if ($keyword !== '') {
+            if ($searchBy === 'code') {
+                $materialsQuery->whereRaw('UPPER(mat_code) LIKE ?', ['%' . mb_strtoupper($keyword) . '%']);
+            } else {
+                $materialsQuery->whereRaw('UPPER(mat_name) LIKE ?', ['%' . mb_strtoupper($keyword) . '%']);
+            }
+        }
+
         return view('material.MAT-002-record-material-receiving.create', [
             'pageTitle'           => 'บันทึกการรับวัสดุเข้าคลัง',
-            'nextReceiptNo'       => $this->nextProcurementCode(),
+            'nextReceiptNo'       => $this->peekProcurementCode(Carbon::now()),
             'record'              => null,
             'organizationOptions' => $this->organizationOptions(),
             'dealerOptions'       => $this->dealerOptions(),
             'materials'           => $this->materials(),
+            'materialsPage'       => $materialsQuery->paginate(10)->withQueryString(),
+            'searchBy'            => $searchBy,
+            'keyword'             => $keyword,
             'methodOptions'       => $this->methodOptions(),
             'vatOptions'          => $this->vatOptions(),
         ]);
     }
 
     /**
-     * Step 1: Save ONLY the MATERIAL_PROCUREMENT header row.
-     * Deliberately does not touch items/MATERIAL_PROCUREMENT_LIST at all.
+     * Step 1: Save the MATERIAL_PROCUREMENT header row, plus any items the user
+     * already staged (filled in quantity/price for) in the materials table before
+     * the header existed. Both are created together in a single transaction.
      */
     public function storeHeader(Request $request): RedirectResponse
     {
         try {
             $validated = $this->validateHeader($request, true);
 
-            $procurementId = DB::connection('oracle')->transaction(function () use ($validated) {
+            // Parse draft items JSON submitted by the create form (single-pass flow)
+            if ($request->filled('draft_items_json')) {
+                $rawItems = json_decode((string) $request->input('draft_items_json'), true);
+                if (is_array($rawItems)) {
+                    $request->merge(['items' => $rawItems]);
+                }
+            }
+
+            $stagedItems = $this->validateStagedItems($request);
+
+            $userId = (int) Auth::id();
+            $procurementId = DB::connection('oracle')->transaction(function () use ($validated, $stagedItems, $userId) {
+                $generatedCode = $this->generateProcurementCode(Carbon::parse($validated['mat_pro_date']));
                 $procurementId = $this->nextProcurementId();
 
                 MaterialProcurement::create([
                     'id' => $procurementId,
-                    'mat_pro_code'         => $validated['mat_pro_code'],
+                    'mat_pro_code'         => $generatedCode,
                     'dealer_id'            => (int) $validated['dealer_id'],
                     'org_id'               => (int) $validated['org_id'],
                     'mat_pro_date' => $validated['mat_pro_date'],
@@ -69,10 +140,26 @@ class MaterialReceivingController extends Controller
                     'mat_pro_contact_date' => $validated['mat_pro_contact_date'] ?? null,
                     'mat_pro_quotation' => $validated['mat_pro_quotation'] ?? null,
                     'vat_type' => (int) $validated['vat_type'],
-                    'vat_rate' => (int) $validated['vat_type'] === 2 ? null : ($validated['vat_rate'] ?? 7),
-                    'created_by' => 1,
-                    'updated_by' => 1,
+                    'vat_rate' => match ((int) $validated['vat_type']) {
+                        2 => null,
+                        3 => 0,
+                        default => $validated['vat_rate'] ?? 7,
+                    },
+                    'created_by' => $userId,
+                    'updated_by' => $userId,
                 ]);
+
+                foreach ($stagedItems as $item) {
+                    MaterialProcurementList::create([
+                        'id' => $this->nextProcurementListId(),
+                        'mat_pro_id' => $procurementId,
+                        'mat_id' => $item['mat_id'],
+                        'mat_amt' => $item['mat_amt'],
+                        'mat_price' => $item['mat_price'],
+                        'created_by' => $userId,
+                        'updated_by' => $userId,
+                    ]);
+                }
 
                 return $procurementId;
             });
@@ -81,7 +168,7 @@ class MaterialReceivingController extends Controller
 
             return redirect()
                 ->route('material.receiving.edit', $newRecord->mat_pro_code)
-                ->with('success', 'บันทึกข้อมูลเอกสารเรียบร้อยแล้ว สามารถเพิ่มรายการวัสดุได้');
+                ->with('success', 'บันทึกข้อมูลเอกสารการรับวัสดุเรียบร้อยแล้ว');
         } catch (ValidationException $exception) {
             throw $exception;
         } catch (Throwable $exception) {
@@ -90,6 +177,107 @@ class MaterialReceivingController extends Controller
             return back()
                 ->withInput()
                 ->with('error', 'ไม่สามารถบันทึกข้อมูลเอกสารการรับวัสดุได้ กรุณาตรวจสอบข้อมูลและลองใหม่อีกครั้ง');
+        }
+    }
+
+    /**
+     * AJAX endpoint: save staged items (and optionally header fields) in one shot.
+     * Header fields are all optional – missing ones get sensible defaults so the
+     * user can fill them in later via the edit page.
+     */
+    public function saveItems(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'items'                => ['required', 'array', 'min:1'],
+                'items.*.material_id'  => ['required', 'integer', 'min:1'],
+                'items.*.quantity'     => ['required', 'numeric', 'gt:0'],
+                'items.*.unit_price'   => ['required', 'numeric', 'min:0'],
+                'mat_pro_date'         => ['nullable', 'date'],
+                'org_id'               => ['nullable', 'integer'],
+                'dealer_id'            => ['nullable', 'integer'],
+                'mat_pro_method'       => ['nullable', 'integer'],
+                'mat_pro_contact_no'   => ['nullable', 'string', 'max:100'],
+                'mat_pro_contact_date' => ['nullable', 'date'],
+                'mat_pro_quotation'    => ['nullable', 'string', 'max:100'],
+                'vat_type'             => ['nullable', 'integer'],
+                'vat_rate'             => ['nullable', 'numeric', 'min:0'],
+            ]);
+
+            $stagedItems = [];
+            foreach ($validated['items'] as $item) {
+                $matId = (int) $item['material_id'];
+                if (Material::query()->where('id', $matId)->exists()) {
+                    $stagedItems[] = [
+                        'mat_id'   => $matId,
+                        'mat_amt'  => (float) $item['quantity'],
+                        'mat_price'=> (float) $item['unit_price'],
+                    ];
+                }
+            }
+
+            if (empty($stagedItems)) {
+                return response()->json(['error' => 'ไม่พบรายการวัสดุที่ถูกต้อง'], 422);
+            }
+
+            $vatType  = (int) ($validated['vat_type'] ?? 1);
+
+            // Default org/dealer/date when not supplied by user
+            $orgId    = isset($validated['org_id'])    ? (int) $validated['org_id']    : $this->defaultOrgId();
+            $dealerId = isset($validated['dealer_id']) ? (int) $validated['dealer_id'] : $this->defaultDealerId();
+            $proDate  = $validated['mat_pro_date'] ?? now()->format('Y-m-d');
+            $userId2  = (int) Auth::id();
+
+            $procurementId = DB::connection('oracle')->transaction(function () use ($validated, $stagedItems, $vatType, $orgId, $dealerId, $proDate, $userId2) {
+                $generatedCode = $this->generateProcurementCode(Carbon::parse($proDate));
+                $procurementId = $this->nextProcurementId();
+
+                MaterialProcurement::create([
+                    'id'                   => $procurementId,
+                    'mat_pro_code'         => $generatedCode,
+                    'dealer_id'            => $dealerId,
+                    'org_id'               => $orgId,
+                    'mat_pro_date'         => $proDate,
+                    'mat_pro_method'       => isset($validated['mat_pro_method']) ? (int) $validated['mat_pro_method'] : null,
+                    'mat_pro_contact_no'   => $validated['mat_pro_contact_no']   ?? null,
+                    'mat_pro_contact_date' => $validated['mat_pro_contact_date'] ?? null,
+                    'mat_pro_quotation'    => $validated['mat_pro_quotation']    ?? null,
+                    'vat_type'             => $vatType,
+                    'vat_rate'             => match ($vatType) {
+                        2 => null,
+                        3 => 0,
+                        default => $validated['vat_rate'] ?? 7,
+                    },
+                    'created_by'           => $userId2,
+                    'updated_by'           => $userId2,
+                ]);
+
+                foreach ($stagedItems as $item) {
+                    MaterialProcurementList::create([
+                        'id'         => $this->nextProcurementListId(),
+                        'mat_pro_id' => $procurementId,
+                        'mat_id'     => $item['mat_id'],
+                        'mat_amt'    => $item['mat_amt'],
+                        'mat_price'  => $item['mat_price'],
+                        'created_by' => $userId2,
+                        'updated_by' => $userId2,
+                    ]);
+                }
+
+                return $procurementId;
+            });
+
+            $newRecord = MaterialProcurement::query()->findOrFail($procurementId);
+
+            return response()->json([
+                'redirect' => route('material.receiving.edit', $newRecord->mat_pro_code),
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json(['error' => implode(' ', $e->validator->errors()->all())], 422);
+        } catch (Throwable $e) {
+            Log::error('MAT-002 saveItems failed', ['error' => $e->getMessage()]);
+
+            return response()->json(['error' => 'ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง'], 500);
         }
     }
 
@@ -122,7 +310,7 @@ class MaterialReceivingController extends Controller
     }
 
     /**
-     * Header-only update. Deliberately does not touch items/MATERIAL_PROCUREMENT_LIST.
+     * Header-only update. Also handles optional item quantity changes from inline edit.
      */
     public function update(Request $request, string $receiptNo): RedirectResponse
     {
@@ -131,7 +319,8 @@ class MaterialReceivingController extends Controller
         try {
             $validated = $this->validateHeader($request, false, $record->id);
 
-            DB::connection('oracle')->transaction(function () use ($record, $validated): void {
+            DB::connection('oracle')->transaction(function () use ($record, $validated, $request): void {
+                $userId = (int) Auth::id();
                 $record->update([
                     'dealer_id'            => (int) $validated['dealer_id'],
                     'org_id'               => (int) $validated['org_id'],
@@ -141,14 +330,38 @@ class MaterialReceivingController extends Controller
                     'mat_pro_contact_date' => $validated['mat_pro_contact_date'] ?? null,
                     'mat_pro_quotation' => $validated['mat_pro_quotation'] ?? null,
                     'vat_type' => (int) $validated['vat_type'],
-                    'vat_rate' => (int) $validated['vat_type'] === 2 ? null : ($validated['vat_rate'] ?? 7),
-                    'updated_by' => 1,
+                    'vat_rate' => match ((int) $validated['vat_type']) {
+                        2 => null,
+                        3 => 0,
+                        default => $validated['vat_rate'] ?? 7,
+                    },
+                    'updated_by' => $userId,
                 ]);
+
+                // Optional: inline-edited item quantities and prices from hidden inputs
+                $items = $request->input('items');
+                if (is_array($items)) {
+                    foreach ($items as $itemId => $data) {
+                        $qty   = filter_var($data['qty']   ?? null, FILTER_VALIDATE_FLOAT);
+                        $price = filter_var($data['price'] ?? null, FILTER_VALIDATE_FLOAT);
+                        if ($qty === false || $qty <= 0) {
+                            continue;
+                        }
+                        $updateData = ['mat_amt' => $qty, 'updated_by' => $userId];
+                        if ($price !== false && $price >= 0) {
+                            $updateData['mat_price'] = $price;
+                        }
+                        MaterialProcurementList::query()
+                            ->where('id', (int) $itemId)
+                            ->where('mat_pro_id', $record->id)
+                            ->update($updateData);
+                    }
+                }
             });
 
             return redirect()
                 ->route('material.receiving.edit', $record->mat_pro_code)
-                ->with('success', 'บันทึกการแก้ไขข้อมูลเอกสารเรียบร้อยแล้ว');
+                ->with('success', 'บันทึกการแก้ไขข้อมูลเรียบร้อยแล้ว');
         } catch (ValidationException $exception) {
             throw $exception;
         } catch (Throwable $exception) {
@@ -175,16 +388,17 @@ class MaterialReceivingController extends Controller
             $item = $this->validateItemInput($request, $record->id);
 
             $created = DB::connection('oracle')->transaction(function () use ($record, $item) {
-                $newId = $this->nextProcurementListId();
+                $newId  = $this->nextProcurementListId();
+                $userId = (int) Auth::id();
 
                 return MaterialProcurementList::create([
-                    'id' => $newId,
+                    'id'         => $newId,
                     'mat_pro_id' => $record->id,
-                    'mat_id' => $item['mat_id'],
-                    'mat_amt' => $item['mat_amt'],
-                    'mat_price' => $item['mat_price'],
-                    'created_by' => 1,
-                    'updated_by' => 1,
+                    'mat_id'     => $item['mat_id'],
+                    'mat_amt'    => $item['mat_amt'],
+                    'mat_price'  => $item['mat_price'],
+                    'created_by' => $userId,
+                    'updated_by' => $userId,
                 ]);
             });
 
@@ -267,18 +481,44 @@ class MaterialReceivingController extends Controller
             ->with('success', 'บันทึกข้อมูลการรับวัสดุเรียบร้อยแล้ว');
     }
 
+    public function destroy(string $receiptNo): RedirectResponse
+    {
+        $record = $this->findByCode($receiptNo);
+
+        try {
+            DB::connection('oracle')->transaction(function () use ($record): void {
+                MaterialProcurementList::query()
+                    ->where('mat_pro_id', $record->id)
+                    ->delete();
+                $record->delete();
+            });
+
+            return redirect()
+                ->route('material.receiving.index')
+                ->with('success', 'ลบข้อมูลใบรับวัสดุเรียบร้อยแล้ว');
+        } catch (Throwable $e) {
+            Log::error('MAT-002 destroy failed', ['receipt_no' => $receiptNo, 'error' => $e->getMessage()]);
+
+            return redirect()
+                ->route('material.receiving.index')
+                ->with('error', 'ไม่สามารถลบข้อมูลใบรับวัสดุได้ กรุณาลองใหม่อีกครั้ง');
+        }
+    }
+
     private function findByCode(string $receiptNo): MaterialProcurement
     {
+        $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
+
         return MaterialProcurement::query()
             ->with(['organization', 'details.material'])
             ->where('mat_pro_code', $receiptNo)
+            ->whereIn('org_id', $visibleOrgIds)
             ->firstOrFail();
     }
 
     private function validateHeader(Request $request, bool $isCreate, ?int $currentId = null): array
     {
         $rules = [
-            'mat_pro_code'        => ['required', 'string', 'max:50'],
             'mat_pro_date'        => ['required', 'date'],
             'org_id'              => ['required', 'integer'],
             'dealer_id'           => ['required', 'integer', 'min:1'],
@@ -308,6 +548,16 @@ class MaterialReceivingController extends Controller
             ]);
         }
 
+        // VAT rate must be 7 or 10 when vat_type is 1 or 2
+        if (in_array((int) ($validated['vat_type'] ?? 0), [1, 2], true)) {
+            $rate = (int) ($validated['vat_rate'] ?? 0);
+            if (! in_array($rate, [7, 10], true)) {
+                throw ValidationException::withMessages([
+                    'vat_rate' => 'อัตราภาษีต้องเป็น 7 หรือ 10',
+                ]);
+            }
+        }
+
         if (isset($validated['mat_pro_method']) && $validated['mat_pro_method'] !== null) {
             if (! array_key_exists((int) $validated['mat_pro_method'], $this->methodOptions())) {
                 throw ValidationException::withMessages([
@@ -316,20 +566,44 @@ class MaterialReceivingController extends Controller
             }
         }
 
-        $duplicateCode = MaterialProcurement::query()
-            ->where('mat_pro_code', $validated['mat_pro_code'])
-            ->when(! $isCreate && $currentId !== null, function ($query) use ($currentId) {
-                $query->where('id', '!=', $currentId);
-            })
-            ->exists();
+        return $validated;
+    }
 
-        if ($duplicateCode) {
-            throw ValidationException::withMessages([
-                'mat_pro_code' => 'เลขที่ใบรับวัสดุนี้ถูกใช้งานแล้ว',
-            ]);
+    /**
+     * Validates the materials the user staged (filled in quantity/price for) on the
+     * create page's materials table BEFORE the header existed. Invalid/duplicate
+     * entries are silently skipped so the header can still be saved successfully.
+     */
+    private function validateStagedItems(Request $request): array
+    {
+        $validated = $request->validate([
+            'items' => ['nullable', 'array'],
+            'items.*.material_id' => ['required_with:items', 'integer', 'min:1'],
+            'items.*.quantity' => ['required_with:items', 'numeric', 'gt:0'],
+            'items.*.unit_price' => ['required_with:items', 'numeric', 'min:0'],
+        ]);
+
+        $items = $validated['items'] ?? [];
+        $seen = [];
+        $result = [];
+
+        foreach ($items as $item) {
+            $matId = (int) $item['material_id'];
+
+            if (isset($seen[$matId]) || ! Material::query()->where('id', $matId)->exists()) {
+                continue;
+            }
+
+            $seen[$matId] = true;
+
+            $result[] = [
+                'mat_id' => $matId,
+                'mat_amt' => (float) $item['quantity'],
+                'mat_price' => (float) $item['unit_price'],
+            ];
         }
 
-        return $validated;
+        return $result;
     }
 
     /**
@@ -386,22 +660,76 @@ class MaterialReceivingController extends Controller
         return (int) MaterialProcurementList::query()->max('id') + 1;
     }
 
-    private function nextProcurementCode(): string
+    /**
+     * Returns the Thai fiscal year (พ.ศ.) for the given date.
+     * Fiscal year runs Oct 1 – Sep 30.
+     */
+    private function fiscalYear(Carbon $date): int
     {
-        $codes = MaterialProcurement::query()->pluck('mat_pro_code')->all();
-        $maxRunning = 0;
+        $thaiYear = $date->year + 543;
 
-        foreach ($codes as $code) {
-            if (! is_string($code)) {
-                continue;
-            }
+        return $date->month >= 10 ? $thaiYear + 1 : $thaiYear;
+    }
 
-            if (preg_match('/(\d+)$/', $code, $matches) === 1) {
-                $maxRunning = max($maxRunning, (int) $matches[1]);
-            }
+    /**
+     * Builds the next procurement code for the given date's fiscal year.
+     * Format: MPR-YYNNNNN (10 chars, MPR prefix) e.g. MPR-6900001
+     */
+    private function buildProcurementCode(Carbon $date, bool $withLock): string
+    {
+        $yearCode = substr((string) $this->fiscalYear($date), -2);
+
+        $query = MaterialProcurement::query()
+            ->whereRaw('mat_pro_code LIKE ? AND LENGTH(mat_pro_code) = 11', ['MPR-' . $yearCode . '%']);
+
+        if ($withLock) {
+            $query->lockForUpdate();
         }
 
-        return 'MPR-' . str_pad((string) ($maxRunning + 1), 5, '0', STR_PAD_LEFT);
+        $maxRunning = $query->get(['mat_pro_code'])
+            ->reduce(function (int $carry, MaterialProcurement $record): int {
+                if (preg_match('/^MPR-\d{2}(\d{5})$/', (string) $record->mat_pro_code, $m) === 1) {
+                    return max($carry, (int) $m[1]);
+                }
+
+                return $carry;
+            }, 0);
+
+        return 'MPR-' . $yearCode . str_pad((string) ($maxRunning + 1), 5, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Use inside a DB transaction: locks rows to prevent concurrent duplicates.
+     */
+    private function generateProcurementCode(Carbon $date): string
+    {
+        return $this->buildProcurementCode($date, true);
+    }
+
+    /**
+     * Preview-only (no lock): may be slightly stale under very high concurrency.
+     */
+    private function peekProcurementCode(Carbon $date): string
+    {
+        return $this->buildProcurementCode($date, false);
+    }
+
+    /**
+     * AJAX endpoint: returns next procurement code preview for a given date.
+     * Used by the create form when the user changes the receive date.
+     */
+    public function previewCode(Request $request): JsonResponse
+    {
+        try {
+            $dateStr = trim((string) $request->input('date', ''));
+            $date    = $dateStr !== '' ? Carbon::parse($dateStr) : Carbon::now();
+
+            return response()->json([
+                'code' => $this->peekProcurementCode($date),
+            ]);
+        } catch (Throwable $e) {
+            return response()->json(['code' => ''], 200);
+        }
     }
 
     /**
@@ -425,6 +753,17 @@ class MaterialReceivingController extends Controller
      *
      * @return array<int,array{value:int,label:string}>
      */
+    private function defaultOrgId(): int
+    {
+        return (int) (Auth::user()?->org_id ?? 0);
+    }
+
+    private function defaultDealerId(): int
+    {
+        $options = $this->dealerOptions();
+        return (int) ($options[0]['value'] ?? 1);
+    }
+
     private function dealerOptions(): array
     {
         // TODO: replace with live query once DEALER is populated:
@@ -477,11 +816,22 @@ class MaterialReceivingController extends Controller
 
     private function methodOptions(): array
     {
-        return [
-            1 => 'เฉพาะเจาะจง',
-            2 => 'ประกวดราคา',
-            3 => 'คัดเลือก',
-        ];
+        try {
+            $data = \App\Models\MaterialProcurementMethod::query()
+                ->where('is_active', 1)
+                ->orderBy('sort_order')
+                ->orderBy('method_id')
+                ->pluck('method_name', 'method_id')
+                ->toArray();
+            return $data ?: $this->fallbackMethodOptions();
+        } catch (\Throwable $e) {
+            return $this->fallbackMethodOptions();
+        }
+    }
+
+    private function fallbackMethodOptions(): array
+    {
+        return [1 => 'เฉพาะเจาะจง', 2 => 'ประกวดราคา', 3 => 'คัดเลือก'];
     }
 
     private function vatOptions(): array
@@ -489,6 +839,12 @@ class MaterialReceivingController extends Controller
         return [
             1 => 'รวม VAT',
             2 => 'ไม่รวม VAT',
+            3 => 'ไม่มีภาษี',
         ];
+    }
+
+    public function vatRateOptions(): array
+    {
+        return [7, 10];
     }
 }

@@ -1,4 +1,4 @@
-* {
+﻿* {
     box-sizing: border-box;
 }
 
@@ -13,6 +13,7 @@
     --page-bg: #dfe4ea;
     --primary: #173b8f;
     --primary-dark: #102d70;
+    --card-border: #173b8f;
     --line: #d9e0ea;
     --thead: #edf2f7;
     --text-main: #334155;
@@ -206,7 +207,7 @@ svg.svg-sprite {
 
 .page-container {
     width: 100%;
-    max-width: 1120px;
+    max-width: 1136px;
     margin: 0 auto;
     padding: 34px 26px 60px;
 }
@@ -265,10 +266,11 @@ svg.svg-sprite {
 
 .disposal-card,
 .detail-card {
-    background: #f8fbff;
-    border: 1px solid #d2dbe7;
-    border-radius: 7px;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    background: #ffffff;
+    border: 1.5px solid var(--card-border);
+    border-top-width: 4px;
+    border-radius: 8px;
+    box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
     overflow: hidden;
 }
 
@@ -364,15 +366,19 @@ svg.svg-sprite {
 }
 
 .table-wrapper {
-    border-top: 0;
+    padding: 16px 28px 0;
     overflow-x: auto;
 }
 
 .disposal-table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     table-layout: fixed;
     background: #ffffff;
+    border: 1px solid #d7e0ea;
+    border-radius: 7px;
+    overflow: hidden;
 }
 
 .disposal-table thead tr {
@@ -588,7 +594,7 @@ svg.svg-sprite {
 }
 
 .disposal-create-page {
-    max-width: 1120px;
+    max-width: 1216px;
 }
 
 .disposal-create-card {
@@ -707,7 +713,7 @@ svg.svg-sprite {
     margin-top: 10px;
     border: 1px solid #d7e0ea;
     border-radius: 4px;
-    overflow: hidden;
+    /* overflow: visible — allows CSS tooltips on action buttons to escape */
     background: #ffffff;
 }
 
@@ -777,38 +783,12 @@ svg.svg-sprite {
     font-weight: 800;
 }
 
-.remove-item-btn {
-    height: 18px;
-    min-width: 28px;
-    border: 1px solid #fecaca;
-    border-radius: 5px;
-    background: #fef2f2;
-    color: #ef4444;
-    font-size: 9px;
-    font-weight: 700;
-    cursor: pointer;
-}
+/* .remove-item-btn and .edit-item-btn replaced by .table-action-icon from table-actions.css */
 
 .item-action-group {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-}
-
-.edit-item-btn {
-    height: 18px;
-    min-width: 34px;
-    border: 0;
-    border-radius: 5px;
-    background: #d97706;
-    color: #ffffff;
-    font-size: 9px;
-    font-weight: 700;
-    cursor: pointer;
-}
-
-.edit-item-btn:hover {
-    background: #b45309;
 }
 
 .summary-row td {
@@ -838,7 +818,7 @@ svg.svg-sprite {
 }
 
 .disposal-detail-page {
-    max-width: 1120px;
+    max-width: 1216px;
 }
 
 .disposal-detail-card {

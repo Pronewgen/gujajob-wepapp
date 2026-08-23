@@ -1,464 +1,235 @@
-const sidebarStorageKey = 'gujajob.sidebar.groupState';
+﻿import { SearchAutocomplete } from '../../components/search-autocomplete.js';
+import { initSearchableSelects, resetSearchableSelect } from '../../components/searchable-select.js';
 
-function getSidebarState() {
-    try {
-        const storedState = localStorage.getItem(sidebarStorageKey);
+/* ASS-002 — Manage Supplier Information */
 
-        if (!storedState) {
-            return {
-                material: true,
-                asset: true,
-            };
-        }
+document.addEventListener('DOMContentLoaded', () => {
+    initializeDeleteModal();
+    initializeSupplierCreatePopup();
+    initializeSupplierEditPopup();
+    initializeLocationSearchableSelects();
+    initializeSupplierAutocomplete();
+});
 
-        return {
-            material: true,
-            asset: true,
-            ...JSON.parse(storedState),
-        };
-    } catch (error) {
-        return {
-            material: true,
-            asset: true,
-        };
-    }
-}
+/* ---------- Delete modal (index page) ---------------------------------- */
+function initializeDeleteModal() {
+    const overlay   = document.getElementById('deleteSupplierOverlay');
+    const form      = document.getElementById('deleteSupplierForm');
+    const msgEl     = document.getElementById('deleteSupplierMessage');
+    const cancelBtn = document.getElementById('cancelDeleteSupplierButton');
+    const confirmBtn = document.getElementById('confirmDeleteSupplierButton');
 
-function saveSidebarState(state) {
-    try {
-        localStorage.setItem(sidebarStorageKey, JSON.stringify(state));
-    } catch (error) {
-        console.warn('Cannot save sidebar state.');
-    }
-}
+    if (!overlay || !form) return;
 
-function applySidebarGroupState(groupElement, isOpen) {
-    const toggleButton = groupElement.querySelector('.menu-group-toggle');
-
-    groupElement.classList.toggle('is-collapsed', !isOpen);
-
-    if (toggleButton) {
-        toggleButton.setAttribute('aria-expanded', String(isOpen));
-    }
-}
-
-function initializeSidebarGroups() {
-    const state = getSidebarState();
-    const groups = document.querySelectorAll('[data-sidebar-group]');
-
-    groups.forEach((groupElement) => {
-        const groupName = groupElement.dataset.sidebarGroup;
-        const toggleButton = groupElement.querySelector('.menu-group-toggle');
-        const isOpen = state[groupName] !== false;
-
-        applySidebarGroupState(groupElement, isOpen);
-
-        if (!toggleButton) {
-            return;
-        }
-
-        toggleButton.addEventListener('click', () => {
-            const currentState = getSidebarState();
-            const nextIsOpen = groupElement.classList.contains('is-collapsed');
-
-            currentState[groupName] = nextIsOpen;
-
-            applySidebarGroupState(groupElement, nextIsOpen);
-            saveSidebarState(currentState);
-        });
-    });
-}
-
-function preventDisabledMenuReload() {
-    document.querySelectorAll('.disabled-link').forEach((link) => {
-        link.addEventListener('click', (event) => {
-            event.preventDefault();
-        });
-    });
-}
-
-function initializeSupplierSearch() {
-    const searchType = document.getElementById('supplierSearchType');
-    const searchInput = document.getElementById('supplierSearchInput');
-    const searchButton = document.getElementById('supplierSearchButton');
-    const tableBody = document.getElementById('supplierTableBody');
-    const resultText = document.getElementById('supplierResultText');
-
-    if (!searchType || !searchInput || !searchButton || !tableBody || !resultText) {
-        return;
-    }
-
-    const originalRows = Array.from(tableBody.querySelectorAll('tr'));
-
-    function updatePlaceholder() {
-        const placeholders = {
-            supplier_name: 'กรอกชื่อผู้ประกอบการ',
-            supplier_type: 'กรอกประเภทผู้ประกอบการ',
-            contact_name: 'กรอกชื่อผู้ติดต่อ',
-            phone: 'กรอกเบอร์โทรศัพท์',
-            address: 'กรอกที่อยู่',
-        };
-
-        searchInput.placeholder = placeholders[searchType.value] || 'กรอกชื่อผู้ประกอบการ';
-    }
-
-    function getTargetText(row) {
-        const keyMap = {
-            supplier_name: 'supplierName',
-            supplier_type: 'supplierType',
-            contact_name: 'contactName',
-            phone: 'phone',
-            address: 'address',
-        };
-
-        const key = keyMap[searchType.value] || 'supplierName';
-
-        return String(row.dataset[key] || '').toLowerCase();
-    }
-
-    function updateResultText(visibleCount) {
-        if (visibleCount === 0) {
-            resultText.textContent = 'ไม่พบข้อมูลผู้ประกอบการ';
-            return;
-        }
-
-        resultText.textContent = `แสดง 1 จากทั้งหมด ${visibleCount} รายการ`;
-    }
-
-    function searchRecords() {
-        const keyword = searchInput.value.trim().toLowerCase();
-        let visibleCount = 0;
-
-        originalRows.forEach((row) => {
-            const isVisible = getTargetText(row).includes(keyword);
-
-            row.style.display = isVisible ? '' : 'none';
-
-            if (isVisible) {
-                visibleCount += 1;
+    document.querySelectorAll('[data-delete-url]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const url  = btn.dataset.deleteUrl;
+            const name = btn.dataset.supplierName ?? '';
+            form.action = url;
+            if (msgEl) {
+                msgEl.innerHTML = `คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูล<br><strong>${escapeHtml(name)}</strong><br>การดำเนินการนี้ไม่สามารถเรียกคืนได้`;
             }
+            overlay.classList.add('is-visible');
+            overlay.setAttribute('aria-hidden', 'false');
         });
+    });
 
-        const oldNoDataRow = tableBody.querySelector('.no-data-row');
+    cancelBtn?.addEventListener('click', () => closeOverlay(overlay));
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeOverlay(overlay); });
 
-        if (oldNoDataRow) {
-            oldNoDataRow.remove();
-        }
+    confirmBtn?.addEventListener('click', () => form.submit());
+}
 
-        if (visibleCount === 0) {
-            const noDataRow = document.createElement('tr');
-            noDataRow.className = 'no-data-row';
-            noDataRow.innerHTML = '<td class="no-data" colspan="7">ไม่พบข้อมูลที่ค้นหา</td>';
-            tableBody.appendChild(noDataRow);
-        }
+/* ---------- Create modal (green) --------------------------------------- */
+function initializeSupplierCreatePopup() {
+    const saveBtn   = document.getElementById('saveSupplierButton');
+    const overlay   = document.getElementById('saveSupplierOverlay');
+    const cancelBtn = document.getElementById('cancelSaveSupplierButton');
+    const confirmBtn = document.getElementById('confirmSaveSupplierButton');
+    const form      = document.getElementById('supplierCreateForm');
 
-        updateResultText(visibleCount);
+    if (!saveBtn || !overlay || !form) return;
+
+    saveBtn.addEventListener('click', () => {
+        if (!form.checkValidity()) { form.reportValidity(); return; }
+        overlay.classList.add('is-visible');
+        overlay.setAttribute('aria-hidden', 'false');
+    });
+
+    cancelBtn?.addEventListener('click', () => closeOverlay(overlay));
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeOverlay(overlay); });
+
+    confirmBtn?.addEventListener('click', () => form.submit());
+}
+
+/* ---------- Edit modal (yellow) ---------------------------------------- */
+function initializeSupplierEditPopup() {
+    const saveBtn   = document.getElementById('saveSupplierButton');
+    const overlay   = document.getElementById('editSupplierOverlay');
+    const cancelBtn = document.getElementById('cancelEditSupplierButton');
+    const confirmBtn = document.getElementById('confirmEditSupplierButton');
+    const form      = document.getElementById('supplierEditForm');
+
+    if (!saveBtn || !overlay || !form) return;
+
+    saveBtn.addEventListener('click', () => {
+        if (!form.checkValidity()) { form.reportValidity(); return; }
+        overlay.classList.add('is-visible');
+        overlay.setAttribute('aria-hidden', 'false');
+    });
+
+    cancelBtn?.addEventListener('click', () => closeOverlay(overlay));
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeOverlay(overlay); });
+
+    confirmBtn?.addEventListener('click', () => form.submit());
+}
+
+/* ---------- Searchable province / amphur / tambon ---------------------- */
+function initializeLocationSearchableSelects() {
+    const provHidden = document.getElementById('dealer_prov_id');
+    const ampHidden  = document.getElementById('dealer_amp_id');
+    const tamHidden  = document.getElementById('dealer_tam_id');
+    const zipInput   = document.getElementById('postalCode');
+
+    if (!provHidden) return; // not on create/edit page
+
+    const urls = window._locationUrls ?? { amphurs: '/api/amphurs', tambons: '/api/tambons' };
+
+    // Initialise all [data-searchable-select] wrappers on the page
+    initSearchableSelects(document);
+
+    function getWrapper(inputId) {
+        return document.getElementById(inputId)?.closest('[data-searchable-select]');
     }
 
-    searchType.addEventListener('change', () => {
-        searchInput.value = '';
-        updatePlaceholder();
-        searchRecords();
+    function enableWrapper(inputId, placeholder) {
+        const wrapper = getWrapper(inputId);
+        if (!wrapper) return;
+        wrapper.classList.remove('guja-autocomplete--disabled');
+        const vis = wrapper.querySelector('.guja-autocomplete__input');
+        if (vis) {
+            vis.removeAttribute('disabled');
+            if (placeholder) vis.placeholder = placeholder;
+        }
+    }
+
+    function disableWrapper(inputId, placeholder) {
+        const wrapper = getWrapper(inputId);
+        if (!wrapper) return;
+        wrapper.classList.add('guja-autocomplete--disabled');
+        const vis = wrapper.querySelector('.guja-autocomplete__input');
+        if (vis) {
+            vis.setAttribute('disabled', '');
+            if (placeholder) vis.placeholder = placeholder;
+        }
+    }
+
+    // Province change → reload amphurs, reset tambon
+    provHidden.addEventListener('change', () => {
+        const provId = provHidden.value;
+
+        resetSearchableSelect('dealer_amp_id', [], true);
+        resetSearchableSelect('dealer_tam_id', [], true);
+        disableWrapper('dealer_amp_id', 'เลือกจังหวัดก่อน');
+        disableWrapper('dealer_tam_id', 'เลือกอำเภอก่อน');
+        if (zipInput) zipInput.value = '';
+        window._tambonZipcodes = {};
+
+        if (!provId) return;
+
+        fetch(`${urls.amphurs}?province_id=${encodeURIComponent(provId)}`)
+            .then(r => r.json())
+            .then(list => {
+                const opts = list.map(a => ({ value: String(a.id), label: a.name }));
+                resetSearchableSelect('dealer_amp_id', opts, true);
+                if (opts.length > 0) {
+                    enableWrapper('dealer_amp_id', 'พิมพ์ชื่ออำเภอเพื่อค้นหา');
+                }
+            })
+            .catch(console.error);
     });
 
-    searchButton.addEventListener('click', searchRecords);
+    // Amphur change → reload tambons
+    ampHidden.addEventListener('change', () => {
+        const ampId = ampHidden.value;
 
-    searchInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            searchRecords();
+        resetSearchableSelect('dealer_tam_id', [], true);
+        disableWrapper('dealer_tam_id', 'เลือกอำเภอก่อน');
+        if (zipInput) zipInput.value = '';
+        window._tambonZipcodes = {};
+
+        if (!ampId) return;
+
+        fetch(`${urls.tambons}?amphur_id=${encodeURIComponent(ampId)}`)
+            .then(r => r.json())
+            .then(list => {
+                const opts = list.map(t => ({ value: String(t.id), label: t.name }));
+                // Build zipcode lookup from AJAX response
+                const zipcodes = {};
+                list.forEach(t => { zipcodes[t.id] = t.zipcode ?? ''; });
+                window._tambonZipcodes = zipcodes;
+
+                resetSearchableSelect('dealer_tam_id', opts, true);
+                if (opts.length > 0) {
+                    enableWrapper('dealer_tam_id', 'พิมพ์ชื่อตำบลเพื่อค้นหา');
+                }
+            })
+            .catch(console.error);
+    });
+
+    // Tambon change → auto-fill zipcode
+    tamHidden.addEventListener('change', () => {
+        const tamId = tamHidden.value;
+        if (zipInput && tamId && window._tambonZipcodes) {
+            const zip = window._tambonZipcodes[tamId] ?? window._tambonZipcodes[String(tamId)] ?? '';
+            if (zip) zipInput.value = zip;
         }
     });
-
-    searchInput.addEventListener('input', () => {
-        if (searchInput.value.trim() === '') {
-            searchRecords();
-        }
-    });
-
-    updatePlaceholder();
-    searchRecords();
 }
 
-function openOverlay(overlay) {
-    if (!overlay) return;
-
-    overlay.classList.add('is-visible');
-    overlay.setAttribute('aria-hidden', 'false');
-}
-
+/* ---------- Helpers ----------------------------------------------------- */
 function closeOverlay(overlay) {
-    if (!overlay) return;
-
     overlay.classList.remove('is-visible');
     overlay.setAttribute('aria-hidden', 'true');
 }
 
-function clearValidationState() {
-    document.querySelectorAll('.gujajob-is-invalid').forEach((field) => {
-        field.classList.remove('gujajob-is-invalid');
+function escapeHtml(str) {
+    return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ---------- Autocomplete for ASS-002 search bar ------------------------ */
+function initializeSupplierAutocomplete() {
+    const searchInput = document.getElementById('supplierSearchInput');
+    const searchType  = document.getElementById('supplierSearchType');
+    const form        = document.getElementById('supplierSearchForm');
+
+    if (!searchInput) return;
+
+    const ac = new SearchAutocomplete({
+        inputEl:      searchInput,
+        searchTypeEl: searchType,
+        endpoint:     '/search/suggestions',
+        extraParams:  { entity: 'dealer' },
+        minChars:     1,
+        debounceMs:   300,
+        maxResults:   15,
+        onSelect: (item) => {
+            searchInput.value = item.code;
+            ac.close();
+            if (form) form.submit();
+        },
     });
 
-    document.querySelectorAll('.gujajob-validation-message').forEach((message) => {
-        message.remove();
-    });
+    // Clear suggestions immediately when search type changes
+    if (searchType) {
+        searchType.addEventListener('change', () => {
+            ac.close();
+        });
+    }
 
-    const oldAlert = document.querySelector('.gujajob-validation-alert');
-
-    if (oldAlert) {
-        oldAlert.remove();
+    const wrapper = searchInput.closest('.sac-wrapper') ?? searchInput.parentElement;
+    if (wrapper && wrapper.classList.contains('sac-wrapper')) {
+        wrapper.classList.add('sac-full');
     }
 }
 
-function markInvalid(field) {
-    field.classList.add('gujajob-is-invalid');
-
-    const wrapper = field.closest('.form-field') || field.parentElement;
-
-    if (wrapper && !wrapper.querySelector('.gujajob-validation-message')) {
-        const message = document.createElement('div');
-        message.className = 'gujajob-validation-message';
-        message.textContent = 'กรุณากรอกข้อมูลช่องนี้';
-        wrapper.appendChild(message);
-    }
-}
-
-function showValidationAlert() {
-    const pageHeader = document.querySelector('.page-header');
-
-    const alert = document.createElement('div');
-    alert.className = 'gujajob-validation-alert';
-    alert.textContent = 'กรุณากรอกข้อมูลที่จำเป็นให้ครบก่อนบันทึก';
-
-    if (pageHeader) {
-        pageHeader.insertAdjacentElement('afterend', alert);
-    }
-}
-
-function validateSupplierForm() {
-    clearValidationState();
-
-    const requiredFields = Array.from(document.querySelectorAll('.supplier-form [required]'));
-    let isValid = true;
-    let firstInvalid = null;
-
-    requiredFields.forEach((field) => {
-        const value = String(field.value || '').trim();
-
-        if (value === '') {
-            isValid = false;
-
-            if (!firstInvalid) {
-                firstInvalid = field;
-            }
-
-            markInvalid(field);
-        }
-    });
-
-    if (!isValid) {
-        showValidationAlert();
-
-        if (firstInvalid) {
-            firstInvalid.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center',
-            });
-
-            setTimeout(() => firstInvalid.focus(), 250);
-        }
-    }
-
-    return isValid;
-}
-
-function initializeSupplierCreatePopup() {
-    const saveButton = document.getElementById('saveSupplierButton');
-    const overlay = document.getElementById('saveSupplierOverlay');
-    const cancelButton = document.getElementById('cancelSaveSupplierButton');
-    const confirmButton = document.getElementById('confirmSaveSupplierButton');
-
-    if (!saveButton || !overlay || !cancelButton || !confirmButton) {
-        return;
-    }
-
-    saveButton.addEventListener('click', () => {
-        if (!validateSupplierForm()) {
-            return;
-        }
-
-        openOverlay(overlay);
-    });
-
-    cancelButton.addEventListener('click', () => {
-        closeOverlay(overlay);
-    });
-
-    overlay.addEventListener('click', (event) => {
-        if (event.target === overlay) {
-            closeOverlay(overlay);
-        }
-    });
-
-    confirmButton.addEventListener('click', () => {
-        closeOverlay(overlay);
-        window.location.href = '/asset/ASS-002-manage-supplier-information';
-    });
-
-    document.querySelectorAll('.supplier-form input, .supplier-form select').forEach((field) => {
-        field.addEventListener('input', () => {
-            if (String(field.value || '').trim() !== '') {
-                field.classList.remove('gujajob-is-invalid');
-
-                const wrapper = field.closest('.form-field');
-                const message = wrapper ? wrapper.querySelector('.gujajob-validation-message') : null;
-
-                if (message) {
-                    message.remove();
-                }
-            }
-        });
-
-        field.addEventListener('change', () => {
-            if (String(field.value || '').trim() !== '') {
-                field.classList.remove('gujajob-is-invalid');
-
-                const wrapper = field.closest('.form-field');
-                const message = wrapper ? wrapper.querySelector('.gujajob-validation-message') : null;
-
-                if (message) {
-                    message.remove();
-                }
-            }
-        });
-    });
-}
-
-document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') {
-        return;
-    }
-
-    document.querySelectorAll('.confirm-overlay.is-visible').forEach((overlay) => {
-        closeOverlay(overlay);
-    });
-});
-
-initializeSidebarGroups();
-preventDisabledMenuReload();
-initializeSupplierSearch();
-initializeSupplierCreatePopup();
-
-/* ===== ASS-002 show/edit popup actions ===== */
-
-function validateSupplierRequiredForm() {
-    clearValidationState();
-
-    const form = document.querySelector('.supplier-form');
-
-    if (!form) {
-        return true;
-    }
-
-    const fields = Array.from(form.querySelectorAll('[required]'));
-    let isValid = true;
-    let firstInvalid = null;
-
-    fields.forEach((field) => {
-        if (String(field.value || '').trim() === '') {
-            isValid = false;
-
-            if (!firstInvalid) {
-                firstInvalid = field;
-            }
-
-            markInvalid(field);
-        }
-    });
-
-    if (!isValid) {
-        showValidationAlert();
-
-        if (firstInvalid) {
-            firstInvalid.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center',
-            });
-
-            setTimeout(() => firstInvalid.focus(), 250);
-        }
-    }
-
-    return isValid;
-}
-
-function initializeSupplierShowEditActions() {
-    const deleteOverlay = document.getElementById('deleteSupplierOverlay');
-    const openDeleteButton = document.getElementById('openDeleteSupplierPopup');
-    const cancelDeleteButton = document.getElementById('cancelDeleteSupplierButton');
-    const confirmDeleteButton = document.getElementById('confirmDeleteSupplierButton');
-
-    const editOverlay = document.getElementById('editSupplierOverlay');
-    const openEditButton = document.getElementById('openEditSupplierPopup');
-    const cancelEditButton = document.getElementById('cancelEditSupplierButton');
-    const confirmEditButton = document.getElementById('confirmEditSupplierButton');
-
-    if (openDeleteButton && deleteOverlay) {
-        openDeleteButton.addEventListener('click', () => {
-            openOverlay(deleteOverlay);
-        });
-    }
-
-    if (cancelDeleteButton && deleteOverlay) {
-        cancelDeleteButton.addEventListener('click', () => {
-            closeOverlay(deleteOverlay);
-        });
-    }
-
-    if (confirmDeleteButton && deleteOverlay) {
-        confirmDeleteButton.addEventListener('click', () => {
-            closeOverlay(deleteOverlay);
-            window.location.href = '/asset/ASS-002-manage-supplier-information';
-        });
-    }
-
-    if (deleteOverlay) {
-        deleteOverlay.addEventListener('click', (event) => {
-            if (event.target === deleteOverlay) {
-                closeOverlay(deleteOverlay);
-            }
-        });
-    }
-
-    if (openEditButton && editOverlay) {
-        openEditButton.addEventListener('click', () => {
-            if (!validateSupplierRequiredForm()) {
-                return;
-            }
-
-            openOverlay(editOverlay);
-        });
-    }
-
-    if (cancelEditButton && editOverlay) {
-        cancelEditButton.addEventListener('click', () => {
-            closeOverlay(editOverlay);
-        });
-    }
-
-    if (confirmEditButton && editOverlay) {
-        confirmEditButton.addEventListener('click', () => {
-            closeOverlay(editOverlay);
-            window.location.href = '/asset/ASS-002-manage-supplier-information';
-        });
-    }
-
-    if (editOverlay) {
-        editOverlay.addEventListener('click', (event) => {
-            if (event.target === editOverlay) {
-                closeOverlay(editOverlay);
-            }
-        });
-    }
-}
-
-initializeSupplierShowEditActions();

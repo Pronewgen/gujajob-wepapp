@@ -1,17 +1,19 @@
 @extends('layouts.app')
 
+@section('title', 'จัดการรายการวัสดุ')
+
 @section('page-style')
-    @vite(['resources/css/material/MAT-001-manage-material-items/style.css'])
+    @vite([
+        'resources/css/components/pagination.css',
+        'resources/css/components/table-actions.css',
+        'resources/css/components/search-autocomplete.css',
+        'resources/css/material/MAT-001-manage-material-items/style.css',
+    ])
 @endsection
 
 @section('content')
     <div class="page-container">
-        <header class="page-header">
-            <div class="page-title-box">
-                <h2>{{ $pageTitle }}</h2>
-                <div class="header-line"></div>
-            </div>
-        </header>
+        <x-page-header :title="$pageTitle" />
 
         <section class="material-card">
             <div class="card-header">
@@ -56,16 +58,33 @@
                         @forelse ($materials as $material)
                             <tr data-code="{{ $material->mat_code }}" data-name="{{ $material->mat_name }}">
                                 <td>
-                                    <span class="material-code">{{ $material->mat_code }}</span>
+                                    <a class="mat-code-link" href="{{ route('material.items.show', $material->mat_code) }}"><span class="material-code">{{ $material->mat_code }}</span></a>
                                 </td>
                                 <td>{{ $material->mat_name }}</td>
                                 <td>{{ $material->unit }}</td>
                                 <td>{{ $material->min_amt ?? 0 }} / {{ $material->max_amt ?? 0 }}</td>
                                 <td class="action-column">
                                     @if (!empty($material->mat_code))
-                                        <a class="detail-btn link-button" href="{{ route('material.items.show', $material->mat_code) }}">
-                                            ดูรายละเอียด
-                                        </a>
+                                        <div class="table-action-buttons">
+                                            <a class="table-action-icon table-action-edit"
+                                               aria-label="แก้ไข" title="แก้ไข" data-tooltip="แก้ไข"
+                                               href="{{ route('material.items.edit', $material->mat_code) }}"
+                                            >
+                                                <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
+                                            </a>
+                                            <form class="inline-delete-form" method="POST"
+                                                  action="{{ route('material.items.destroy', $material->mat_code) }}">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button class="table-action-icon table-action-delete"
+                                                        type="button"
+                                                        aria-label="ลบ" title="ลบ" data-tooltip="ลบ"
+                                                        data-delete-btn data-code="{{ $material->mat_code }}"
+                                                >
+                                                    <svg aria-hidden="true"><use href="#icon-trash"></use></svg>
+                                                </button>
+                                            </form>
+                                        </div>
                                     @else
                                         -
                                     @endif
@@ -81,18 +100,42 @@
             </div>
 
             <div class="table-footer">
-                <p id="tableResultText">แสดงทั้งหมด {{ $materials->count() }} รายการ</p>
+                <p class="app-pagination-summary" id="tableResultText">
+                    @if ($materials->total() > 0)
+                        แสดง {{ $materials->firstItem() }}–{{ $materials->lastItem() }} จากทั้งหมด {{ $materials->total() }} รายการ
+                    @else
+                        แสดงทั้งหมด 0 รายการ
+                    @endif
+                </p>
 
-                <div class="pagination">
-                    <button class="page-btn disabled" type="button">‹</button>
-                    <button class="page-btn active-page" type="button">1</button>
-                    <button class="page-btn" type="button">›</button>
-                </div>
+                <x-app-pagination :paginator="$materials" />
             </div>
         </section>
     </div>
+
+    {{-- Delete confirmation modal (index) --}}
+    <div class="confirm-overlay" id="indexDeleteOverlay" aria-hidden="true">
+        <div class="confirm-modal" role="dialog" aria-modal="true">
+            <div class="confirm-icon danger-icon">
+                <svg><use href="#icon-alert-triangle"></use></svg>
+            </div>
+            <h3>ยืนยันการลบข้อมูล</h3>
+            <p id="indexDeleteMessage">คุณแน่ใจหรือไม่ว่าต้องการลบรายการนี้<br>การดำเนินการนี้ไม่สามารถเรียกคืนได้</p>
+            <div class="confirm-actions">
+                <button class="modal-cancel-btn" type="button" id="cancelIndexDeleteButton">ยกเลิก</button>
+                <button class="modal-confirm-btn danger-btn" type="button" id="confirmIndexDeleteButton">ยืนยันการลบ</button>
+            </div>
+        </div>
+    </div>
+    <form id="indexDeleteForm" method="POST" style="display:none">
+        @csrf
+        @method('DELETE')
+    </form>
 @endsection
 
 @section('page-script')
-    @vite(['resources/js/material/MAT-001-manage-material-items/script.js'])
+    @vite([
+        'resources/js/components/pagination.js',
+        'resources/js/material/MAT-001-manage-material-items/script.js',
+    ])
 @endsection

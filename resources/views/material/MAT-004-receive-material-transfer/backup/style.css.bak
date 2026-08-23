@@ -1,0 +1,771 @@
+/* =====================================================
+   MAT-004 รับโอนวัสดุ — Stylesheet
+   ===================================================== */
+
+/* ─── Page layout ─────────────────────────────────── */
+.transfer-page .page-container {
+    padding: 24px 28px;
+}
+
+/* ─── Card ────────────────────────────────────────── */
+.transfer-card {
+    background: #fff;
+    border: 1.5px solid #173b8f;
+    border-top-width: 4px;
+    border-radius: 8px;
+    padding: 26px 32px 34px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
+}
+
+.transfer-card-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1e293b;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 18px;
+}
+
+/* ─── Toolbar / Search bar ────────────────────────── */
+.transfer-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.transfer-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.transfer-field-group label {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.transfer-field-group select,
+.transfer-field-group input[type="search"],
+.transfer-field-group input[type="text"],
+.transfer-field-group input[type="date"] {
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 13px;
+    color: #1e293b;
+    background: #f8fafc;
+    outline: none;
+    transition: border-color .15s;
+}
+
+.transfer-field-group select:focus,
+.transfer-field-group input:focus {
+    border-color: #3b82f6;
+    background: #fff;
+}
+
+.transfer-search-group input {
+    width: 220px;
+}
+
+/* ─── Search + Action buttons ─────────────────────── */
+.transfer-search-btn,
+.transfer-create-btn {
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background .15s, box-shadow .15s;
+    border: none;
+    align-self: flex-end;
+}
+
+.transfer-search-btn {
+    background: #3b82f6;
+    color: #fff;
+}
+
+.transfer-search-btn:hover {
+    background: #2563eb;
+}
+
+/* ─── Table ───────────────────────────────────────── */
+.transfer-table-wrapper {
+    overflow-x: auto;
+}
+
+.transfer-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.transfer-table thead tr {
+    background: #f1f5f9;
+}
+
+.transfer-table th {
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #475569;
+    white-space: nowrap;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.transfer-table td {
+    padding: 10px 12px;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.transfer-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.transfer-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Center columns */
+.transfer-table th:nth-child(1),
+.transfer-table td:nth-child(1),
+.transfer-table th:nth-child(5),
+.transfer-table td:nth-child(5),
+.transfer-table th:nth-child(6),
+.transfer-table td:nth-child(6) {
+    text-align: center;
+}
+
+/* ─── Status badges ───────────────────────────────── */
+.status-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.status-badge.approved {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.status-badge.received {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+/* ─── Detail button ───────────────────────────────── */
+.transfer-detail-btn {
+    display: inline-block;
+    padding: 5px 14px;
+    background: #3b82f6;
+    color: #fff;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background .15s;
+    white-space: nowrap;
+}
+
+.transfer-detail-btn:hover {
+    background: #2563eb;
+}
+
+/* ─── Pagination ──────────────────────────────────── */
+.transfer-pagination-row {
+    margin-top: 16px;
+    font-size: 12px;
+    color: #64748b;
+}
+
+/* ─── Show/Edit page ──────────────────────────────── */
+.transfer-show-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 18px;
+}
+
+.transfer-show-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0;
+}
+
+.transfer-confirmed-notice {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-left: 4px solid #3b82f6;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 18px;
+    font-size: 13px;
+    color: #1e40af;
+}
+
+.transfer-info-notice {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-left: 4px solid #22c55e;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 18px;
+    font-size: 13px;
+    color: #15803d;
+}
+
+/* ─── Document grid (header fields) ──────────────── */
+.transfer-doc-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px 20px;
+    margin-bottom: 18px;
+}
+
+/* Remark on its own row (≈50% width on desktop) */
+.mat004-remark-row {
+    max-width: calc(66.67% - 10px);
+    margin-bottom: 20px;
+}
+
+.transfer-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.transfer-form-field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.transfer-form-field input[type="text"],
+.transfer-form-field input[type="date"],
+.transfer-form-field textarea {
+    padding: 8px 11px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #1e293b;
+    background: #f8fafc;
+    outline: none;
+    transition: border-color .15s;
+    resize: vertical;
+}
+
+.transfer-form-field input[readonly],
+.transfer-form-field textarea[readonly] {
+    background: #f1f5f9;
+    color: #64748b;
+    cursor: default;
+}
+
+.transfer-form-field input:not([readonly]):focus,
+.transfer-form-field textarea:not([readonly]):focus {
+    border-color: #3b82f6;
+    background: #fff;
+}
+
+.transfer-form-field textarea {
+    min-height: 72px;
+}
+
+/* ─── Items section title ─────────────────────────── */
+.transfer-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 12px;
+}
+
+.transfer-section-title svg {
+    width: 18px;
+    height: 18px;
+    stroke: #3b82f6;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* ─── Transfer items table ────────────────────────── */
+.transfer-items-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+/* Group header row (row 1) */
+.transfer-items-table thead tr.mat004-group-header th {
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    border-bottom: 1px solid #d7e0ea;
+}
+
+.transfer-items-table thead tr.mat004-group-header .mat004-gen-col {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.transfer-items-table thead tr.mat004-group-header .mat004-qty-col {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+/* Column header row (row 2) */
+.transfer-items-table thead tr:not(.mat004-group-header) {
+    background: #f1f5f9;
+}
+
+.transfer-items-table th {
+    padding: 9px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #52627a;
+    white-space: nowrap;
+    border-bottom: 2px solid #d7e0ea;
+}
+
+/* Override: qty sub-header cells keep green tint */
+.transfer-items-table thead tr:not(.mat004-group-header) th:nth-child(5),
+.transfer-items-table thead tr:not(.mat004-group-header) th:nth-child(6),
+.transfer-items-table thead tr:not(.mat004-group-header) th:nth-child(7) {
+    background: #ecfdf5;
+    color: #065f46;
+}
+
+.transfer-items-table td {
+    padding: 9px 12px;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.transfer-items-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Number alignment */
+.transfer-items-table th:nth-child(1),
+.transfer-items-table td:nth-child(1),
+.transfer-items-table th:nth-child(5),
+.transfer-items-table td:nth-child(5),
+.transfer-items-table th:nth-child(6),
+.transfer-items-table td:nth-child(6),
+.transfer-items-table th:nth-child(7),
+.transfer-items-table td:nth-child(7) {
+    text-align: center;
+}
+
+/* Highlight increase column */
+.transfer-items-table .col-increase {
+    color: #16a34a;
+    font-weight: 600;
+}
+
+/* Balance after */
+.transfer-items-table .col-balance-after {
+    color: #0369a1;
+    font-weight: 600;
+}
+
+/* Editable quantity input (edit page) */
+.transfer-qty-input {
+    width: 70px;
+    padding: 5px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+    font-size: 13px;
+    text-align: center;
+    background: #fff;
+    color: #1e293b;
+    outline: none;
+}
+
+.transfer-qty-input:focus {
+    border-color: #3b82f6;
+}
+
+/* ─── Stock history section ───────────────────────── */
+.transfer-stock-card {
+    background: #fff;
+    border: 1.5px solid #173b8f;
+    border-top-width: 4px;
+    border-radius: 8px;
+    padding: 20px 32px 28px;
+    margin-top: 24px;
+    box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
+}
+
+.transfer-stock-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 16px;
+}
+
+.transfer-stock-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+}
+
+.transfer-stock-table th {
+    padding: 8px 12px;
+    background: #f8fafc;
+    text-align: left;
+    font-weight: 600;
+    color: #475569;
+    border-bottom: 2px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+.transfer-stock-table td {
+    padding: 8px 12px;
+    color: #334155;
+    border-bottom: 1px solid #f8fafc;
+    vertical-align: middle;
+}
+
+.transfer-stock-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.transfer-receipt-link {
+    color: #3b82f6;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.transfer-receipt-link:hover {
+    text-decoration: underline;
+}
+
+/* ─── Action buttons ──────────────────────────────── */
+.transfer-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 1px solid #e2e8f0;
+    flex-wrap: wrap;
+}
+
+.transfer-cancel-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 20px;
+    border: 1px solid #ef4444;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #ef4444;
+    text-decoration: none;
+    background: #fff;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+}
+
+.transfer-cancel-link:hover {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.transfer-edit-btn {
+    padding: 8px 20px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    background: #f59e0b;
+    color: #fff;
+    transition: background .15s;
+}
+
+.transfer-edit-btn:hover:not(:disabled) {
+    background: #d97706;
+}
+
+.transfer-edit-btn:disabled {
+    opacity: .5;
+    cursor: default;
+}
+
+.transfer-confirm-btn {
+    padding: 8px 20px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    background: #22c55e;
+    color: #fff;
+    transition: background .15s;
+}
+
+.transfer-confirm-btn:hover:not(:disabled) {
+    background: #16a34a;
+}
+
+.transfer-confirm-btn:disabled {
+    opacity: .5;
+    cursor: default;
+}
+
+.transfer-save-btn {
+    padding: 8px 20px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    background: #3b82f6;
+    color: #fff;
+    transition: background .15s;
+}
+
+.transfer-save-btn:hover:not(:disabled) {
+    background: #2563eb;
+}
+
+/* ─── mat-code colour ─────────────────────────────── */
+.transfer-mat-code {
+    color: #173b8f;
+    font-weight: 600;
+}
+
+/* ─── Responsive ──────────────────────────────────── */
+@media (max-width: 900px) {
+    .transfer-doc-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .mat004-remark-row {
+        max-width: 100%;
+    }
+    .transfer-card,
+    .transfer-stock-card {
+        padding: 22px 24px 28px;
+    }
+}
+
+@media (max-width: 600px) {
+    .transfer-doc-grid {
+        grid-template-columns: 1fr;
+    }
+    .mat004-remark-row {
+        max-width: 100%;
+    }
+    .transfer-card,
+    .transfer-stock-card {
+        padding: 16px 14px 22px;
+    }
+    .transfer-actions {
+        justify-content: stretch;
+        flex-direction: column;
+    }
+    .transfer-actions > * {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+    }
+    .transfer-items-table,
+    .transfer-stock-table {
+        min-width: 660px;
+    }
+}
+
+/* ─── Modal / Overlay ─────────────────────────────── */
+.transfer-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+
+.transfer-overlay.is-visible {
+    display: flex;
+}
+
+.transfer-modal {
+    background: #fff;
+    border-radius: 12px;
+    padding: 32px 28px 24px;
+    width: 90%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    text-align: center;
+}
+
+.transfer-modal-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+}
+
+.transfer-modal-icon.confirm-icon {
+    background: #dcfce7;
+}
+
+.transfer-modal-icon.confirm-icon svg {
+    width: 28px;
+    height: 28px;
+    stroke: #16a34a;
+    fill: none;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.transfer-modal-icon.edit-icon {
+    background: #fef3c7;
+}
+
+.transfer-modal-icon.edit-icon svg {
+    width: 26px;
+    height: 26px;
+    stroke: #d97706;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.transfer-modal h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 10px;
+}
+
+.transfer-modal p {
+    font-size: 13px;
+    color: #64748b;
+    margin: 0 0 22px;
+    line-height: 1.6;
+}
+
+.transfer-modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.transfer-modal-cancel {
+    flex: 1;
+    padding: 9px 0;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #475569;
+    background: #fff;
+    cursor: pointer;
+    transition: background .15s;
+}
+
+.transfer-modal-cancel:hover {
+    background: #f1f5f9;
+}
+
+.transfer-modal-confirm-green {
+    flex: 1;
+    padding: 9px 0;
+    border: none;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    background: #22c55e;
+    cursor: pointer;
+    transition: background .15s;
+}
+
+.transfer-modal-confirm-green:hover:not(:disabled) {
+    background: #16a34a;
+}
+
+.transfer-modal-confirm-amber {
+    flex: 1;
+    padding: 9px 0;
+    border: none;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    background: #f59e0b;
+    cursor: pointer;
+    transition: background .15s;
+}
+
+.transfer-modal-confirm-amber:hover:not(:disabled) {
+    background: #d97706;
+}
+
+.transfer-modal-confirm-green:disabled,
+.transfer-modal-confirm-amber:disabled {
+    opacity: .6;
+    cursor: default;
+}
+
+/* ─── No-data row ─────────────────────────────────── */
+.transfer-no-data {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 13px;
+    padding: 24px;
+}
+
+/* ─── Validation error ────────────────────────────── */
+.transfer-error-msg {
+    font-size: 11.5px;
+    color: #ef4444;
+    margin-top: 3px;
+}
+
+/* ─── Mat code / name in table ────────────────────── */
+.transfer-mat-code {
+    display: block;
+    font-size: 11px;
+    color: #94a3b8;
+    margin-bottom: 2px;
+}
+
+/* ─── Responsive ──────────────────────────────────── */
+@media (max-width: 768px) {
+    .transfer-toolbar { flex-direction: column; align-items: stretch; }
+    .transfer-search-group input { width: 100%; }
+    .transfer-doc-grid { grid-template-columns: 1fr; }
+    .transfer-actions { flex-wrap: wrap; }
+}

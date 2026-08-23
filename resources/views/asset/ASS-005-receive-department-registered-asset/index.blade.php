@@ -1,17 +1,15 @@
 @extends('layouts.app')
 
 @section('page-style')
-    @vite(['resources/css/asset/ASS-005-receive-department-registered-asset/style.css'])
+    @vite([
+        'resources/css/components/table-actions.css',
+        'resources/css/asset/ASS-005-receive-department-registered-asset/style.css',
+    ])
 @endsection
 
 @section('content')
     <div class="page-container receiving-page">
-        <header class="page-header">
-            <div class="page-title-box">
-                <h2>{{ $pageTitle }}</h2>
-                <div class="header-line"></div>
-            </div>
-        </header>
+        <x-page-header :title="$pageTitle" />
 
         <section class="receiving-card">
             <div class="toolbar">
@@ -71,7 +69,11 @@
                                 data-category="{{ $record['category'] }}"
                             >
                                 <td>
-                                    <span class="code-text">{{ $record['asset_code'] }}</span>
+                                    @if (empty($record['receive_date']))
+                                        <span class="code-text">{{ $record['asset_code'] }}</span>
+                                    @else
+                                        <a class="ass-code-link" href="{{ route('asset.department-receiving.show', $record['asset_code']) }}"><span class="code-text">{{ $record['asset_code'] }}</span></a>
+                                    @endif
                                     @if (! empty($record['sub_code']))
                                         <small class="sub-code">{{ $record['sub_code'] }}</small>
                                     @endif
@@ -86,7 +88,14 @@
                                     @if (empty($record['receive_date']))
                                         <a class="receive-btn" href="{{ route('asset.department-receiving.receive', $record['asset_code']) }}">รับ</a>
                                     @else
-                                        <a class="detail-btn" href="{{ route('asset.department-receiving.show', $record['asset_code']) }}">ดูรายละเอียด</a>
+                                        <div class="table-action-buttons">
+                                            <a class="table-action-icon table-action-edit"
+                                               aria-label="รายละเอียด" title="รายละเอียด" data-tooltip="รายละเอียด"
+                                               href="{{ route('asset.department-receiving.show', $record['asset_code']) }}"
+                                            >
+                                                <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
+                                            </a>
+                                        </div>
                                     @endif
                                 </td>
                             </tr>

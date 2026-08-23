@@ -45,7 +45,8 @@ function initSearchableSelect(wrapper) {
     }
 
     const id = hiddenInput.id;
-    const options = (window._saOptions && window._saOptions[id]) || [];
+    // Lazy getter so window._saOptions[id] can be updated after init (cascade dropdowns)
+    const getOptions = () => (window._saOptions && window._saOptions[id]) || [];
 
     const visibleInput = wrapper.querySelector('.guja-autocomplete__input');
     const itemsContainer = wrapper.querySelector('.guja-autocomplete__items');
@@ -67,7 +68,7 @@ function initSearchableSelect(wrapper) {
 
     // On edit pages, restore the displayed label from the persisted hidden value
     if (String(hiddenInput.value).trim() !== '') {
-        const match = options.find((o) => String(o.value) === String(hiddenInput.value));
+        const match = getOptions().find((o) => String(o.value) === String(hiddenInput.value));
 
         if (match) {
             visibleInput.value = match.label;
@@ -80,12 +81,12 @@ function initSearchableSelect(wrapper) {
 
     function getFiltered(searchText) {
         if (!searchText) {
-            return options;
+            return getOptions();
         }
 
         const lower = searchText.toLowerCase();
 
-        return options.filter((o) => {
+        return getOptions().filter((o) => {
             const haystack = (o.searchText || o.label).toLowerCase();
             return haystack.includes(lower);
         });
@@ -134,7 +135,7 @@ function initSearchableSelect(wrapper) {
         const currentLabel = visibleInput.value;
         const isExactMatch =
             hiddenInput.value !== '' &&
-            options.some((o) => o.label === currentLabel);
+            getOptions().some((o) => o.label === currentLabel);
 
         renderItems(isExactMatch ? '' : currentLabel);
         itemsContainer.classList.add('is-visible');
@@ -164,7 +165,7 @@ function initSearchableSelect(wrapper) {
         // Restore label if the hidden input still has a value;
         // clear both if the user typed something that doesn't match.
         if (String(hiddenInput.value).trim() !== '') {
-            const match = options.find((o) => String(o.value) === String(hiddenInput.value));
+            const match = getOptions().find((o) => String(o.value) === String(hiddenInput.value));
             visibleInput.value = match ? match.label : '';
 
             if (!match) {
@@ -325,5 +326,41 @@ document.addEventListener('click', (e) => {
  */
 export function initSearchableSelects(root = document) {
     root.querySelectorAll('[data-searchable-select]').forEach(initSearchableSelect);
+}
+
+/**
+ * Update options for an already-initialised searchable-select (cascade dropdowns).
+ * Because the component uses a lazy getOptions() getter, updating window._saOptions[id]
+ * is enough — no re-init or duplicate listeners needed.
+ *
+ * @param {string}  hiddenInputId - id attribute of the hidden input
+ * @param {Array}   newOptions    - [{value, label, searchText?}]
+ * @param {boolean} clearValue    - clear current selection (default true)
+ */
+export function resetSearchableSelect(hiddenInputId, newOptions, clearValue = true) {
+    window._saOptions = window._saOptions || {};
+    window._saOptions[hiddenInputId] = newOptions;
+
+    const hiddenInput = document.getElementById(hiddenInputId);
+    if (!hiddenInput) return;
+
+    const wrapper = hiddenInput.closest('[data-searchable-select]');
+    if (!wrapper) return;
+
+    const visibleInput  = wrapper.querySelector('.guja-autocomplete__input');
+    const itemsContainer = wrapper.querySelector('.guja-autocomplete__items');
+
+    if (clearValue) {
+        hiddenInput.value = '';
+        if (visibleInput) visibleInput.value = '';
+        // Close dropdown if it was open
+        wrapper.classList.remove('is-open');
+        if (visibleInput) visibleInput.setAttribute('aria-expanded', 'false');
+        if (itemsContainer) itemsContainer.classList.remove('is-visible');
+    } else if (hiddenInput.value && visibleInput) {
+        // Restore label for pre-selected value using the new options
+        const match = newOptions.find((o) => String(o.value) === String(hiddenInput.value));
+        if (match) visibleInput.value = match.label;
+    }
 }
 

@@ -1,4 +1,4 @@
-* {
+﻿* {
     box-sizing: border-box;
 }
 
@@ -192,7 +192,7 @@ textarea {
 
 .page-container {
     width: 100%;
-    max-width: 1040px;
+    max-width: 1136px;
     margin: 0 auto;
     padding: 56px 28px;
 }
@@ -252,6 +252,84 @@ textarea {
 
 .items-card {
     margin-top: 22px;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Combined card: wraps document-card + items-card as a SINGLE visual card.
+   When inside .mat002-combined-card, the inner sections lose their own card
+   borders and padding so the outer wrapper becomes the single container.
+   ────────────────────────────────────────────────────────────────────────── */
+.mat002-combined-card {
+    width: 100%;
+    background: #ffffff;
+    border: 1.5px solid var(--card-border);
+    border-top-width: 4px;
+    border-radius: 8px;
+    overflow: visible;
+    box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
+    padding: 24px 28px;
+}
+
+.mat002-combined-card .document-card,
+.mat002-combined-card .items-card {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+    background: transparent;
+    overflow: visible;
+    margin-top: 0;
+}
+
+.mat002-section-divider {
+    border: none;
+    border-top: 1px solid #e5e7eb;
+    margin: 28px 0;
+}
+
+/* Inline quantity/price editing in the items table (EDIT mode) */
+.mat002-qty-cell,
+.mat002-price-cell {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Compact number input for inline editing */
+.mat002-inline-number-input,
+.mat002-qty-visible,
+.mat002-price-visible {
+    width: 90px;
+    min-width: 80px;
+    max-width: 110px;
+    height: 32px;
+    padding: 4px 8px;
+    text-align: right;
+    font-size: 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    background: #f9fafb;
+    color: #374151;
+    -moz-appearance: textfield;
+    box-sizing: border-box;
+}
+
+.mat002-inline-number-input:not([disabled]),
+.mat002-qty-visible:not([disabled]),
+.mat002-price-visible:not([disabled]) {
+    background: #ffffff;
+    border-color: #2548bd;
+    outline: 2px solid rgba(37, 72, 189, 0.18);
+}
+
+.mat002-inline-number-input::-webkit-outer-spin-button,
+.mat002-inline-number-input::-webkit-inner-spin-button,
+.mat002-qty-visible::-webkit-outer-spin-button,
+.mat002-qty-visible::-webkit-inner-spin-button,
+.mat002-price-visible::-webkit-outer-spin-button,
+.mat002-price-visible::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
 
 .card-header {
@@ -442,6 +520,11 @@ textarea {
     border-bottom: 0;
 }
 
+.receiving-items-table tbody tr.staged-row td,
+.receiving-items-table tbody tr.editing-row td {
+    background: #eef6ff;
+}
+
 .action-column {
     text-align: center !important;
 }
@@ -475,37 +558,6 @@ textarea {
 
 .table-footer p {
     margin: 0;
-    color: var(--text-muted);
-    font-size: 12px;
-    font-weight: 400;
-}
-
-.pagination {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.page-btn {
-    width: 27px;
-    height: 30px;
-    border: 1px solid #d7e0ea;
-    border-radius: 6px;
-    background: #ffffff;
-    color: #334155;
-    font-size: 13px;
-    cursor: pointer;
-}
-
-.page-btn.active-page {
-    background: var(--primary);
-    color: #ffffff;
-    border-color: var(--primary);
-}
-
-.page-btn.disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
 }
 
 .receiving-table td.no-data,
@@ -627,8 +679,8 @@ textarea {
 }
 
 .small-delete-btn {
-    background: #fff1f1;
-    color: var(--danger);
+    background: #ef4444;
+    color: #ffffff;
     margin-left: 4px;
 }
 
@@ -932,6 +984,63 @@ textarea {
     background: #e5e7eb;
     color: #9ca3af;
     cursor: not-allowed;
+}
+
+/* Search results dropdown */
+.mat002-search-field {
+    position: relative;
+}
+
+.mat002-search-results {
+    display: none;
+    position: absolute;
+    top: calc(100% - 20px); /* sit right below the input (label+input area) */
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border: 1px solid #b0bcd5;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    z-index: 200;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.mat002-search-results.is-visible {
+    display: block;
+}
+
+.mat002-search-result-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    border-bottom: 1px solid #eef3f8;
+    line-height: 1.4;
+}
+
+.mat002-search-result-item:last-child {
+    border-bottom: none;
+}
+
+.mat002-search-result-item:hover,
+.mat002-search-result-item:focus {
+    background: #eef3f8;
+    outline: none;
+}
+
+.mat002-search-result-item .result-code {
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.mat002-search-result-item .result-name {
+    color: var(--text-main);
+}
+
+.mat002-search-result-item .result-unit {
+    color: var(--text-muted);
+    font-size: 11px;
 }
 
 /* VAT rate input: disabled when ไม่รวม VAT is selected */

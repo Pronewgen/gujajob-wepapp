@@ -1,3 +1,6 @@
+import { SearchAutocomplete } from '../../components/search-autocomplete.js';
+import { initDatePickers } from '../../components/date-picker.js';
+
 const sidebarStorageKey = 'gujajob.sidebar.groupState';
 
 function getSidebarState() {
@@ -111,19 +114,21 @@ function initializeWithdrawSearch() {
     }
 
     function getTargetText(row) {
+        if (!row || !row.dataset) return '';
+
         if (searchType.value === 'withdraw_date') {
-            return row.dataset.withdrawDate.toLowerCase();
+            return (row.dataset.withdrawDate ?? '').toLowerCase();
         }
 
         if (searchType.value === 'requester') {
-            return row.dataset.requester.toLowerCase();
+            return (row.dataset.requester ?? '').toLowerCase();
         }
 
         if (searchType.value === 'department') {
-            return row.dataset.department.toLowerCase();
+            return (row.dataset.department ?? '').toLowerCase();
         }
 
-        return row.dataset.withdrawNo.toLowerCase();
+        return (row.dataset.withdrawNo ?? '').toLowerCase();
     }
 
     function updateResultText(visibleCount) {
@@ -212,58 +217,60 @@ function closeOverlay(overlay) {
 
 function initializeWithdrawCreatePage() {
     const withdrawDepartment = document.getElementById('withdrawDepartment');
-    const statusBadge = document.getElementById('withdrawStatusBadge');
-    const approveDepartment = document.getElementById('approveDepartment');
+    const approveDepartment  = document.getElementById('approveDepartment');
 
-    const materialSearchType = document.getElementById('materialSearchType');
+    const materialSearchType  = document.getElementById('materialSearchType');
     const materialSearchInput = document.getElementById('materialSearchInput');
-    const findButton = document.getElementById('findWithdrawMaterialButton');
+    const findButton          = document.getElementById('findWithdrawMaterialButton');
 
     const materialCode = document.getElementById('materialCode');
     const materialName = document.getElementById('materialName');
-    const withdrawQty = document.getElementById('withdrawQty');
+    const withdrawQty  = document.getElementById('withdrawQty');
     const materialUnit = document.getElementById('materialUnit');
-    const addButton = document.getElementById('addWithdrawMaterialButton');
-    const tableBody = document.getElementById('withdrawItemsBody');
+    const addButton    = document.getElementById('addWithdrawMaterialButton');
+    const tableBody    = document.getElementById('withdrawItemsBody');
 
-    const saveButton = document.getElementById('saveWithdrawButton');
-    const overlay = document.getElementById('saveWithdrawOverlay');
-    const cancelButton = document.getElementById('cancelSaveWithdrawButton');
+    const overlay       = document.getElementById('saveWithdrawOverlay');
+    const cancelButton  = document.getElementById('cancelSaveWithdrawButton');
     const confirmButton = document.getElementById('confirmSaveWithdrawButton');
-    const confirmText = document.getElementById('saveWithdrawConfirmText');
+    const confirmText   = document.getElementById('saveWithdrawConfirmText');
 
-    if (!withdrawDepartment || !statusBadge || !approveDepartment) {
+    if (!withdrawDepartment || !approveDepartment) {
         return;
     }
 
-    let editingRow = null;
+    // Both department fields show the same value (no login system yet)
+    approveDepartment.value = withdrawDepartment.value;
 
-    const materialMaster = [
-        {
-            code: 'MAT-1001',
-            name: 'กระดาษถ่ายเอกสาร A4 80 แกรม',
-            unit: 'รีม',
-        },
-        {
-            code: 'MAT-3012',
-            name: 'หมึกพิมพ์ Brother TN-2380',
-            unit: 'กล่อง',
-        },
-    ];
+    // Tracks the material currently shown in the add-item form.
+    let currentMaterial = null;
+    let stockRequestToken = 0; // incremented to discard stale async stock responses
 
-    function updateStatusByDepartment() {
-        if (withdrawDepartment.value === 'same') {
-            statusBadge.textContent = 'อนุมัติ';
-            statusBadge.classList.remove('pending');
-            statusBadge.classList.add('approved');
-            approveDepartment.value = 'Default จากหน่วยงานที่ทำการเบิก';
-            return;
-        }
+    // ─── Autocomplete ───────────────────────────────────────────────────
+    let autocomplete = null;
 
-        statusBadge.textContent = 'รอการอนุมัติ';
-        statusBadge.classList.remove('approved');
-        statusBadge.classList.add('pending');
-        approveDepartment.value = 'Default จากหน่วยงานที่ทำการเบิก';
+    if (materialSearchInput) {
+        autocomplete = new SearchAutocomplete({
+            inputEl:      materialSearchInput,
+            searchTypeEl: materialSearchType,
+            endpoint:     '/material/search-api',
+            minChars:     1,
+            debounceMs:   300,
+            maxResults:   20,
+            onSelect: async (material) => {
+                currentMaterial    = material;
+                materialCode.value = material.code;
+                materialName.value = material.name;
+                materialUnit.value = material.unit;
+                withdrawQty.value  = '';
+
+                await fetchAndShowStock(material);
+
+                if (withdrawQty) {
+                    withdrawQty.focus();
+                }
+            },
+        });
     }
 
     function updateSearchPlaceholder() {
@@ -278,44 +285,88 @@ function initializeWithdrawCreatePage() {
     }
 
     function fillMaterialForm(material, qty = '') {
+        currentMaterial    = material;
         materialCode.value = material.code;
         materialName.value = material.name;
         materialUnit.value = material.unit;
-        withdrawQty.value = qty;
+        withdrawQty.value  = qty;
     }
 
     function clearMaterialForm() {
+        currentMaterial    = null;
         materialCode.value = '';
         materialName.value = '';
-        withdrawQty.value = '';
+        withdrawQty.value  = '';
         materialUnit.value = '';
-        editingRow = null;
+        ++stockRequestToken;
+        hideStockInfo();
     }
 
-    function findMaterial() {
-        const keyword = materialSearchInput.value.trim().toLowerCase();
+    // ── Stock info helper ────────────────────────────────────
+    const stockInfoEl = document.getElementById('stockInfo');
+
+    function showStockInfo(text, isWarning) {
+        if (!stockInfoEl) return;
+        stockInfoEl.textContent = text;
+        stockInfoEl.className = isWarning ? 'stock-info-text stock-info-warning' : 'stock-info-text';
+        stockInfoEl.hidden = false;
+    }
+
+    function hideStockInfo() {
+        if (!stockInfoEl) return;
+        stockInfoEl.hidden = true;
+        stockInfoEl.textContent = '';
+    }
+
+    async function fetchStock(matId) {
+        try {
+            const res = await fetch(`/material/MAT-003-withdraw-material/stock-check?material_id=${encodeURIComponent(matId)}`);
+            if (!res.ok) return null;
+            const data = await res.json();
+            return data.available; // number or null
+        } catch {
+            return null;
+        }
+    }
+
+    async function fetchAndShowStock(material) {
+        const token = ++stockRequestToken;
+        const available = await fetchStock(material.id);
+        if (token !== stockRequestToken) return; // stale – user changed selection mid-flight
+        if (available === null) {
+            showStockInfo('คงเหลือ: ยังไม่ได้ตั้งค่า Stock', false);
+        } else {
+            showStockInfo(`คงเหลือ: ${available} ${material.unit}`, available === 0);
+        }
+    }
+
+    async function findMaterial() {
+        const keyword = materialSearchInput.value.trim();
 
         if (!keyword) {
             alert('กรุณากรอกคำค้นหาวัสดุ');
             return;
         }
 
-        let material = null;
+        const type = materialSearchType ? materialSearchType.value : 'code';
+        const url  = `/material/search-api?type=${encodeURIComponent(type)}&q=${encodeURIComponent(keyword)}`;
 
-        if (materialSearchType.value === 'name') {
-            material = materialMaster.find((item) => item.name.toLowerCase().includes(keyword));
-        } else {
-            material = materialMaster.find((item) => item.code.toLowerCase() === keyword);
+        try {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const results = await res.json();
+
+            if (!Array.isArray(results) || results.length === 0) {
+                clearMaterialForm();
+                alert('ไม่พบข้อมูลวัสดุที่ค้นหา');
+                return;
+            }
+
+            fillMaterialForm(results[0]);
+            await fetchAndShowStock(results[0]);
+        } catch {
+            alert('เกิดข้อผิดพลาดในการค้นหาวัสดุ กรุณาลองใหม่อีกครั้ง');
         }
-
-        if (!material) {
-            clearMaterialForm();
-            alert('ไม่พบข้อมูลวัสดุที่ค้นหา');
-            return;
-        }
-
-        fillMaterialForm(material);
-        editingRow = null;
     }
 
     function reorderRows() {
@@ -324,147 +375,265 @@ function initializeWithdrawCreatePage() {
         });
     }
 
-    function buildButtons() {
+    function buildActionButtons() {
         return `
-            <button class="small-edit-btn" type="button">แก้ไข</button>
-            <button class="small-delete-btn" type="button">ลบ</button>
+            <div class="table-action-buttons">
+                <button
+                    class="table-action-icon table-action-edit"
+                    type="button"
+                    aria-label="แก้ไข"
+                    title="แก้ไข"
+                    data-tooltip="แก้ไข"
+                    data-mode="edit"
+                >
+                    <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
+                </button>
+                <button
+                    class="table-action-icon table-action-delete"
+                    type="button"
+                    aria-label="ลบ"
+                    title="ลบ"
+                    data-tooltip="ลบ"
+                >
+                    <svg aria-hidden="true"><use href="#icon-trash"></use></svg>
+                </button>
+            </div>
         `;
     }
 
-    function updateRow(row, code, name, qty, unit) {
-        row.dataset.code = code;
-        row.dataset.name = name;
-        row.dataset.qty = qty;
-        row.dataset.unit = unit;
-
-        row.children[1].innerHTML = `<span class="material-code">${code}</span>`;
-        row.children[2].textContent = name;
-        row.children[3].innerHTML = `<input class="table-qty-input" type="number" value="${qty}" min="0">`;
-        row.children[4].textContent = unit;
-        row.children[5].innerHTML = buildButtons();
-    }
-
-    function addRow(code, name, qty, unit) {
-        const row = document.createElement('tr');
+    function addRow(matId, code, name, qty, unit) {
+        const row      = document.createElement('tr');
         const rowCount = tableBody.querySelectorAll('tr').length + 1;
 
-        row.dataset.code = code;
-        row.dataset.name = name;
-        row.dataset.qty = qty;
-        row.dataset.unit = unit;
+        row.dataset.matId = matId;
+        row.dataset.code  = code;
+        row.dataset.name  = name;
+        row.dataset.qty   = qty;
+        row.dataset.unit  = unit;
 
         row.innerHTML = `
             <td>${rowCount}</td>
             <td><span class="material-code">${code}</span></td>
             <td>${name}</td>
-            <td><input class="table-qty-input" type="number" value="${qty}" min="0"></td>
+            <td><input class="table-qty-input" type="number" value="${qty}" min="1" disabled></td>
             <td>${unit}</td>
-            <td>${buildButtons()}</td>
+            <td>${buildActionButtons()}</td>
         `;
 
         tableBody.appendChild(row);
     }
 
-    withdrawDepartment.addEventListener('change', updateStatusByDepartment);
+    // Switch a row into inline edit mode
+    function enterEditMode(editBtn, qtyInput) {
+        qtyInput.disabled = false;
+        qtyInput.focus();
+        qtyInput.select();
+
+        editBtn.querySelector('use').setAttribute('href', '#icon-success');
+        editBtn.setAttribute('aria-label', 'ยืนยัน');
+        editBtn.setAttribute('title', 'ยืนยัน');
+        editBtn.setAttribute('data-tooltip', 'ยืนยัน');
+        editBtn.classList.remove('table-action-edit');
+        editBtn.classList.add('table-action-save');
+        editBtn.dataset.mode = 'save';
+    }
+
+    // Validate and commit inline edit; returns true on success
+    function exitEditMode(editBtn, qtyInput, row) {
+        const qty = Number(qtyInput.value);
+
+        if (Number.isNaN(qty) || qty <= 0) {
+            alert('จำนวนที่เบิกต้องมากกว่า 0');
+            qtyInput.focus();
+            qtyInput.select();
+            return false;
+        }
+
+        row.dataset.qty   = qty;
+        qtyInput.disabled = true;
+
+        editBtn.querySelector('use').setAttribute('href', '#icon-square-pen');
+        editBtn.setAttribute('aria-label', 'แก้ไข');
+        editBtn.setAttribute('title', 'แก้ไข');
+        editBtn.setAttribute('data-tooltip', 'แก้ไข');
+        editBtn.classList.remove('table-action-save');
+        editBtn.classList.add('table-action-edit');
+        editBtn.dataset.mode = 'edit';
+
+        return true;
+    }
 
     if (materialSearchType) {
         materialSearchType.addEventListener('change', () => {
             materialSearchInput.value = '';
             updateSearchPlaceholder();
+            if (currentMaterial !== null) clearMaterialForm();
         });
     }
 
     if (findButton) {
-        findButton.addEventListener('click', findMaterial);
+        findButton.addEventListener('click', () => {
+            if (autocomplete) autocomplete.triggerSearch();
+        });
     }
+    // Enter key in search box is handled by the autocomplete's own keydown listener.
 
+    // Clear selected material when user edits the search text after a selection (REQ 11/12).
     if (materialSearchInput) {
-        materialSearchInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                findMaterial();
-            }
+        materialSearchInput.addEventListener('input', () => {
+            if (currentMaterial !== null) clearMaterialForm();
         });
     }
 
     if (addButton) {
-        addButton.addEventListener('click', () => {
-            if (!materialCode.value || !materialName.value || !materialUnit.value) {
+        addButton.addEventListener('click', async () => {
+            if (!currentMaterial) {
                 alert('กรุณาค้นหาและเลือกวัสดุก่อน');
                 return;
             }
 
-            const qty = Number(withdrawQty.value);
+            const raw = withdrawQty.value.trim();
+            const qty = Number(raw);
 
-            if (qty <= 0) {
-                alert('กรุณาระบุจำนวนที่เบิกให้ถูกต้อง');
+            if (raw === '' || !Number.isInteger(qty) || qty <= 0) {
+                alert('กรุณาระบุจำนวนที่เบิกเป็นจำนวนเต็มบวกมากกว่า 0');
+                withdrawQty.focus();
                 return;
             }
 
-            if (editingRow) {
-                updateRow(editingRow, materialCode.value, materialName.value, qty, materialUnit.value);
-            } else {
-                addRow(materialCode.value, materialName.value, qty, materialUnit.value);
+            // Duplicate check
+            const existingIds = Array.from(tableBody.querySelectorAll('tr[data-mat-id]'))
+                .map((r) => r.dataset.matId);
+
+            if (existingIds.includes(String(currentMaterial.id))) {
+                alert('วัสดุรายการนี้ถูกเพิ่มในใบเบิกแล้ว');
+                return;
             }
 
+            // Stock guard: block only when stock is known (not null) and is insufficient
+            const available = await fetchStock(currentMaterial.id);
+
+            if (available !== null && qty > available) {
+                alert(`จำนวนที่เบิก (${qty}) เกินจำนวนคงเหลือ (${available} ${currentMaterial.unit})`);
+                return;
+            }
+
+            addRow(currentMaterial.id, currentMaterial.code, currentMaterial.name, qty, currentMaterial.unit);
             reorderRows();
-            clearMaterialForm();
-            materialSearchInput.value = '';
+            // Clear editor after adding
+            currentMaterial    = null;
+            materialCode.value = '';
+            materialName.value = '';
+            withdrawQty.value  = '';
+            materialUnit.value = '';
+            if (materialSearchInput) materialSearchInput.value = '';
+            hideStockInfo();
         });
     }
 
     if (tableBody) {
+        // Click: delete row or toggle inline edit / save
         tableBody.addEventListener('click', (event) => {
             const row = event.target.closest('tr');
-
             if (!row) return;
 
-            if (event.target.classList.contains('small-delete-btn')) {
+            const deleteBtn = event.target.closest('.table-action-delete');
+            if (deleteBtn) {
                 row.remove();
                 reorderRows();
-                clearMaterialForm();
                 return;
             }
 
-            if (event.target.classList.contains('small-edit-btn')) {
-                editingRow = row;
+            // After enterEditMode the class switches to .table-action-save; match both states.
+            const editBtn = event.target.closest('.table-action-edit, .table-action-save');
+            if (editBtn) {
+                const qtyInput = row.querySelector('.table-qty-input');
+                if (!qtyInput) return;
 
-                fillMaterialForm(
-                    {
-                        code: row.dataset.code,
-                        name: row.dataset.name,
-                        unit: row.dataset.unit,
-                    },
-                    row.dataset.qty
-                );
-
-                materialSearchType.value = 'code';
-                materialSearchInput.value = row.dataset.code;
-                updateSearchPlaceholder();
+                if (editBtn.dataset.mode === 'save') {
+                    exitEditMode(editBtn, qtyInput, row);
+                } else {
+                    enterEditMode(editBtn, qtyInput);
+                }
             }
         });
 
-        tableBody.addEventListener('input', (event) => {
-            if (!event.target.classList.contains('table-qty-input')) {
-                return;
+        // Enter key in qty input = save inline edit
+        tableBody.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter') return;
+
+            const qtyInput = event.target;
+            if (!qtyInput.classList.contains('table-qty-input')) return;
+
+            event.preventDefault();
+            const row     = qtyInput.closest('tr');
+            const editBtn = row?.querySelector('.table-action-save');
+
+            if (editBtn && editBtn.dataset.mode === 'save') {
+                exitEditMode(editBtn, qtyInput, row);
             }
+        });
+
+        // Keep row data-qty in sync while typing
+        tableBody.addEventListener('input', (event) => {
+            if (!event.target.classList.contains('table-qty-input')) return;
 
             const row = event.target.closest('tr');
-
-            if (row) {
-                row.dataset.qty = event.target.value;
-            }
+            if (row) row.dataset.qty = event.target.value;
         });
     }
 
-    if (saveButton) {
-        saveButton.addEventListener('click', () => {
-            if (statusBadge.textContent.trim() === 'อนุมัติ') {
-                confirmText.textContent = 'คุณแน่ใจหรือไม่ว่าต้องการบันทึกข้อมูลการเบิกวัสดุนี้ โดยสถานะจะเป็นอนุมัติ';
-            } else {
-                confirmText.textContent = 'คุณแน่ใจหรือไม่ว่าต้องการบันทึกข้อมูลการเบิกวัสดุนี้ โดยสถานะจะเป็นรอการอนุมัติ';
-            }
+    const saveLargeLotButton    = document.getElementById('saveLargeLotButton');
+    const saveInternalUseButton = document.getElementById('saveInternalUseButton');
+    const legacySaveButton      = saveLargeLotButton ?? document.getElementById('saveWithdrawButton');
 
-            openOverlay(overlay);
+    function serializeItems() {
+        const rows = Array.from(tableBody.querySelectorAll('tr[data-mat-id]'));
+        return rows.map((row) => ({
+            mat_id: Number(row.dataset.matId),
+            code:   row.dataset.code,
+            name:   row.dataset.name,
+            amount: Number(row.dataset.qty),
+            unit:   row.dataset.unit,
+        }));
+    }
+
+    function openSaveConfirm(withdrawType, labelText) {
+        const items = serializeItems();
+        if (items.length === 0) {
+            alert('กรุณาเพิ่มรายการวัสดุที่ต้องการเบิกอย่างน้อย 1 รายการ');
+            return;
+        }
+        const hiddenInput    = document.getElementById('itemsJsonHidden');
+        const withdrawTypeEl = document.getElementById('withdrawTypeHidden');
+        if (hiddenInput)    hiddenInput.value    = JSON.stringify(items);
+        if (withdrawTypeEl) withdrawTypeEl.value = withdrawType;
+        if (confirmText)    confirmText.textContent = labelText;
+        openOverlay(overlay);
+    }
+
+    if (saveLargeLotButton) {
+        saveLargeLotButton.addEventListener('click', () => {
+            openSaveConfirm('LARGE_LOT', 'เบิกจากหน่วยงานต้นทาง - รอการอนุมัติ');
+        });
+    }
+
+    if (saveInternalUseButton) {
+        saveInternalUseButton.addEventListener('click', () => {
+            openSaveConfirm('INTERNAL_USE', 'เบิกใช้ภายในหน่วยงาน - อนุมัติ');
+        });
+    }
+
+    // Legacy single-button fallback (if blade still has the old button)
+    if (!saveLargeLotButton && legacySaveButton) {
+        legacySaveButton.addEventListener('click', () => {
+            const typeEl = document.getElementById('withdrawTypeHidden');
+            const type = typeEl?.value ?? 'LARGE_LOT';
+            const descriptions = {
+                LARGE_LOT:    'เบิกจากหน่วยงานต้นทาง - รอการอนุมัติ',
+                INTERNAL_USE: 'เบิกใช้ภายในหน่วยงาน - อนุมัติ',
+            };
+            openSaveConfirm(type, descriptions[type] ?? '');
         });
     }
 
@@ -483,13 +652,62 @@ function initializeWithdrawCreatePage() {
     if (confirmButton) {
         confirmButton.addEventListener('click', () => {
             closeOverlay(overlay);
-            window.location.href = '/material/MAT-003-withdraw-material';
+            const form = document.getElementById('withdrawForm');
+            if (form) {
+                form.submit();
+            }
         });
     }
 
-    updateStatusByDepartment();
+    // ── Restore items from old() after validation error ───────────────────
+    if (window.mat003OldItems && Array.isArray(window.mat003OldItems) && tableBody) {
+        window.mat003OldItems.forEach((item) => {
+            if (item.mat_id && item.amount > 0) {
+                addRow(item.mat_id, item.code || '', item.name || '', item.amount, item.unit || '');
+            }
+        });
+        reorderRows();
+    }
+
     updateSearchPlaceholder();
 }
+
+function initializeIndexDeleteModal() {
+    const overlay       = document.getElementById('indexDeleteOverlay');
+    const cancelButton  = document.getElementById('cancelIndexDeleteButton');
+    const confirmButton = document.getElementById('confirmIndexDeleteButton');
+    const deleteForm    = document.getElementById('indexDeleteForm');
+    const messageEl     = document.getElementById('indexDeleteMessage');
+
+    if (!overlay || !cancelButton || !confirmButton || !deleteForm) {
+        return;
+    }
+
+    document.querySelectorAll('[data-delete-btn]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const code = btn.dataset.code ?? '';
+            const form = btn.closest('form');
+            if (form) {
+                deleteForm.action = form.action;
+            }
+            if (messageEl) {
+                messageEl.textContent = 'ต้องการลบใบเบิกวัสดุ ' + code + ' ใช่หรือไม่?';
+            }
+            openOverlay(overlay);
+        });
+    });
+
+    cancelButton.addEventListener('click', () => closeOverlay(overlay));
+    overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) closeOverlay(overlay);
+    });
+    confirmButton.addEventListener('click', () => {
+        closeOverlay(overlay);
+        deleteForm.submit();
+    });
+}
+
+initializeIndexDeleteModal();
 
 document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
@@ -499,10 +717,607 @@ document.addEventListener('keydown', (event) => {
     });
 });
 
+function initializeWithdrawEditPage() {
+    const editForm = document.getElementById('withdrawEditForm');
+
+    if (!editForm) {
+        return;
+    }
+
+    const materialSearchType   = document.getElementById('editMaterialSearchType');
+    const materialSearchInput  = document.getElementById('editMaterialSearchInput');
+    const findButton           = document.getElementById('editFindMaterialButton');
+    const materialCode         = document.getElementById('editMaterialCode');
+    const materialName         = document.getElementById('editMaterialName');
+    const withdrawQty          = document.getElementById('editWithdrawQty');
+    const materialUnit         = document.getElementById('editMaterialUnit');
+    const addButton            = document.getElementById('editAddMaterialButton');
+    const tableBody            = document.getElementById('editWithdrawItemsBody');
+    const stockInfoEl          = document.getElementById('editStockInfo');
+
+    const saveButton           = document.getElementById('editSaveButton');
+    const saveOverlay          = document.getElementById('editConfirmOverlay');
+    const saveCancelBtn        = document.getElementById('editCancelConfirmButton');
+    const saveConfirmBtn       = document.getElementById('editConfirmSaveButton');
+    const itemsJsonHidden      = document.getElementById('editItemsJsonHidden');
+
+    const deleteItemOverlay    = document.getElementById('editDeleteItemOverlay');
+    const deleteItemCancelBtn  = document.getElementById('editDeleteItemCancelButton');
+    const deleteItemConfirmBtn = document.getElementById('editDeleteItemConfirmButton');
+
+    let currentMaterial       = null;
+    let editStockRequestToken = 0; // incremented to discard stale async stock responses
+    let pendingDeleteRow      = null;
+    let autocomplete          = null;
+
+    // ── Local helpers: inline row editing ────────────────────────────────────
+    function enterEditMode(editBtn, qtyInput) {
+        qtyInput.disabled = false;
+        qtyInput.focus();
+        qtyInput.select();
+        editBtn.querySelector('use').setAttribute('href', '#icon-success');
+        editBtn.setAttribute('aria-label', 'ยืนยัน');
+        editBtn.setAttribute('title',      'ยืนยัน');
+        editBtn.setAttribute('data-tooltip', 'ยืนยัน');
+        editBtn.classList.remove('table-action-edit');
+        editBtn.classList.add('table-action-save');
+        editBtn.dataset.mode = 'save';
+    }
+
+    function exitEditMode(editBtn, qtyInput, row) {
+        const qty = Number(qtyInput.value);
+
+        if (Number.isNaN(qty) || qty <= 0) {
+            alert('จำนวนที่เบิกต้องมากกว่า 0');
+            qtyInput.focus();
+            qtyInput.select();
+            return false;
+        }
+
+        row.dataset.qty   = qty;
+        qtyInput.disabled = true;
+        editBtn.querySelector('use').setAttribute('href', '#icon-square-pen');
+        editBtn.setAttribute('aria-label',   'แก้ไข');
+        editBtn.setAttribute('title',        'แก้ไข');
+        editBtn.setAttribute('data-tooltip', 'แก้ไข');
+        editBtn.classList.remove('table-action-save');
+        editBtn.classList.add('table-action-edit');
+        editBtn.dataset.mode = 'edit';
+        return true;
+    }
+
+    // ── Autocomplete ──────────────────────────────────────────────────────────
+    if (materialSearchInput) {
+        autocomplete = new SearchAutocomplete({
+            inputEl:      materialSearchInput,
+            searchTypeEl: materialSearchType,
+            endpoint:     '/material/search-api',
+            minChars:     1,
+            debounceMs:   300,
+            maxResults:   20,
+            onSelect: async (material) => {
+                currentMaterial = material;
+                if (materialCode) materialCode.value = material.code;
+                if (materialName) materialName.value = material.name;
+                if (materialUnit) materialUnit.value = material.unit;
+                if (withdrawQty)  withdrawQty.value  = '';
+
+                await editFetchAndShowStock(material);
+
+                if (withdrawQty) withdrawQty.focus();
+            },
+        });
+    }
+
+    function updateSearchPlaceholder() {
+        if (!materialSearchType || !materialSearchInput) return;
+        materialSearchInput.placeholder =
+            materialSearchType.value === 'name' ? 'กรอกชื่อวัสดุ' : 'กรอกรหัสวัสดุ';
+    }
+
+    function editShowStockInfo(text, isWarning) {
+        if (!stockInfoEl) return;
+        stockInfoEl.textContent = text;
+        stockInfoEl.className   = isWarning ? 'stock-info-text stock-info-warning' : 'stock-info-text';
+        stockInfoEl.hidden      = false;
+    }
+
+    function editHideStockInfo() {
+        if (!stockInfoEl) return;
+        stockInfoEl.hidden      = true;
+        stockInfoEl.textContent = '';
+    }
+
+    function clearEditMaterialForm() {
+        currentMaterial = null;
+        if (materialCode)        materialCode.value        = '';
+        if (materialName)        materialName.value        = '';
+        if (withdrawQty)         withdrawQty.value         = '';
+        if (materialUnit)        materialUnit.value        = '';
+        if (materialSearchInput) materialSearchInput.value = '';
+        ++editStockRequestToken;
+        editHideStockInfo();
+    }
+
+    async function editFetchStock(matId) {
+        try {
+            const res = await fetch(
+                `/material/MAT-003-withdraw-material/stock-check?material_id=${encodeURIComponent(matId)}`
+            );
+            if (!res.ok) return null;
+            const data = await res.json();
+            return data.available;
+        } catch {
+            return null;
+        }
+    }
+
+    async function editFetchAndShowStock(material) {
+        const token = ++editStockRequestToken;
+        const available = await editFetchStock(material.id);
+        if (token !== editStockRequestToken) return; // stale – user changed selection mid-flight
+        if (available === null) {
+            editShowStockInfo('คงเหลือ: ยังไม่ได้ตั้งค่า Stock', false);
+        } else {
+            editShowStockInfo(`คงเหลือ: ${available} ${material.unit}`, available === 0);
+        }
+    }
+
+    function reorderEditRows() {
+        if (!tableBody) return;
+        tableBody.querySelectorAll('tr[data-mat-id]').forEach((row, index) => {
+            const firstCell = row.querySelector('td:first-child');
+            if (firstCell) firstCell.textContent = index + 1;
+        });
+    }
+
+    function buildEditActionButtons() {
+        return `
+            <div class="table-action-buttons">
+                <button
+                    class="table-action-icon table-action-edit"
+                    type="button"
+                    aria-label="แก้ไข"
+                    title="แก้ไข"
+                    data-tooltip="แก้ไข"
+                    data-mode="edit"
+                >
+                    <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
+                </button>
+                <button
+                    class="table-action-icon table-action-delete"
+                    type="button"
+                    aria-label="ลบ"
+                    title="ลบ"
+                    data-tooltip="ลบ"
+                >
+                    <svg aria-hidden="true"><use href="#icon-trash"></use></svg>
+                </button>
+            </div>
+        `;
+    }
+
+    function addEditRow(detailId, matId, code, name, qty, unit) {
+        if (!tableBody) return;
+
+        const row      = document.createElement('tr');
+        const rowCount = tableBody.querySelectorAll('tr[data-mat-id]').length + 1;
+
+        row.dataset.detailId = String(detailId);
+        row.dataset.matId    = String(matId);
+        row.dataset.code     = code;
+        row.dataset.name     = name;
+        row.dataset.qty      = String(qty);
+        row.dataset.unit     = unit;
+
+        row.innerHTML = `
+            <td>${rowCount}</td>
+            <td><span class="material-code">${code}</span></td>
+            <td>${name}</td>
+            <td><input class="table-qty-input" type="number" value="${qty}" min="1" disabled></td>
+            <td>${unit}</td>
+            <td>${buildEditActionButtons()}</td>
+        `;
+
+        tableBody.appendChild(row);
+    }
+
+    // ── Search type change ────────────────────────────────────────────────────
+    if (materialSearchType) {
+        materialSearchType.addEventListener('change', () => {
+            if (materialSearchInput) materialSearchInput.value = '';
+            updateSearchPlaceholder();
+            if (currentMaterial !== null) clearEditMaterialForm();
+        });
+    }
+
+    // ── Find button ───────────────────────────────────────────────────────────
+    if (findButton) {
+        findButton.addEventListener('click', () => {
+            if (autocomplete) autocomplete.triggerSearch();
+        });
+    }
+
+    // Clear selected material when user edits the search text after a selection (REQ 11/12).
+    if (materialSearchInput) {
+        materialSearchInput.addEventListener('input', () => {
+            if (currentMaterial !== null) clearEditMaterialForm();
+        });
+    }
+
+    // ── Add button ────────────────────────────────────────────────────────────
+    if (addButton) {
+        addButton.addEventListener('click', async () => {
+            if (!currentMaterial) {
+                alert('กรุณาค้นหาและเลือกวัสดุก่อน');
+                return;
+            }
+
+            const raw = withdrawQty ? withdrawQty.value.trim() : '';
+            const qty = Number(raw);
+
+            if (raw === '' || !Number.isInteger(qty) || qty <= 0) {
+                alert('กรุณาระบุจำนวนที่เบิกเป็นจำนวนเต็มบวกมากกว่า 0');
+                if (withdrawQty) withdrawQty.focus();
+                return;
+            }
+
+            // Duplicate check
+            const existingMatIds = Array.from(tableBody.querySelectorAll('tr[data-mat-id]'))
+                .map((r) => r.dataset.matId);
+
+            if (existingMatIds.includes(String(currentMaterial.id))) {
+                alert('วัสดุรายการนี้ถูกเพิ่มในใบเบิกแล้ว');
+                return;
+            }
+
+            // Stock guard
+            const available = await editFetchStock(currentMaterial.id);
+            if (available !== null && qty > available) {
+                alert(`จำนวนที่เบิก (${qty}) เกินจำนวนคงเหลือ (${available} ${currentMaterial.unit})`);
+                return;
+            }
+
+            addEditRow(0, currentMaterial.id, currentMaterial.code, currentMaterial.name, qty, currentMaterial.unit);
+            reorderEditRows();
+            clearEditMaterialForm();
+        });
+    }
+
+    // ── Table events ──────────────────────────────────────────────────────────
+    if (tableBody) {
+        tableBody.addEventListener('click', (event) => {
+            const row = event.target.closest('tr');
+            if (!row) return;
+
+            // Delete button → open confirmation popup
+            const deleteBtn = event.target.closest('.table-action-delete');
+            if (deleteBtn) {
+                pendingDeleteRow = row;
+                openOverlay(deleteItemOverlay);
+                document.body.style.overflow = 'hidden';
+                if (deleteItemCancelBtn) deleteItemCancelBtn.focus();
+                return;
+            }
+
+            // Edit/save button → toggle inline edit
+            // NOTE: after enterEditMode the class switches to .table-action-save;
+            // selector must match both states.
+            const editBtn = event.target.closest('.table-action-edit, .table-action-save');
+            if (editBtn) {
+                const qtyInput = row.querySelector('.table-qty-input');
+                if (!qtyInput) return;
+
+                if (editBtn.dataset.mode === 'save') {
+                    exitEditMode(editBtn, qtyInput, row);
+                } else {
+                    // Close any other row currently in edit mode
+                    tableBody.querySelectorAll('.table-action-save[data-mode="save"]').forEach((otherBtn) => {
+                        if (otherBtn !== editBtn) {
+                            const otherRow   = otherBtn.closest('tr');
+                            const otherInput = otherRow?.querySelector('.table-qty-input');
+                            if (otherInput) exitEditMode(otherBtn, otherInput, otherRow);
+                        }
+                    });
+                    enterEditMode(editBtn, qtyInput);
+                }
+            }
+        });
+
+        // Enter key in qty input commits inline edit
+        tableBody.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter') return;
+            const qtyInput = event.target;
+            if (!qtyInput.classList.contains('table-qty-input')) return;
+            event.preventDefault();
+            const row     = qtyInput.closest('tr');
+            const editBtn = row?.querySelector('.table-action-save');
+            if (editBtn && editBtn.dataset.mode === 'save') {
+                exitEditMode(editBtn, qtyInput, row);
+            }
+        });
+
+        // Keep data-qty in sync while typing
+        tableBody.addEventListener('input', (event) => {
+            if (!event.target.classList.contains('table-qty-input')) return;
+            const row = event.target.closest('tr');
+            if (row) row.dataset.qty = event.target.value;
+        });
+    }
+
+    // ── Delete item overlay ───────────────────────────────────────────────────
+    if (deleteItemCancelBtn) {
+        deleteItemCancelBtn.addEventListener('click', () => {
+            pendingDeleteRow = null;
+            closeOverlay(deleteItemOverlay);
+            document.body.style.overflow = '';
+        });
+    }
+
+    if (deleteItemOverlay) {
+        deleteItemOverlay.addEventListener('click', (event) => {
+            if (event.target === deleteItemOverlay) {
+                pendingDeleteRow = null;
+                closeOverlay(deleteItemOverlay);
+                document.body.style.overflow = '';
+            }
+        });
+    }
+
+    if (deleteItemConfirmBtn) {
+        deleteItemConfirmBtn.addEventListener('click', () => {
+            if (pendingDeleteRow) {
+                pendingDeleteRow.remove();
+                reorderEditRows();
+                pendingDeleteRow = null;
+            }
+            closeOverlay(deleteItemOverlay);
+            document.body.style.overflow = '';
+        });
+    }
+
+    // ── Save button ───────────────────────────────────────────────────────────
+    if (saveButton) {
+        saveButton.addEventListener('click', () => {
+            // Commit any open inline edit first (class is .table-action-save when editing)
+            if (tableBody) {
+                tableBody.querySelectorAll('.table-action-save[data-mode="save"]').forEach((editBtn) => {
+                    const row      = editBtn.closest('tr');
+                    const qtyInput = row?.querySelector('.table-qty-input');
+                    if (qtyInput) exitEditMode(editBtn, qtyInput, row);
+                });
+            }
+
+            if (!tableBody) return;
+            const rows = Array.from(tableBody.querySelectorAll('tr[data-mat-id]'));
+
+            if (rows.length === 0) {
+                alert('กรุณาเพิ่มรายการวัสดุอย่างน้อย 1 รายการ');
+                return;
+            }
+
+            const items = rows.map((row) => ({
+                detail_id: Number(row.dataset.detailId ?? 0),
+                mat_id:    Number(row.dataset.matId),
+                code:      row.dataset.code,
+                name:      row.dataset.name,
+                amount:    Number(row.dataset.qty),
+                unit:      row.dataset.unit,
+            }));
+
+            if (itemsJsonHidden) {
+                itemsJsonHidden.value = JSON.stringify(items);
+            }
+
+            openOverlay(saveOverlay);
+            document.body.style.overflow = 'hidden';
+            if (saveCancelBtn) saveCancelBtn.focus();
+        });
+    }
+
+    // ── Save confirmation overlay ──────────────────────────────────────────────
+    if (saveCancelBtn) {
+        saveCancelBtn.addEventListener('click', () => {
+            closeOverlay(saveOverlay);
+            document.body.style.overflow = '';
+            if (saveButton) saveButton.focus();
+        });
+    }
+
+    if (saveOverlay) {
+        saveOverlay.addEventListener('click', (event) => {
+            if (event.target === saveOverlay) {
+                closeOverlay(saveOverlay);
+                document.body.style.overflow = '';
+            }
+        });
+    }
+
+    if (saveConfirmBtn) {
+        saveConfirmBtn.addEventListener('click', () => {
+            saveConfirmBtn.disabled    = true;
+            saveConfirmBtn.textContent = 'กำลังบันทึก...';
+            editForm.submit();
+        });
+    }
+
+    // ── Finalize buttons (DRAFT mode) ─────────────────────────────────────────
+    const finalizeRegionalBtn      = document.getElementById('finalizeRegionalBtn');
+    const finalizeInternalBtn      = document.getElementById('finalizeInternalBtn');
+    const finalizeRegionalOverlay  = document.getElementById('finalizeRegionalOverlay');
+    const finalizeInternalOverlay  = document.getElementById('finalizeInternalOverlay');
+    const withdrawFinalizeForm     = document.getElementById('withdrawFinalizeForm');
+    const finalizeItemsJson        = document.getElementById('finalizeItemsJson');
+    const finalizeAction           = document.getElementById('finalizeAction');
+    const finalizeDateHidden       = document.getElementById('finalizeDateHidden');
+    const finalizePersonHidden     = document.getElementById('finalizePersonHidden');
+
+    function buildFinalizeItems() {
+        if (!tableBody) return [];
+        return Array.from(tableBody.querySelectorAll('tr[data-mat-id]')).map((row) => ({
+            detail_id: Number(row.dataset.detailId ?? 0),
+            mat_id:    Number(row.dataset.matId),
+            code:      row.dataset.code,
+            name:      row.dataset.name,
+            amount:    Number(row.dataset.qty),
+            unit:      row.dataset.unit,
+        }));
+    }
+
+    function openFinalizeFlow(action, overlay) {
+        const items = buildFinalizeItems();
+        if (items.length === 0) {
+            alert('กรุณาเพิ่มรายการวัสดุอย่างน้อย 1 รายการก่อนบันทึก');
+            return;
+        }
+        if (finalizeItemsJson) finalizeItemsJson.value = JSON.stringify(items);
+        if (finalizeAction) finalizeAction.value = action;
+        // Copy current header values into finalize form hidden inputs
+        const dateInput   = document.getElementById('editWithdrawDate');
+        const personInput = document.getElementById('editWithdrawerName');
+        if (finalizeDateHidden && dateInput) finalizeDateHidden.value = dateInput.value;
+        if (finalizePersonHidden && personInput) finalizePersonHidden.value = personInput.value;
+        openOverlay(overlay);
+        document.body.style.overflow = 'hidden';
+    }
+
+    if (finalizeRegionalBtn) {
+        finalizeRegionalBtn.addEventListener('click', () => {
+            openFinalizeFlow('LARGE_LOT', finalizeRegionalOverlay);
+        });
+    }
+
+    if (finalizeInternalBtn) {
+        finalizeInternalBtn.addEventListener('click', () => {
+            openFinalizeFlow('INTERNAL_USE', finalizeInternalOverlay);
+        });
+    }
+
+    const cancelFinalizeRegionalBtn  = document.getElementById('cancelFinalizeRegionalBtn');
+    const cancelFinalizeInternalBtn  = document.getElementById('cancelFinalizeInternalBtn');
+    const confirmFinalizeRegionalBtn = document.getElementById('confirmFinalizeRegionalBtn');
+    const confirmFinalizeInternalBtn = document.getElementById('confirmFinalizeInternalBtn');
+
+    if (cancelFinalizeRegionalBtn) {
+        cancelFinalizeRegionalBtn.addEventListener('click', () => {
+            closeOverlay(finalizeRegionalOverlay);
+            document.body.style.overflow = '';
+        });
+    }
+
+    if (cancelFinalizeInternalBtn) {
+        cancelFinalizeInternalBtn.addEventListener('click', () => {
+            closeOverlay(finalizeInternalOverlay);
+            document.body.style.overflow = '';
+        });
+    }
+
+    if (confirmFinalizeRegionalBtn) {
+        confirmFinalizeRegionalBtn.addEventListener('click', () => {
+            confirmFinalizeRegionalBtn.disabled    = true;
+            confirmFinalizeRegionalBtn.textContent = 'กำลังบันทึก...';
+            closeOverlay(finalizeRegionalOverlay);
+            if (withdrawFinalizeForm) withdrawFinalizeForm.submit();
+        });
+    }
+
+    if (confirmFinalizeInternalBtn) {
+        confirmFinalizeInternalBtn.addEventListener('click', () => {
+            confirmFinalizeInternalBtn.disabled    = true;
+            confirmFinalizeInternalBtn.textContent = 'กำลังบันทึก...';
+            closeOverlay(finalizeInternalOverlay);
+            if (withdrawFinalizeForm) withdrawFinalizeForm.submit();
+        });
+    }
+
+    updateSearchPlaceholder();
+}
+
+function initializeWithdrawShowPage() {
+    const openBtn   = document.getElementById('openDeleteModalBtn');
+    const overlay   = document.getElementById('deleteWithdrawOverlay');
+    const closeBtn  = document.getElementById('closeDeleteModalBtn');
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+
+    // If neither button exists, we're not on the show/detail page
+    if (!openBtn || !overlay) {
+        return;
+    }
+
+    // Open the delete confirmation modal
+    openBtn.addEventListener('click', () => {
+        openOverlay(overlay);
+        if (closeBtn) closeBtn.focus();
+        document.body.style.overflow = 'hidden';
+    });
+
+    // Close modal via cancel button
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            closeOverlay(overlay);
+            document.body.style.overflow = '';
+            openBtn.focus();
+        });
+    }
+
+    // Close modal when clicking on the overlay backdrop
+    overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) {
+            closeOverlay(overlay);
+            document.body.style.overflow = '';
+            openBtn.focus();
+        }
+    });
+
+    // Also restore scroll when Escape closes the modal
+    overlay.addEventListener('transitionend', () => {
+        if (!overlay.classList.contains('is-visible')) {
+            document.body.style.overflow = '';
+        }
+    });
+
+    // Disable confirm button on submit to prevent double-click
+    if (confirmBtn) {
+        const deleteForm = confirmBtn.closest('form');
+        if (deleteForm) {
+            deleteForm.addEventListener('submit', () => {
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = 'กำลังลบ...';
+            });
+        }
+    }
+}
+
 initializeSidebarGroups();
 preventDisabledMenuReload();
 initializeWithdrawSearch();
 initializeWithdrawCreatePage();
+initializeWithdrawShowPage();
+initializeWithdrawEditPage();
+initializeWithdrawListAutocomplete();
+
+/* ===== Autocomplete for MAT-003 index search bar ===== */
+
+function initializeWithdrawListAutocomplete() {
+    const searchInput = document.getElementById('withdrawSearchInput');
+    const searchType  = document.getElementById('withdrawSearchType');
+
+    if (!searchInput) return;
+
+    const ac = new SearchAutocomplete({
+        inputEl:      searchInput,
+        searchTypeEl: searchType,
+        endpoint:     window.searchSuggestionsUrl || '/search/suggestions',
+        extraParams:  { entity: 'withdrawal' },
+        minChars:     1,
+        debounceMs:   300,
+        maxResults:   15,
+        onSelect: (item) => {
+            searchInput.value = item.code;
+            ac.close();
+        },
+    });
+}
 
 
 /* ===== Global save validation for create/edit pages ===== */
@@ -567,6 +1382,11 @@ initializeWithdrawCreatePage();
         const ignoredTypes = ['hidden', 'button', 'submit', 'reset', 'file'];
 
         if (ignoredTypes.includes(field.type)) {
+            return true;
+        }
+
+        // Editor-only inputs validated by the "เพิ่ม" button, not by form submit
+        if ('validateOnAdd' in (field.dataset ?? {})) {
             return true;
         }
 
@@ -709,7 +1529,8 @@ initializeWithdrawCreatePage();
         }
 
         if (currentPath.includes('MAT-003-withdraw-material')) {
-            const hasRows = hasAtLeastOneRealRow('#withdrawItemsBody');
+            const hasRows = hasAtLeastOneRealRow('#withdrawItemsBody')
+                && hasAtLeastOneRealRow('#editWithdrawItemsBody');
 
             if (!hasRows) {
                 isValid = false;

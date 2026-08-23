@@ -1,4 +1,4 @@
-* {
+﻿* {
     box-sizing: border-box;
 }
 
@@ -17,6 +17,10 @@
     --text-muted: #687386;
     --pending-bg: #fff3cd;
     --pending-text: #b7791f;
+    --approved-bg: #d1fae5;
+    --approved-text: #065f46;
+    --rejected-bg: #fee2e2;
+    --rejected-text: #991b1b;
 }
 
 html {
@@ -191,7 +195,7 @@ textarea {
 
 .page-container {
     width: 100%;
-    max-width: 1040px;
+    max-width: 1136px;
     margin: 0 auto;
     padding: 56px 28px;
 }
@@ -221,9 +225,10 @@ textarea {
 
 .withdraw-card {
     width: 100%;
-    max-width: 1040px;
+    max-width: 1136px;
     background: #ffffff;
     border: 1.5px solid var(--card-border);
+    border-top-width: 4px;
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
@@ -232,9 +237,23 @@ textarea {
 
 .card-title {
     padding: 0 28px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
     color: #111827;
     font-size: 15px;
     font-weight: 800;
+}
+
+.card-title-icon {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: var(--primary);
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex-shrink: 0;
 }
 
 .toolbar {
@@ -326,6 +345,70 @@ textarea {
     background: #102d70;
 }
 
+/* ── 2-button create row ── */
+.withdraw-create-actions {
+    display: flex;
+    gap: 10px;
+    padding: 0 28px 16px;
+    flex-wrap: wrap;
+}
+
+.withdraw-create-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    min-width: 0;
+    height: 34px;
+    padding: 7px 13px;
+    border-radius: 4px;
+    background: var(--primary);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    line-height: 1.15;
+}
+
+.withdraw-create-btn:hover {
+    background: #102d70;
+    color: #ffffff;
+}
+
+.withdraw-create-btn--internal {
+    background: #0e7c5a;
+}
+
+.withdraw-create-btn--internal:hover {
+    background: #0a5c42;
+}
+
+/* ── Mode badge on create page ── */
+.withdraw-mode-badge {
+    display: inline-block;
+    margin: 0 0 20px 0;
+    padding: 6px 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    background: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+
+.withdraw-mode-badge--internal {
+    background: #d1fae5;
+    color: #065f46;
+    border-color: #a7f3d0;
+}
+
+.withdraw-mode-badge--large-lot {
+    background: #dbeafe;
+    color: #1e40af;
+    border-color: #bfdbfe;
+}
+
 .table-wrapper {
     padding: 0 28px;
 }
@@ -411,6 +494,21 @@ textarea {
 .status-badge.pending {
     background: var(--pending-bg);
     color: var(--pending-text);
+}
+
+.status-badge.approved {
+    background: var(--approved-bg);
+    color: var(--approved-text);
+}
+
+.status-badge.rejected {
+    background: var(--rejected-bg);
+    color: var(--rejected-text);
+}
+
+.status-badge.draft {
+    background: #f3f4f6;
+    color: #6b7280;
 }
 
 .action-column {
@@ -600,6 +698,48 @@ textarea {
     align-items: center;
     justify-content: center;
     text-decoration: none;
+}
+
+.stock-info-text {
+    margin: 6px 0 0;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 13px;
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+    display: inline-block;
+}
+
+/* Ensure the `hidden` attribute wins over the display class above */
+.stock-info-text[hidden] {
+    display: none;
+}
+
+.stock-info-text.stock-info-warning {
+    background: #fff7ed;
+    color: #9a3412;
+    border-color: #fed7aa;
+}
+
+.form-success-box {
+    margin-bottom: 16px;
+    padding: 10px 16px;
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.form-error-box {
+    margin-bottom: 16px;
+    padding: 10px 16px;
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    font-size: 14px;
 }
 
 .withdraw-create-page {
@@ -802,11 +942,19 @@ textarea {
     table-layout: fixed;
     border: 1px solid #d7e0ea;
     border-radius: 7px;
-    overflow: hidden;
+    /* overflow: visible — allows CSS tooltips on action buttons to escape */
 }
 
 .withdraw-items-table thead tr {
     background: #f1f5f9;
+}
+
+/* Round corner cells to replace overflow:hidden visual for border-radius */
+.withdraw-items-table thead tr th:first-child {
+    border-top-left-radius: 6px;
+}
+.withdraw-items-table thead tr th:last-child {
+    border-top-right-radius: 6px;
 }
 
 .withdraw-items-table th {
@@ -877,26 +1025,14 @@ textarea {
     font-size: 13px;
 }
 
-.small-edit-btn,
-.small-delete-btn {
-    height: 24px;
-    border: none;
-    border-radius: 5px;
-    padding: 0 9px;
-    font-size: 12px;
-    cursor: pointer;
+.table-qty-input:disabled {
+    background: #f1f5f9;
+    color: #94a3b8;
+    cursor: not-allowed;
+    border-color: #e2e8f0;
 }
 
-.small-edit-btn {
-    background: #d97706;
-    color: #ffffff;
-}
-
-.small-delete-btn {
-    background: #fff1f1;
-    color: #ef4444;
-    margin-left: 4px;
-}
+/* Old .small-edit-btn / .small-delete-btn replaced by .table-action-icon from table-actions.css */
 
 .form-actions {
     margin-top: 54px;
@@ -938,6 +1074,14 @@ textarea {
 
 .submit-btn:hover {
     background: #102d70;
+}
+
+.submit-btn-secondary {
+    background: #475569;
+}
+
+.submit-btn-secondary:hover {
+    background: #334155;
 }
 
 .confirm-overlay {
@@ -1087,4 +1231,129 @@ textarea {
     opacity: 1 !important;
     cursor: pointer !important;
     filter: none !important;
+}
+
+/* ===== MAT-003 show / detail page ===== */
+
+/* Card header: title left, status badge right */
+.wd-show-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px dashed #e5e7eb;
+}
+
+.wd-show-card-title {
+    margin: 0;
+    color: var(--primary);
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+/* Override the .status-badge global margin:auto inside the flex header */
+.wd-show-card-header .status-badge {
+    margin: 0;
+    flex-shrink: 0;
+}
+
+/* Action buttons at the bottom of the detail card */
+.wd-detail-btn {
+    height: 40px;
+    min-width: 120px;
+    padding: 0 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+    line-height: 1;
+    border: none;
+}
+
+.wd-detail-btn--cancel {
+    border: 1.5px solid #ef4444;
+    background: #ffffff;
+    color: #ef4444;
+}
+
+.wd-detail-btn--cancel:hover {
+    background: #fef2f2;
+}
+
+.wd-detail-btn--delete {
+    background: #ef4444;
+    color: #ffffff;
+}
+
+.wd-detail-btn--delete:hover:not(:disabled) {
+    background: #dc2626;
+}
+
+.wd-detail-btn--delete:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.wd-detail-btn--edit {
+    background: #d97706;
+    color: #ffffff;
+}
+
+.wd-detail-btn--edit:hover:not(:disabled) {
+    background: #b45309;
+}
+
+.wd-detail-btn--edit:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* Delete confirmation modal icon */
+.danger-confirm-icon {
+    background: #fef2f2;
+    color: #ef4444;
+}
+
+/* Delete confirmation button */
+.danger-confirm-btn {
+    border: 1px solid #ef4444;
+    background: #ef4444;
+    color: #ffffff;
+}
+
+.danger-confirm-btn:hover:not(:disabled) {
+    background: #dc2626;
+    border-color: #dc2626;
+}
+
+.danger-confirm-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ===== MAT-003 edit page ===== */
+
+/* Edit confirmation modal icon — amber circle with pen icon */
+.edit-confirm-icon {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.edit-confirm-btn {
+    border: 1px solid #fde68a;
+    background: #fde68a;
+    color: #111827;
+}
+
+.edit-confirm-btn:hover {
+    background: #facc15;
 }

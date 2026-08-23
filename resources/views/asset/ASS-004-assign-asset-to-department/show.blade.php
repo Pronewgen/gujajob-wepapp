@@ -1,106 +1,84 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('page-style')
-    @vite(['resources/css/asset/ASS-004-assign-asset-to-department/show.css'])
+    @vite([
+        'resources/css/asset/ASS-004-assign-asset-to-department/show.css',
+    ])
 @endsection
 
 @section('content')
     <div class="page-container assignment-show-page">
-        <header class="page-header">
-            <div class="page-title-box">
-                <h2>{{ $pageTitle }}</h2>
-                <div class="header-line"></div>
-            </div>
-        </header>
+        <x-page-header :title="$pageTitle" />
 
         <section class="assignment-show-card">
-            <div class="assignment-form">
-                <h3 class="section-title">1. เลือกหน่วยงานที่ต้องจัดสรรให้</h3>
+            <h3 class="card-form-heading">รายละเอียดการจัดสรร</h3>
 
+            {{-- Section 1: Header info — same layout as create (three-col + two-col) --}}
+            <div class="section-block">
                 <div class="form-grid two-col">
-                    <div class="field-group">
-                        <label for="requestDepartment">หน่วยงานผู้จัดสรร</label>
-                        <input id="requestDepartment" type="text" value="{{ $assignmentDetail['requesting_department'] }}" readonly>
+                    <div class="show-field">
+                        <span class="show-label">หน่วยงานผู้จัดสรร</span>
+                        <span class="show-value">{{ $orgName }}</span>
                     </div>
-
-                    <div class="field-group">
-                        <label for="targetDepartment">หน่วยงานผู้รับจัดสรร</label>
-                        <input id="targetDepartment" type="text" value="{{ $assignmentDetail['target_department'] }}" readonly>
+                    <div class="show-field">
+                        <span class="show-label">จัดสรรให้หน่วยงาน</span>
+                        <span class="show-value">{{ $targetOrg->org_name ?? '-' }}</span>
                     </div>
                 </div>
+                <div class="form-grid two-col" style="max-width:760px;margin-top:10px;">
+                    <div class="show-field">
+                        <span class="show-label">ผู้จัดสรร</span>
+                        <span class="show-value">{{ $assigner->user_name ?? '-' }}</span>
+                    </div>
+                    <div class="show-field">
+                        <span class="show-label">วันที่จัดสรร</span>
+                        <span class="show-value">
+                            @if ($assignment->assign_date)
+                                {{ \Carbon\Carbon::parse($assignment->assign_date)->format('d-m-') . (\Carbon\Carbon::parse($assignment->assign_date)->year + 543) }}
+                            @else
+                                -
+                            @endif
+                        </span>
+                    </div>
+                </div>
+            </div>
 
-                <h3 class="section-title">รายการครุภัณฑ์ที่เลือกจัดสรร</h3>
-
-                <div class="table-shell">
-                    <table class="assignment-table">
+            {{-- Section 2: Asset list --}}
+            <div class="section-block">
+                <h3 class="section-title">รายการครุภัณฑ์ที่จัดสรร</h3>
+                <div class="table-wrapper">
+                    <table class="asset-show-table">
                         <thead>
                             <tr>
-                                <th>ลำดับ</th>
                                 <th>รหัสครุภัณฑ์</th>
                                 <th>ชื่อครุภัณฑ์</th>
-                                <th>หมวดครุภัณฑ์</th>
-                                <th>มูลค่า</th>
-                                <th>สถานะรับ</th>
+                                <th>หมวด</th>
+                                <th class="col-value">มูลค่า (บาท)</th>
                             </tr>
                         </thead>
-
                         <tbody>
-                            @foreach ($assignmentDetail['items'] as $index => $item)
+                            @forelse ($assets as $i => $asset)
                                 <tr>
-                                    <td class="center">{{ $index + 1 }}</td>
-                                    <td class="asset-code">
-                                        {{ $item['asset_code'] }}
-                                        @if ($item['sub_code'])
-                                            <span class="asset-sub-code">{{ $item['sub_code'] }}</span>
-                                        @endif
-                                    </td>
-                                    <td>{{ $item['asset_name'] }}</td>
-                                    <td>{{ $item['category'] }}</td>
-                                    <td class="number">{{ $item['value'] }}</td>
-                                    <td class="center">
-                                        <span class="receive-status status-{{ $item['receive_status_type'] }}">{{ $item['receive_status'] }}</span>
-                                    </td>
+                                    <td>{{ $asset->asset_code }}</td>
+                                    <td>{{ $asset->asset_name }}</td>
+                                    <td>{{ $asset->category_name }}</td>
+                                    <td class="right">{{ number_format((float)($asset->asset_value ?? 0), 2) }}</td>
                                 </tr>
-                            @endforeach
+                            @empty
+                                <tr>
+                                    <td colspan="4" class="no-data">ไม่มีรายการครุภัณฑ์</td>
+                                </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
+            </div>
 
-                <div class="form-actions detail-actions">
-                    <a class="cancel-btn" href="{{ route('asset.assignments.index') }}">ยกเลิก</a>
-
-                    <button class="delete-action-btn" type="button" id="openDeleteAssignmentPopup">
-                        ยกเลิกการจัดสรร
-                    </button>
-
-                    <a class="edit-action-btn" href="{{ route('asset.assignments.edit', $assignmentSequence) }}">
-                        แก้ไขการจัดสรร
-                    </a>
-                </div>
+            {{-- Actions --}}
+            <div class="form-actions">
+                <a class="cancel-btn" href="{{ route('asset.assignments.index') }}">ย้อนกลับ</a>
             </div>
         </section>
-    </div>
-
-    <div class="confirm-overlay" id="deleteAssignmentOverlay" aria-hidden="true">
-        <div class="confirm-modal" role="dialog" aria-modal="true">
-            <div class="confirm-icon delete-confirm-icon">
-                <svg><use href="#icon-alert-triangle"></use></svg>
-            </div>
-
-            <h3>ยืนยันการยกเลิกการจัดสรร</h3>
-
-            <p>
-                คุณแน่ใจหรือไม่ว่าต้องการยกเลิกการจัดสรรครั้งที่ {{ $assignmentSequence }}<br>
-                การดำเนินการนี้ไม่สามารถเรียกคืนได้
-            </p>
-
-            <div class="confirm-actions">
-                <button class="modal-cancel-btn" type="button" id="cancelDeleteAssignmentButton">ยกเลิก</button>
-                <button class="modal-confirm-btn delete-confirm-btn" type="button" id="confirmDeleteAssignmentButton" data-redirect-url="{{ route('asset.assignments.index') }}">
-                    ยืนยันการยกเลิก
-                </button>
-            </div>
-        </div>
     </div>
 @endsection
 

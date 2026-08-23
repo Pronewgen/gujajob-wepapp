@@ -1,17 +1,15 @@
 @extends('layouts.app')
 
 @section('page-style')
-    @vite(['resources/css/asset/ASS-006-request-asset-disposal/style.css'])
+    @vite([
+        'resources/css/components/table-actions.css',
+        'resources/css/asset/ASS-006-request-asset-disposal/style.css',
+    ])
 @endsection
 
 @section('content')
     <div class="page-container disposal-page">
-        <header class="page-header">
-            <div class="page-title-box">
-                <h2>{{ $pageTitle }}</h2>
-                <div class="header-line"></div>
-            </div>
-        </header>
+        <x-page-header :title="$pageTitle" />
 
         <section class="disposal-card">
             <div class="toolbar">
@@ -74,7 +72,7 @@
                                 data-status="{{ $record['approval_status_type'] }}"
                             >
                                 <td>
-                                    <span class="request-no">{{ $record['request_no'] }}</span>
+                                    <a class="ass-code-link" href="{{ route('asset.disposals.show', $record['request_no']) }}"><span class="request-no">{{ $record['request_no'] }}</span></a>
                                 </td>
                                 <td class="date-text">{{ $record['request_date'] }}</td>
                                 <td>{{ $record['request_department'] }}</td>
@@ -83,7 +81,14 @@
                                     <span class="status-pill {{ $record['approval_status_type'] }}">{{ $record['approval_status'] }}</span>
                                 </td>
                                 <td class="action-column">
-                                    <a class="detail-btn" href="{{ route('asset.disposals.show', $record['request_no']) }}">ดูรายละเอียด</a>
+                                    <div class="table-action-buttons">
+                                        <a class="table-action-icon table-action-edit"
+                                           aria-label="แก้ไข" title="แก้ไข" data-tooltip="แก้ไข"
+                                           href="{{ route('asset.disposals.edit', $record['request_no']) }}"
+                                        >
+                                            <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach

@@ -2,6 +2,22 @@
     box-sizing: border-box;
 }
 
+/* ── Shared table code/ID hyperlinks ────────────────────────────────────── */
+.mat-code-link,
+.ass-code-link,
+.mat004-code-link {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.mat-code-link:hover,
+.ass-code-link:hover,
+.mat004-code-link:hover {
+    text-decoration: underline;
+    color: #1d4ed8;
+}
+
 body {
     margin: 0;
     font-family: Arial, Helvetica, sans-serif;

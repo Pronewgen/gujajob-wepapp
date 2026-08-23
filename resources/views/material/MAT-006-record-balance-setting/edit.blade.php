@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('page-style')
     @vite(['resources/css/material/MAT-006-record-balance-setting/style.css'])
@@ -6,12 +6,7 @@
 
 @section('content')
     <div class="page-container balance-edit-page">
-        <header class="page-header">
-            <div class="page-title-box">
-                <h2>{{ $pageTitle }}</h2>
-                <div class="header-line"></div>
-            </div>
-        </header>
+        <x-page-header :title="$pageTitle" />
 
         <section class="balance-edit-card">
             <div class="edit-section-title">
@@ -92,8 +87,8 @@
             </div>
 
             <div class="edit-form-actions">
-                <a class="cancel-btn" href="{{ route('material.balance.index') }}">ยกเลิก</a>
-                <button class="submit-btn" type="button" id="saveBalanceEditButton">บันทึกการแก้ไข</button>
+                <a class="cancel-btn" href="{{ route('material.balance.index') }}">ย้อนกลับ</a>
+                <button class="submit-btn" type="button" id="saveBalanceEditButton">บันทึก</button>
             </div>
         </section>
     </div>

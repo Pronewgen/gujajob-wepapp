@@ -1,22 +1,19 @@
 @extends('layouts.app')
 
+@section('title', 'จัดการรายการวัสดุ')
+
 @section('page-style')
     @vite(['resources/css/material/MAT-001-manage-material-items/style.css'])
 @endsection
 
 @section('content')
     <div class="page-container">
-        <header class="page-header">
-            <div class="page-title-box">
-                <h2>{{ $pageTitle }}</h2>
-                <div class="header-line"></div>
-            </div>
-        </header>
+        <x-page-header :title="$pageTitle" />
 
         <section class="material-form-card edit-mode-card">
             <div class="form-card-title">
                 <svg class="form-title-icon"><use href="#icon-edit-form"></use></svg>
-                <span>ฟอร์มบันทึกข้อมูลวัสดุ</span>
+                <span>แก้ไขข้อมูลวัสดุ</span>
             </div>
 
             <form id="materialEditForm" class="material-form" autocomplete="off" action="{{ route('material.items.update', $material->mat_code) }}" method="POST">
@@ -63,8 +60,8 @@
                 </div>
 
                 <div class="form-actions">
-                    <a class="cancel-btn" href="{{ route('material.items.show', $material->mat_code) }}">ยกเลิก</a>
-                    <button class="submit-btn edit-submit-btn" type="submit">บันทึกการแก้ไข</button>
+                    <a class="cancel-btn" href="{{ route('material.items.index') }}">ย้อนกลับ</a>
+                    <button class="submit-btn edit-submit-btn" type="submit">บันทึก</button>
                 </div>
             </form>
         </section>

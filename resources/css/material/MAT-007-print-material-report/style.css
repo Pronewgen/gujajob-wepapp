@@ -1,4 +1,4 @@
-* {
+﻿* {
     box-sizing: border-box;
 }
 
@@ -189,7 +189,7 @@ select {
 
 .page-container {
     width: 100%;
-    max-width: 980px;
+    max-width: 1136px;
     margin: 0 auto;
     padding: 50px 28px 70px;
 }
@@ -536,7 +536,7 @@ select {
     background: #102d70;
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1076px) {
     .app-shell {
         flex-direction: column;
     }
