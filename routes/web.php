@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AssetAssignmentController;
+use App\Http\Controllers\AssetDepartmentReceivingController;
+use App\Http\Controllers\AssetDisposalController;
 use App\Http\Controllers\AssetCategoryController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\Auth\LoginController;
@@ -730,54 +732,23 @@ Route::put('/asset/ASS-004-assign-asset-to-department/{id}', [AssetAssignmentCon
 Route::delete('/asset/ASS-004-assign-asset-to-department/{id}', [AssetAssignmentController::class, 'cancel'])->name('asset.assignments.cancel')->where('id', '[0-9]+');
 Route::get('/asset/ASS-004-assign-asset-to-department/assets/search', [AssetAssignmentController::class, 'searchAssets'])->name('asset.assignments.assets.search');
 
-Route::get('/asset/ASS-006-request-asset-disposal', function () {
-    return view('asset.ASS-006-request-asset-disposal.index', [
-        'pageTitle' => 'แจ้งขอจำหน่ายครุภัณฑ์',
-        'disposalRequests' => gujajob_asset_disposal_request_records(),
-    ]);
-})->name('asset.disposals.index');
-
-Route::get('/asset/ASS-006-request-asset-disposal/create', function () {
-    return view('asset.ASS-006-request-asset-disposal.create', [
-        'pageTitle' => 'แจ้งขอจำหน่ายครุภัณฑ์',
-        'nextRequestNo' => 'SL2567003',
-        'assets' => gujajob_asset_registration_records(),
-    ]);
-})->name('asset.disposals.create');
-
-Route::get('/asset/ASS-006-request-asset-disposal/{requestNo}', function (string $requestNo) {
-    return view('asset.ASS-006-request-asset-disposal.show', [
-        'pageTitle' => 'แจ้งขอจำหน่ายครุภัณฑ์',
-        'request' => gujajob_find_asset_disposal_request_record($requestNo),
-    ]);
-})->name('asset.disposals.show');
-
+Route::get('/asset/ASS-006-request-asset-disposal', [AssetDisposalController::class, 'index'])->name('asset.disposals.index');
+Route::get('/asset/ASS-006-request-asset-disposal/assets/search', [AssetDisposalController::class, 'searchAssets'])->name('asset.disposals.assets.search');
+Route::get('/asset/ASS-006-request-asset-disposal/create', [AssetDisposalController::class, 'create'])->name('asset.disposals.create');
+Route::post('/asset/ASS-006-request-asset-disposal', [AssetDisposalController::class, 'store'])->name('asset.disposals.store');
+Route::get('/asset/ASS-006-request-asset-disposal/{id}', [AssetDisposalController::class, 'show'])->name('asset.disposals.show')->where('id', '[0-9]+');
 Route::get('/asset/ASS-006-request-asset-disposal/{requestNo}/edit', function (string $requestNo) {
     return view('asset.ASS-006-request-asset-disposal.edit', [
         'pageTitle' => 'แจ้งขอจำหน่ายครุภัณฑ์',
-        'request' => gujajob_find_asset_disposal_request_record($requestNo),
+        'request'   => [],
     ]);
 })->name('asset.disposals.edit');
 
-Route::get('/asset/ASS-005-receive-department-registered-asset', function () {
-    return view('asset.ASS-005-receive-department-registered-asset.index', [
-        'pageTitle' => 'รับครุภัณฑ์ลงทะเบียนหน่วยงาน',
-        'receivingRecords' => gujajob_asset_department_receiving_records(),
-    ]);
-})->name('asset.department-receiving.index');
-
-Route::get('/asset/ASS-005-receive-department-registered-asset/{assetCode}', function (string $assetCode) {
-    return view('asset.ASS-005-receive-department-registered-asset.show', [
-        'pageTitle' => 'รับครุภัณฑ์ลงทะเบียนหน่วยงาน',
-        'record' => gujajob_find_asset_department_receiving_record($assetCode),
-    ]);
-})->name('asset.department-receiving.show');
-
-Route::get('/asset/ASS-005-receive-department-registered-asset/{assetCode}/receive', function (string $assetCode) {
-    return view('asset.ASS-005-receive-department-registered-asset.receive', [
-        'pageTitle' => 'รับครุภัณฑ์ลงทะเบียนหน่วยงาน',
-        'record' => gujajob_find_asset_department_receiving_record($assetCode),
-    ]);
-})->name('asset.department-receiving.receive');
+Route::get('/asset/ASS-005-receive-department-registered-asset', [AssetDepartmentReceivingController::class, 'index'])->name('asset.department-receiving.index');
+Route::get('/asset/ASS-005-receive-department-registered-asset/{id}/receive', [AssetDepartmentReceivingController::class, 'receive'])->name('asset.department-receiving.receive')->where('id', '[0-9]+');
+Route::get('/asset/ASS-005-receive-department-registered-asset/{id}/edit', [AssetDepartmentReceivingController::class, 'edit'])->name('asset.department-receiving.edit')->where('id', '[0-9]+');
+Route::post('/asset/ASS-005-receive-department-registered-asset/{id}', [AssetDepartmentReceivingController::class, 'store'])->name('asset.department-receiving.store')->where('id', '[0-9]+');
+Route::put('/asset/ASS-005-receive-department-registered-asset/{id}', [AssetDepartmentReceivingController::class, 'update'])->name('asset.department-receiving.update')->where('id', '[0-9]+');
+Route::get('/asset/ASS-005-receive-department-registered-asset/{id}', [AssetDepartmentReceivingController::class, 'show'])->name('asset.department-receiving.show')->where('id', '[0-9]+');
 
 }); // end Route::middleware('auth')

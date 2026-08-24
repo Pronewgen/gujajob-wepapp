@@ -3,6 +3,8 @@
 @section('page-style')
     @vite([
         'resources/css/components/table-actions.css',
+        'resources/css/components/pagination.css',
+        'resources/css/components/sort-icon.css',
         'resources/css/asset/ASS-005-receive-department-registered-asset/style.css',
     ])
 @endsection
@@ -12,106 +14,111 @@
         <x-page-header :title="$pageTitle" />
 
         <section class="receiving-card">
-            <div class="toolbar">
-                <div class="field-group">
-                    <label for="searchType">ค้นหาจาก</label>
-                    <select id="searchType">
-                        <option value="asset_code">รหัสครุภัณฑ์</option>
-                        <option value="asset_name">ชื่อครุภัณฑ์</option>
-                    </select>
-                </div>
+            <form method="GET" action="{{ route('asset.department-receiving.index') }}" id="assetSearchForm">
+                <div class="toolbar">
+                    <div class="field-group search-type-field">
+                        <label for="searchType">ค้นหาจาก</label>
+                        <select id="searchType" name="search_by">
+                            <option value="all"  @selected(($searchBy ?? 'all') === 'all')>ทั้งหมด</option>
+                            <option value="code" @selected(($searchBy ?? 'all') === 'code')>รหัสครุภัณฑ์</option>
+                            <option value="name" @selected(($searchBy ?? 'all') === 'name')>ชื่อครุภัณฑ์</option>
+                        </select>
+                    </div>
 
-                <div class="field-group search-group">
-                    <label for="searchInput">คำค้นหา</label>
-                    <input
-                        id="searchInput"
-                        type="search"
-                        name="asset_search_keyword"
-                        placeholder="ค้นหา..."
-                        autocomplete="off"
-                        autocorrect="off"
-                        autocapitalize="off"
-                        spellcheck="false"
-                    >
-                </div>
+                    <div class="field-group search-input-field">
+                        <label for="searchInput">คำค้นหา</label>
+                        <input
+                            id="searchInput"
+                            name="keyword"
+                            type="search"
+                            value="{{ $keyword }}"
+                            placeholder="กรอกคำค้นหา"
+                            autocomplete="off"
+                            autocorrect="off"
+                            autocapitalize="off"
+                            spellcheck="false"
+                        >
+                    </div>
 
-                <div class="field-group">
-                    <label for="categoryFilter">หมวดครุภัณฑ์</label>
-                    <select id="categoryFilter">
-                        <option value="all">หมวดครุภัณฑ์</option>
-                        @foreach (collect($receivingRecords)->pluck('category')->unique() as $category)
-                            <option value="{{ $category }}">{{ $category }}</option>
-                        @endforeach
-                    </select>
-                </div>
+                    <div class="field-group search-category-field">
+                        <label for="categoryFilter">หมวดครุภัณฑ์</label>
+                        <select id="categoryFilter" name="category">
+                            <option value="">ทั้งหมด</option>
+                            @foreach ($categoryOptions as $cat)
+                                <option value="{{ $cat }}" @selected($category === $cat)>{{ $cat }}</option>
+                            @endforeach
+                        </select>
+                    </div>
 
-                <button class="search-btn" type="button" id="searchButton">ค้นหา</button>
-            </div>
+                    @if ($sort)
+                        <input type="hidden" name="sort" value="{{ $sort }}">
+                        <input type="hidden" name="direction" value="{{ $direction }}">
+                    @endif
+
+                    <button class="search-btn" type="submit">ค้นหา</button>
+                </div>
+            </form>
 
             <div class="table-wrapper">
                 <table class="receiving-table">
                     <thead>
                         <tr>
-                            <th>รหัสครุภัณฑ์</th>
-                            <th>ชื่อครุภัณฑ์</th>
-                            <th>หมวดครุภัณฑ์</th>
-                            <th>มูลค่า</th>
-                            <th>วันที่รับ</th>
+                            <x-sortable-th label="รหัสครุภัณฑ์"  key="code"     :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'category'=>$category]" />
+                            <x-sortable-th label="ชื่อครุภัณฑ์"  key="name"     :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'category'=>$category]" />
+                            <x-sortable-th label="หมวดครุภัณฑ์"  key="category" :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'category'=>$category]" />
+                            <x-sortable-th label="มูลค่า"         key="price"    :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'category'=>$category]" />
+                            <x-sortable-th label="วันที่รับ"      key="date"     :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'category'=>$category]" />
                             <th class="action-column">จัดการ</th>
                         </tr>
                     </thead>
 
-                    <tbody id="receivingTableBody">
-                        @foreach ($receivingRecords as $record)
-                            <tr
-                                data-asset-code="{{ mb_strtolower($record['asset_code']) }}"
-                                data-asset-name="{{ mb_strtolower($record['asset_name']) }}"
-                                data-category="{{ $record['category'] }}"
-                            >
+                    <tbody>
+                        @forelse ($assets as $asset)
+                            <tr>
                                 <td>
-                                    @if (empty($record['receive_date']))
-                                        <span class="code-text">{{ $record['asset_code'] }}</span>
+                                    @if ($asset->inspect_date === null)
+                                        <span class="code-text">{{ $asset->ass_code ?? '-' }}</span>
                                     @else
-                                        <a class="ass-code-link" href="{{ route('asset.department-receiving.show', $record['asset_code']) }}"><span class="code-text">{{ $record['asset_code'] }}</span></a>
-                                    @endif
-                                    @if (! empty($record['sub_code']))
-                                        <small class="sub-code">{{ $record['sub_code'] }}</small>
+                                        <a class="ass-code-link" href="{{ route('asset.department-receiving.show', $asset->id) }}">
+                                            <span class="code-text">{{ $asset->ass_code ?? '-' }}</span>
+                                        </a>
                                     @endif
                                 </td>
-                                <td>{{ $record['asset_name'] }}</td>
-                                <td>{{ $record['category'] }}</td>
-                                <td class="value-text">{{ $record['value'] }}</td>
-                                <td class="date-text {{ empty($record['receive_date']) ? 'pending' : 'received' }}">
-                                    {{ $record['receive_date'] ?: '-' }}
+                                <td>{{ $asset->asscat_name ?? '-' }}</td>
+                                <td>{{ $asset->asscat_group ?? '-' }}</td>
+                                <td class="value-text">
+                                    {{ $asset->ass_price !== null ? number_format((float) $asset->ass_price, 2) : '-' }}
+                                </td>
+                                <td class="date-text {{ $asset->inspect_date === null ? 'pending' : 'received' }}">
+                                    {{ $asset->inspect_date_th ?? '-' }}
                                 </td>
                                 <td class="action-column">
-                                    @if (empty($record['receive_date']))
-                                        <a class="receive-btn" href="{{ route('asset.department-receiving.receive', $record['asset_code']) }}">รับ</a>
-                                    @else
-                                        <div class="table-action-buttons">
-                                            <a class="table-action-icon table-action-edit"
-                                               aria-label="รายละเอียด" title="รายละเอียด" data-tooltip="รายละเอียด"
-                                               href="{{ route('asset.department-receiving.show', $record['asset_code']) }}"
-                                            >
-                                                <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
-                                            </a>
-                                        </div>
-                                    @endif
+                                    <div class="table-action-buttons">
+                                        <a class="receive-btn" href="{{ route('asset.department-receiving.receive', $asset->id) }}">รับ</a>
+                                        <a class="table-action-icon table-action-edit"
+                                           aria-label="แก้ไข" title="แก้ไข" data-tooltip="แก้ไข"
+                                           href="{{ route('asset.department-receiving.edit', $asset->id) }}"
+                                        >
+                                            <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
-                        @endforeach
+                        @empty
+                            <tr>
+                                <td class="no-data" colspan="6">ไม่พบข้อมูลครุภัณฑ์รอรับลงทะเบียนหน่วยงาน</td>
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
 
             <div class="table-footer">
-                <p id="resultText">แสดง {{ count($receivingRecords) }} รายการ - รอรับ {{ collect($receivingRecords)->whereNull('receive_date')->count() }} รายการ</p>
-
-                <div class="pagination">
-                    <button class="page-btn" type="button" disabled>‹</button>
-                    <button class="page-btn active-page" type="button">1</button>
-                    <button class="page-btn" type="button">›</button>
-                </div>
+                <p class="result-summary">
+                    แสดง {{ $assets->firstItem() ?? 0 }}–{{ $assets->lastItem() ?? 0 }}
+                    จาก {{ $assets->total() }} รายการ
+                </p>
+                <x-app-pagination :paginator="$assets" />
             </div>
         </section>
     </div>

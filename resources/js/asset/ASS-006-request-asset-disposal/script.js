@@ -1,3 +1,5 @@
+import '../../components/date-picker.js';
+
 const sidebarStorageKey = 'gujajob.sidebar.groupState';
 
 function getSidebarState() {
@@ -262,240 +264,207 @@ function showDisposalValidationAlert(message) {
     host.prepend(alert);
 }
 
-function initializeDisposalItemManager() {
-    const codeInput = document.getElementById('selectedAssetCode');
-    const nameInput = document.getElementById('selectedAssetName');
-    const addButton = document.getElementById('addAssetItemButton');
-    const tableBody = document.getElementById('assetItemTableBody');
-    const itemCountElement = document.getElementById('assetItemCount');
+function initializeDisposalCreatePage() {
+    const form           = document.getElementById('disposalCreateForm');
+    const searchTypeEl   = document.getElementById('assetSearchType');
+    const searchInputEl  = document.getElementById('assetSearchKeyword');
+    const searchBtn      = document.getElementById('assetSearchBtn');
+    const resultBox      = document.getElementById('assetSearchResultBox');
+    const resultBody     = document.getElementById('assetResultBody');
+    const tableBody      = document.getElementById('assetItemTableBody');
+    const saveButton     = document.getElementById('saveDisposalButton');
 
-    if (!codeInput || !nameInput || !addButton || !tableBody || !itemCountElement) {
+    if (!form || !tableBody || !saveButton) {
         return;
     }
 
-    const items = [];
-    const initialItemsRaw = tableBody.dataset.initialItems;
+    const searchUrl = form.dataset.assetSearchUrl || '';
 
-    if (initialItemsRaw) {
-        try {
-            const initialItems = JSON.parse(initialItemsRaw);
+    // Draft list stored by asset id to enable duplicate detection
+    const draftItems = [];
 
-            if (Array.isArray(initialItems)) {
-                initialItems.forEach((item) => {
-                    if (!item || typeof item !== 'object') {
-                        return;
-                    }
-
-                    const code = String(item.code || '').trim();
-                    const name = String(item.name || '').trim();
-                    const value = String(item.value || '').trim();
-
-                    if (!code || !name) {
-                        return;
-                    }
-
-                    items.push({
-                        code,
-                        name,
-                        value,
-                    });
-                });
-            }
-        } catch (error) {
-            console.warn('Cannot parse initial disposal items.');
-        }
-    }
-
-    function renderItems() {
+    // ── render draft table ────────────────────────────────────────────────
+    function renderDraft() {
         tableBody.innerHTML = '';
 
-        if (items.length === 0) {
-            tableBody.innerHTML = `
-                <tr>
-                    <td class="no-data" colspan="7">ยังไม่มีรายการครุภัณฑ์ที่เลือก</td>
-                </tr>
-                <tr class="summary-row">
-                    <td colspan="7">รวมจำนวนรายการทั้งสิ้น <strong id="assetItemCount">0</strong> รายการ</td>
-                </tr>
-            `;
-            return;
+        if (draftItems.length === 0) {
+            const emptyRow = document.createElement('tr');
+            emptyRow.innerHTML = '<td class="no-data" colspan="7">ยังไม่มีรายการครุภัณฑ์ที่เลือก</td>';
+            tableBody.appendChild(emptyRow);
+        } else {
+            draftItems.forEach((item, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="center">${index + 1}</td>
+                    <td class="code-cell">${escapeHtml(item.ass_code)}</td>
+                    <td>${escapeHtml(item.asset_name)}</td>
+                    <td class="center">${escapeHtml(item.ass_price)}</td>
+                    <td class="center">-</td>
+                    <td class="center">-</td>
+                    <td class="center">
+                        <div class="table-action-buttons">
+                            <button type="button"
+                                    class="table-action-icon table-action-delete remove-draft-btn"
+                                    data-index="${index}"
+                                    aria-label="ลบ" title="ลบ" data-tooltip="ลบ">
+                                <svg aria-hidden="true"><use href="#icon-trash"></use></svg>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
         }
-
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            const assetValue = String(item.value || '').trim() || '-';
-
-            row.innerHTML = `
-                <td class="center">${index + 1}</td>
-                <td class="code-cell">${item.code}</td>
-                <td>${item.name}</td>
-                <td class="center">${assetValue}</td>
-                <td class="center">-</td>
-                <td class="center">-</td>
-                <td class="center">
-                    <div class="table-action-buttons">
-                        <button
-                            type="button"
-                            class="table-action-icon table-action-edit"
-                            data-index="${index}"
-                            aria-label="แก้ไข"
-                            title="แก้ไข"
-                            data-tooltip="แก้ไข"
-                        >
-                            <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
-                        </button>
-                        <button
-                            type="button"
-                            class="table-action-icon table-action-delete remove-item-btn"
-                            data-index="${index}"
-                            aria-label="ลบ"
-                            title="ลบ"
-                            data-tooltip="ลบ"
-                        >
-                            <svg aria-hidden="true"><use href="#icon-trash"></use></svg>
-                        </button>
-                    </div>
-                </td>
-            `;
-
-            tableBody.appendChild(row);
-        });
 
         const summaryRow = document.createElement('tr');
         summaryRow.className = 'summary-row';
-        summaryRow.innerHTML = `<td colspan="7">รวมจำนวนรายการทั้งสิ้น <strong id="assetItemCount">${items.length}</strong> รายการ</td>`;
+        summaryRow.innerHTML = `<td colspan="7">รวมจำนวนรายการทั้งสิ้น <strong>${draftItems.length}</strong> รายการ</td>`;
         tableBody.appendChild(summaryRow);
     }
 
-    function addItem() {
-        const code = String(codeInput.value || '').trim();
-        const name = String(nameInput.value || '').trim();
+    renderDraft();
 
-        if (!code || !name) {
-            showDisposalValidationAlert('กรุณากรอกรหัสครุภัณฑ์และชื่อครุภัณฑ์ก่อนเพิ่มรายการ');
-            return;
-        }
-
-        clearDisposalValidationAlert();
-
-        items.push({
-            code,
-            name,
-        });
-
-        codeInput.value = '';
-        nameInput.value = '';
-        renderItems();
-        codeInput.focus();
-    }
-
-    addButton.addEventListener('click', addItem);
-
-    nameInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            addItem();
-        }
-    });
-
+    // ── remove from draft ─────────────────────────────────────────────────
     tableBody.addEventListener('click', (event) => {
-        const editButton = event.target.closest('.table-action-edit');
-        const removeButton = event.target.closest('.remove-item-btn');
-
-        if (editButton) {
-            const index = Number(editButton.dataset.index);
-
-            if (Number.isInteger(index) && items[index]) {
-                codeInput.value = items[index].code;
-                nameInput.value = items[index].name;
-                items.splice(index, 1);
-                renderItems();
-                codeInput.focus();
-            }
-
-            return;
-        }
-
-        if (removeButton) {
-            const index = Number(removeButton.dataset.index);
-
-            if (Number.isInteger(index) && items[index]) {
-                items.splice(index, 1);
-                renderItems();
-            }
+        const btn = event.target.closest('.remove-draft-btn');
+        if (!btn) return;
+        const index = Number(btn.dataset.index);
+        if (Number.isInteger(index) && draftItems[index]) {
+            draftItems.splice(index, 1);
+            renderDraft();
         }
     });
 
-    renderItems();
-}
+    // ── asset search ──────────────────────────────────────────────────────
+    function runSearch() {
+        const field   = searchTypeEl ? searchTypeEl.value : '';
+        const keyword = searchInputEl ? searchInputEl.value.trim() : '';
 
-function initializeDisposalCreateConfirm() {
-    const saveButton = document.getElementById('saveDisposalButton');
-    const overlay = document.getElementById('saveDisposalOverlay');
-    const cancelButton = document.getElementById('cancelSaveDisposalButton');
-    const confirmButton = document.getElementById('confirmSaveDisposalButton');
+        if (!resultBox || !resultBody) return;
 
-    if (!saveButton || !overlay || !cancelButton || !confirmButton) {
-        return;
+        resultBody.innerHTML = '<tr><td colspan="3" class="no-data">กำลังค้นหา…</td></tr>';
+        resultBox.style.display = 'block';
+
+        const params = new URLSearchParams({ q: keyword, field, limit: 20 });
+
+        fetch(`${searchUrl}?${params.toString()}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        })
+            .then((res) => res.json())
+            .then((json) => {
+                resultBody.innerHTML = '';
+                const rows = json.data || [];
+
+                if (rows.length === 0) {
+                    resultBody.innerHTML = '<tr><td colspan="3" class="no-data">ไม่พบรายการครุภัณฑ์</td></tr>';
+                    return;
+                }
+
+                rows.forEach((asset) => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="code-cell">${escapeHtml(asset.ass_code)}</td>
+                        <td>${escapeHtml(asset.asset_name)}</td>
+                        <td class="col-act">
+                            <button type="button" class="add-item-btn add-search-result-btn">เพิ่ม</button>
+                        </td>
+                    `;
+                    tr.querySelector('.add-search-result-btn').addEventListener('click', () => {
+                        addToDraft(asset);
+                    });
+                    resultBody.appendChild(tr);
+                });
+            })
+            .catch(() => {
+                resultBody.innerHTML = '<tr><td colspan="3" class="no-data">เกิดข้อผิดพลาดในการค้นหา</td></tr>';
+            });
     }
 
-    function showRequiredError(firstInvalidField) {
-        showDisposalValidationAlert('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วนก่อนยืนยัน');
+    if (searchBtn) {
+        searchBtn.addEventListener('click', runSearch);
+    }
+    if (searchInputEl) {
+        searchInputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                runSearch();
+            }
+        });
+    }
 
-        if (firstInvalidField) {
-            firstInvalidField.focus();
+    // ── add to draft ──────────────────────────────────────────────────────
+    function addToDraft(asset) {
+        const id = Number(asset.id);
+        if (draftItems.some((item) => item.id === id)) {
+            showDisposalValidationAlert(`ครุภัณฑ์ "${asset.ass_code}" อยู่ในรายการแล้ว`);
+            return;
         }
+        clearDisposalValidationAlert();
+        draftItems.push({
+            id,
+            ass_code:   asset.ass_code   ?? '',
+            asset_name: asset.asset_name ?? '',
+            ass_price:  asset.ass_price  ?? '-',
+        });
+        renderDraft();
     }
 
-    document
-        .querySelectorAll('.disposal-create-page input, .disposal-create-page select, .disposal-create-page textarea, .disposal-edit-page input, .disposal-edit-page select, .disposal-edit-page textarea')
+    // ── save with confirmation ─────────────────────────────────────────────
+    const overlay       = document.getElementById('saveDisposalOverlay');
+    const cancelBtn     = document.getElementById('cancelSaveDisposalButton');
+    const confirmBtn    = document.getElementById('confirmSaveDisposalButton');
+
+    if (!overlay || !cancelBtn || !confirmBtn) return;
+
+    // Clear validation alert on any field change
+    document.querySelectorAll('.disposal-create-page input, .disposal-create-page select')
         .forEach((field) => {
-            field.addEventListener('input', clearDisposalValidationAlert);
+            field.addEventListener('input',  clearDisposalValidationAlert);
             field.addEventListener('change', clearDisposalValidationAlert);
         });
 
     saveButton.addEventListener('click', () => {
         const validation = validateRequiredFields();
-
         if (!validation.isValid) {
-            showRequiredError(validation.firstInvalidField);
+            showDisposalValidationAlert('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน');
+            if (validation.firstInvalidField) validation.firstInvalidField.focus();
             return;
         }
-
+        if (draftItems.length === 0) {
+            showDisposalValidationAlert('กรุณาเพิ่มรายการครุภัณฑ์อย่างน้อย 1 รายการ');
+            return;
+        }
         clearDisposalValidationAlert();
-
         openOverlay(overlay);
     });
 
-    cancelButton.addEventListener('click', () => {
-        closeOverlay(overlay);
-    });
+    cancelBtn.addEventListener('click', () => closeOverlay(overlay));
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeOverlay(overlay); });
 
-    overlay.addEventListener('click', (event) => {
-        if (event.target === overlay) {
-            closeOverlay(overlay);
-        }
-    });
-
-    confirmButton.addEventListener('click', () => {
+    confirmBtn.addEventListener('click', () => {
+        // Re-validate before actual submit
         const validation = validateRequiredFields();
-
         if (!validation.isValid) {
             closeOverlay(overlay);
-            showRequiredError(validation.firstInvalidField);
+            showDisposalValidationAlert('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน');
+            return;
+        }
+        if (draftItems.length === 0) {
+            closeOverlay(overlay);
+            showDisposalValidationAlert('กรุณาเพิ่มรายการครุภัณฑ์อย่างน้อย 1 รายการ');
             return;
         }
 
-        clearDisposalValidationAlert();
-
-        const redirectUrl = saveButton.dataset.redirectUrl;
-
-        if (redirectUrl) {
-            window.location.href = redirectUrl;
-            return;
-        }
-
-        closeOverlay(overlay);
+        // Inject hidden inputs for each asset id, then submit
+        form.querySelectorAll('input[name="asset_ids[]"]').forEach((el) => el.remove());
+        draftItems.forEach((item) => {
+            const input = document.createElement('input');
+            input.type  = 'hidden';
+            input.name  = 'asset_ids[]';
+            input.value = String(item.id);
+            form.appendChild(input);
+        });
+        form.submit();
     });
 }
 
@@ -540,11 +509,17 @@ function initializeDisposalDeleteConfirm() {
     });
 }
 
+function escapeHtml(str) {
+    return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initializeSidebarGroups();
     preventDisabledMenuReload();
-    initializeDisposalSearch();
-    initializeDisposalItemManager();
-    initializeDisposalCreateConfirm();
+    initializeDisposalCreatePage();
     initializeDisposalDeleteConfirm();
 });

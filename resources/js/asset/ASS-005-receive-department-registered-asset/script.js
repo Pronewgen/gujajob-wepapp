@@ -1,3 +1,6 @@
+import { initServerSearchableSelects } from '../../components/server-searchable-select.js';
+import '../../components/date-picker.js';
+
 const sidebarStorageKey = 'gujajob.sidebar.groupState';
 
 function getSidebarState() {
@@ -239,10 +242,10 @@ function initializeReceiveConfirmation() {
     });
 
     confirmButton.addEventListener('click', () => {
-        const redirectUrl = openButton.dataset.redirectUrl;
+        const form = document.querySelector('form.receive-form');
 
-        if (redirectUrl) {
-            window.location.href = redirectUrl;
+        if (form) {
+            form.submit();
             return;
         }
 
@@ -328,8 +331,69 @@ function initializeReceiveDetailEdit() {
 document.addEventListener('DOMContentLoaded', () => {
     initializeSidebarGroups();
     preventDisabledMenuReload();
-    initializeAssetReceivingSearch();
-    initializeReceiveDatePicker();
     initializeReceiveConfirmation();
-    initializeReceiveDetailEdit();
+    initializeEditConfirmation();
+    initServerSearchableSelects();
 });
+
+function initializeEditConfirmation() {
+    const openButton    = document.getElementById('openEditConfirmButton');
+    const overlay       = document.getElementById('editConfirmOverlay');
+    const cancelButton  = document.getElementById('cancelEditConfirmButton');
+    const confirmButton = document.getElementById('confirmEditButton');
+
+    if (!openButton || !overlay || !cancelButton || !confirmButton) {
+        return;
+    }
+
+    const requiredFields = Array.from(document.querySelectorAll('#editForm [data-required="true"]'));
+
+    function clearInlineError() {
+        const old = document.querySelector('.edit-inline-validation-error');
+        if (old) old.remove();
+    }
+
+    function showInlineError(message) {
+        clearInlineError();
+        const form = document.getElementById('editForm');
+        const err  = document.createElement('div');
+        err.className = 'edit-inline-validation-error receive-inline-validation-error';
+        err.setAttribute('role', 'alert');
+        err.textContent = message;
+        if (form) form.insertAdjacentElement('beforebegin', err);
+    }
+
+    function isFieldFilled(field) {
+        return field && String(field.value || '').trim() !== '';
+    }
+
+    function openModal() {
+        if (!requiredFields.every(isFieldFilled)) {
+            showInlineError('กรุณากรอกข้อมูลที่มีเครื่องหมาย * ให้ครบก่อนบันทึก');
+            return;
+        }
+        clearInlineError();
+        overlay.classList.add('is-open');
+        overlay.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeModal() {
+        overlay.classList.remove('is-open');
+        overlay.setAttribute('aria-hidden', 'true');
+    }
+
+    requiredFields.forEach((f) => {
+        f.addEventListener('input', clearInlineError);
+        f.addEventListener('change', clearInlineError);
+    });
+
+    openButton.addEventListener('click', openModal);
+    cancelButton.addEventListener('click', closeModal);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+
+    confirmButton.addEventListener('click', () => {
+        const form = document.getElementById('editForm');
+        if (form) { form.submit(); return; }
+        closeModal();
+    });
+}

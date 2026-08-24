@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('page-style')
     @vite([
@@ -19,7 +19,7 @@
         @endif
 
         <section class="receive-card">
-            <h3 class="receive-card-title">ข้อมูลครุภัณฑ์ที่จะรับ</h3>
+            <h3 class="receive-card-title">ข้อมูลครุภัณฑ์</h3>
 
             <div class="asset-summary">
                 <div class="summary-item">
@@ -38,7 +38,6 @@
                     <span>มูลค่า</span>
                     <strong>{{ $asset->ass_price !== null ? number_format((float) $asset->ass_price, 2) : '-' }} บาท</strong>
                 </div>
-
                 <div class="summary-item">
                     <span>รุ่น/แบบ</span>
                     <strong>{{ $asset->ass_model ?? '-' }}</strong>
@@ -53,13 +52,14 @@
                 </div>
             </div>
 
-            <h4 class="form-section-title">บันทึกข้อมูลการรับ</h4>
+            <h4 class="form-section-title">แก้ไขข้อมูลการรับ</h4>
 
-            <form class="receive-form" id="receiveForm"
-                  action="{{ route('asset.department-receiving.store', $asset->id) }}"
+            <form class="receive-form" id="editForm"
+                  action="{{ route('asset.department-receiving.update', $asset->id) }}"
                   method="POST"
                   autocomplete="off">
                 @csrf
+                @method('PUT')
                 <div class="receive-grid">
                     <div class="field-group">
                         <label for="receiveDate">วันที่รับ <span class="required-mark">*</span></label>
@@ -68,7 +68,7 @@
                             name="receive_date"
                             type="text"
                             class="js-date-picker"
-                            value="{{ old('receive_date') }}"
+                            value="{{ old('receive_date', $asset->inspect_date_iso ?? '') }}"
                             placeholder="DD-MM-BBBB"
                             data-required="true"
                             required
@@ -79,13 +79,13 @@
                     </div>
 
                     <div class="field-group">
-                        <label for="receiverName">ชื่อผู้รับ</label>
-                        <input id="receiverName" type="text" value="{{ $currentUser->user_name ?? '' }}" readonly>
+                        <label>ชื่อผู้รับ</label>
+                        <input type="text" value="{{ $asset->ass_trans_person ?? '-' }}" readonly>
                     </div>
 
                     <div class="field-group remark-group">
-                        <label for="receiveRemark">หมายเหตุ</label>
-                        <textarea id="receiveRemark" name="remark" rows="3" placeholder="หมายเหตุการรับครุภัณฑ์ (ถ้ามี)">{{ old('remark') }}</textarea>
+                        <label for="editRemark">หมายเหตุ</label>
+                        <textarea id="editRemark" name="remark" rows="3" placeholder="หมายเหตุการรับครุภัณฑ์ (ถ้ามี)">{{ old('remark', $asset->ass_trans_remark ?? '') }}</textarea>
                     </div>
 
                     <div class="field-group">
@@ -96,7 +96,8 @@
                     <div class="field-group">
                         <label>หน่วยงานย่อยที่รับการจัดสรร <span class="required-mark">*</span></label>
                         <div class="guja-autocomplete" data-server-select
-                             data-endpoint="{{ route('search.suggestions') }}?entity=assign_org&limit=20&q=">
+                             data-endpoint="{{ route('search.suggestions') }}?entity=assign_org&limit=20&q="
+                             data-initial-label="{{ old('_sub_org_label', $asset->sub_org_name ?? '') }}">
                             <div class="guja-autocomplete__wrap">
                                 <input
                                     type="text"
@@ -109,7 +110,7 @@
                                     type="hidden"
                                     class="guja-autocomplete__value"
                                     name="sub_org_id"
-                                    value="{{ old('sub_org_id') }}"
+                                    value="{{ old('sub_org_id', $asset->sub_org_id ?? '') }}"
                                 >
                                 <button type="button" class="guja-autocomplete__arrow" tabindex="-1" aria-hidden="true">
                                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -128,25 +129,23 @@
 
             <div class="form-actions">
                 <a class="cancel-btn" href="{{ route('asset.department-receiving.index') }}">ย้อนกลับ</a>
-                <button class="save-btn" id="openReceiveConfirmButton" type="button">
-                    ยืนยันรับครุภัณฑ์
-                </button>
+                <button class="save-btn" id="openEditConfirmButton" type="button">บันทึก</button>
             </div>
         </section>
     </div>
 
-    <div class="confirm-overlay" id="receiveConfirmOverlay" aria-hidden="true">
-        <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="receiveConfirmTitle">
-            <div class="confirm-icon success-confirm-icon">
-                <svg><use href="#icon-check-circle"></use></svg>
+    <div class="confirm-overlay" id="editConfirmOverlay" aria-hidden="true">
+        <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="editConfirmTitle">
+            <div class="confirm-icon edit-confirm-icon">
+                <svg><use href="#icon-square-pen"></use></svg>
             </div>
 
-            <h3 id="receiveConfirmTitle">ยืนยันการรับครุภัณฑ์</h3>
-            <p>คุณแน่ใจหรือไม่ว่าต้องการยืนยันการรับครุภัณฑ์</p>
+            <h3 id="editConfirmTitle">ยืนยันการแก้ไขข้อมูล</h3>
+            <p>คุณแน่ใจหรือไม่ว่าต้องการแก้ไขข้อมูลการรับครุภัณฑ์<br>การดำเนินการนี้จะบันทึกทับข้อมูลเดิม</p>
 
             <div class="confirm-actions">
-                <button class="modal-cancel-btn" id="cancelReceiveConfirmButton" type="button">ยกเลิก</button>
-                <button class="modal-confirm-btn success-confirm-btn" id="confirmReceiveButton" type="button">ยืนยันรับครุภัณฑ์</button>
+                <button class="modal-cancel-btn" id="cancelEditConfirmButton" type="button">ยกเลิก</button>
+                <button class="modal-confirm-btn edit-confirm-btn" id="confirmEditButton" type="button">ยืนยันการแก้ไข</button>
             </div>
         </div>
     </div>

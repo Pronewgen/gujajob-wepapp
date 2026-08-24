@@ -1,4 +1,4 @@
-.receiving-detail-page {
+﻿.receiving-detail-page {
     max-width: 920px;
 }
 
@@ -348,7 +348,7 @@
 
 .summary-item span {
     color: #64748b;
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 700;
 }
 
@@ -388,14 +388,14 @@
 
 .receive-form .field-group label {
     color: #334155;
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 700;
 }
 
 .receive-form .field-group input,
 .receive-form .field-group select {
     width: 100%;
-    height: 30px;
+    height: 32px;
     border: 1px solid #c5ced9;
     border-radius: 3px;
     background: #ffffff;
@@ -413,11 +413,19 @@
     border-radius: 4px;
     background: #ffffff;
     color: #334155;
+    font-family: inherit;
     font-size: 11px;
     font-weight: 500;
     padding: 10px 12px;
     outline: none;
     resize: vertical;
+}
+
+.receive-form .field-group textarea::placeholder {
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 500;
+    color: #94a3b8;
 }
 
 .remark-group textarea {
@@ -607,3 +615,54 @@
         grid-row: auto;
     }
 }
+
+/* ฤฤ Guja autocomplete inside receive form ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ */
+.receive-form .guja-autocomplete__wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.receive-form .guja-autocomplete__input {
+    width: 100%;
+    height: 30px;
+    border: 1px solid #c5ced9;
+    border-radius: 3px;
+    background: #ffffff;
+    color: #334155;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 0 28px 0 8px;
+    outline: none;
+    font-family: inherit;
+}
+
+.receive-form .guja-autocomplete__input:focus {
+    border-color: #173b8f;
+}
+
+.receive-form .guja-autocomplete__arrow {
+    position: absolute;
+    right: 6px;
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+}
+
+/* ฤฤ Field-level validation errors ฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤ */
+.field-error {
+    display: block;
+    margin: 3px 0 0;
+    color: #dc2626;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+/* Edit confirm modal — amber/orange, reuses .confirm-overlay/.confirm-modal base */
+.edit-confirm-icon { background: #d97706; color: #ffffff; }
+.edit-confirm-btn  { background: #d97706; }
+.edit-confirm-btn:hover { background: #b45309; }

@@ -3,6 +3,8 @@
 @section('page-style')
     @vite([
         'resources/css/components/table-actions.css',
+        'resources/css/components/pagination.css',
+        'resources/css/components/sort-icon.css',
         'resources/css/asset/ASS-006-request-asset-disposal/style.css',
     ])
 @endsection
@@ -12,98 +14,108 @@
         <x-page-header :title="$pageTitle" />
 
         <section class="disposal-card">
-            <div class="toolbar">
-                <div class="field-group">
-                    <label for="searchType">ค้นหาจาก</label>
-                    <select id="searchType">
-                        <option value="request_no">เลขที่ใบแจ้งขอจำหน่ายครุภัณฑ์</option>
-                        <option value="request_department">หน่วยงานผู้แจ้งขออนุมัติ</option>
-                        <option value="reason">เหตุผล</option>
-                    </select>
-                </div>
-
-                <div class="field-group search-group">
-                    <label for="searchInput">คำค้นหา</label>
-                    <input
-                        id="searchInput"
-                        type="search"
-                        name="disposal_search_keyword"
-                        placeholder="เลขที่ใบแจ้งขอจำหน่ายครุภัณฑ์"
-                        autocomplete="off"
-                        autocorrect="off"
-                        autocapitalize="off"
-                        spellcheck="false"
-                    >
-                </div>
-
-                <div class="field-group">
-                    <label for="statusFilter">สถานะ</label>
-                    <select id="statusFilter">
-                        <option value="all">เลือกสถานะ</option>
-                        <option value="pending">รอการอนุมัติ</option>
-                        <option value="approved">อนุมัติ</option>
-                    </select>
-                </div>
-
-                <button class="search-btn" type="button" id="searchButton">ค้นหา</button>
-
-                <button class="create-btn" type="button" id="createDisposalButton" data-create-url="{{ route('asset.disposals.create') }}">บันทึกการแจ้งขอจำหน่ายใหม่</button>
+            <div class="card-title">
+                <svg class="card-title-icon" aria-hidden="true"><use href="#icon-list-check"></use></svg>
+                <span>ผลการขอจำหน่ายครุภัณฑ์</span>
             </div>
+
+            <form method="GET" action="{{ route('asset.disposals.index') }}" id="disposalSearchForm">
+                <div class="toolbar">
+                    <div class="field-group search-type-field">
+                        <label for="searchType">ค้นหาจาก</label>
+                        <select id="searchType" name="search_by">
+                            <option value="all"        @selected(($searchBy ?? 'all') === 'all')>ทั้งหมด</option>
+                            <option value="request_no" @selected(($searchBy ?? 'all') === 'request_no')>เลขที่ใบขอจำหน่ายครุภัณฑ์</option>
+                            <option value="org_name"   @selected(($searchBy ?? 'all') === 'org_name')>หน่วยงานผู้แจ้งขออนุมัติ</option>
+                        </select>
+                    </div>
+
+                    <div class="field-group search-input-field">
+                        <label for="searchInput">คำค้นหา</label>
+                        <input
+                            id="searchInput"
+                            name="keyword"
+                            type="search"
+                            value="{{ $keyword }}"
+                            placeholder="กรอกคำค้นหา"
+                            autocomplete="off"
+                            autocorrect="off"
+                            autocapitalize="off"
+                            spellcheck="false"
+                        >
+                    </div>
+
+                    <div class="field-group status-filter-field">
+                        <label for="statusFilter">สถานะ</label>
+                        <select id="statusFilter" name="status">
+                            <option value=""         @selected(($status ?? '') === '')>ทั้งหมด</option>
+                            <option value="pending"  @selected(($status ?? '') === 'pending')>รอการอนุมัติ</option>
+                            <option value="approved" @selected(($status ?? '') === 'approved')>อนุมัติ</option>
+                            <option value="rejected" @selected(($status ?? '') === 'rejected')>ไม่อนุมัติ</option>
+                        </select>
+                    </div>
+
+                    @if ($sort)
+                        <input type="hidden" name="sort" value="{{ $sort }}">
+                        <input type="hidden" name="direction" value="{{ $direction }}">
+                    @endif
+
+                    <button class="search-btn" type="submit">ค้นหา</button>
+
+                    <div class="toolbar-spacer"></div>
+
+                    <a class="create-btn" href="{{ route('asset.disposals.create') }}">บันทึกการแจ้งขอจำหน่ายใหม่</a>
+                </div>
+            </form>
 
             <div class="table-wrapper">
                 <table class="disposal-table">
                     <thead>
                         <tr>
-                            <th>เลขที่ใบแจ้งขอจำหน่ายครุภัณฑ์</th>
-                            <th>วันที่แจ้งจำหน่าย</th>
-                            <th>หน่วยงานผู้แจ้งขออนุมัติ</th>
+                            <x-sortable-th label="เลขที่ใบขอจำหน่ายครุภัณฑ์"    key="request_no"   :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'status'=>$status]" />
+                            <x-sortable-th label="วันที่แจ้งจำหน่าย"             key="request_date" :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'status'=>$status]" />
+                            <x-sortable-th label="หน่วยงานผู้แจ้งขออนุมัติ"     key="org_name"     :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'status'=>$status]" />
                             <th>เหตุผล</th>
-                            <th>ผลการอนุมัติ</th>
+                            <x-sortable-th label="ผลการอนุมัติ" key="status" :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'status'=>$status]" />
                             <th class="action-column">จัดการ</th>
                         </tr>
                     </thead>
 
-                    <tbody id="disposalTableBody">
-                        @foreach ($disposalRequests as $record)
-                            <tr
-                                data-request-no="{{ mb_strtolower($record['request_no']) }}"
-                                data-request-department="{{ mb_strtolower($record['request_department']) }}"
-                                data-reason="{{ mb_strtolower($record['reason']) }}"
-                                data-status="{{ $record['approval_status_type'] }}"
-                            >
+                    <tbody>
+                        @forelse ($disposals as $disposal)
+                            <tr>
                                 <td>
-                                    <a class="ass-code-link" href="{{ route('asset.disposals.show', $record['request_no']) }}"><span class="request-no">{{ $record['request_no'] }}</span></a>
+                                    <a class="request-no-link" href="{{ route('asset.disposals.show', $disposal->id) }}">
+                                        <span class="request-no">{{ $disposal->selling_code ?? '-' }}</span>
+                                    </a>
                                 </td>
-                                <td class="date-text">{{ $record['request_date'] }}</td>
-                                <td>{{ $record['request_department'] }}</td>
-                                <td>{{ $record['reason'] }}</td>
-                                <td>
-                                    <span class="status-pill {{ $record['approval_status_type'] }}">{{ $record['approval_status'] }}</span>
+                                <td class="date-text">{{ $disposal->req_date_th ?? '-' }}</td>
+                                <td>{{ $disposal->req_org_name ?? '-' }}</td>
+                                <td class="reason-text">{{ $disposal->remarks ?? ($disposal->reason ?? '-') }}</td>
+                                <td class="status-cell">
+                                    <span class="status-pill {{ $disposal->status_type }}">{{ $disposal->status_label }}</span>
                                 </td>
                                 <td class="action-column">
                                     <div class="table-action-buttons">
-                                        <a class="table-action-icon table-action-edit"
-                                           aria-label="แก้ไข" title="แก้ไข" data-tooltip="แก้ไข"
-                                           href="{{ route('asset.disposals.edit', $record['request_no']) }}"
-                                        >
-                                            <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
-                                        </a>
+                                        <a class="detail-btn" href="{{ route('asset.disposals.show', $disposal->id) }}">ดูรายละเอียด</a>
                                     </div>
                                 </td>
                             </tr>
-                        @endforeach
+                        @empty
+                            <tr>
+                                <td class="no-data" colspan="6">ไม่พบข้อมูลการแจ้งขอจำหน่ายครุภัณฑ์</td>
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
 
             <div class="table-footer">
-                <p id="resultText">แสดง 1-{{ count($disposalRequests) }} จากทั้งหมด {{ count($disposalRequests) }} รายการ</p>
-
-                <div class="pagination">
-                    <button class="page-btn" type="button" disabled>‹</button>
-                    <button class="page-btn active-page" type="button">1</button>
-                    <button class="page-btn" type="button">›</button>
-                </div>
+                <p class="result-summary">
+                    แสดง {{ $disposals->firstItem() ?? 0 }}–{{ $disposals->lastItem() ?? 0 }}
+                    จาก {{ $disposals->total() }} รายการ
+                </p>
+                <x-app-pagination :paginator="$disposals" />
             </div>
         </section>
     </div>
