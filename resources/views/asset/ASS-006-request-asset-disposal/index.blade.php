@@ -70,6 +70,14 @@
 
             <div class="table-wrapper">
                 <table class="disposal-table">
+                    <colgroup>
+                        <col class="col-request-no">
+                        <col class="col-request-date">
+                        <col class="col-request-org">
+                        <col class="col-reason">
+                        <col class="col-status">
+                        <col class="col-actions">
+                    </colgroup>
                     <thead>
                         <tr>
                             <x-sortable-th label="เลขที่ใบขอจำหน่ายครุภัณฑ์"    key="request_no"   :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'status'=>$status]" />

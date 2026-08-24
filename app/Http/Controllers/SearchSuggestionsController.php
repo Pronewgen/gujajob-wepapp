@@ -34,7 +34,11 @@ class SearchSuggestionsController extends Controller
         $q      = trim($request->string('q')->value());
         $limit  = min((int) $request->input('limit', 15), 30);
 
-        if ($q === '' || mb_strlen($q) < 1) {
+        if ($q === '' && !in_array($entity, ['assign_org', 'assign_user'], true)) {
+            return response()->json(['data' => []]);
+        }
+
+        if ($q !== '' && mb_strlen($q) < 1) {
             return response()->json(['data' => []]);
         }
 

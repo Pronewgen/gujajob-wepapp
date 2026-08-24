@@ -743,6 +743,10 @@ Route::get('/asset/ASS-006-request-asset-disposal/{requestNo}/edit', function (s
         'request'   => [],
     ]);
 })->name('asset.disposals.edit');
+Route::get('/asset/ASS-007-approve-asset-disposal', [AssetDisposalController::class, 'approvalIndex'])->name('asset.disposals.approval.index');
+Route::get('/asset/ASS-007-approve-asset-disposal/{id}', [AssetDisposalController::class, 'approvalShow'])->name('asset.disposals.approval.show')->where('id', '[0-9]+');
+Route::post('/asset/ASS-007-approve-asset-disposal/{id}/approve', [AssetDisposalController::class, 'approve'])->name('asset.disposals.approval.approve')->where('id', '[0-9]+');
+Route::post('/asset/ASS-007-approve-asset-disposal/{id}/reject', [AssetDisposalController::class, 'reject'])->name('asset.disposals.approval.reject')->where('id', '[0-9]+');
 
 Route::get('/asset/ASS-005-receive-department-registered-asset', [AssetDepartmentReceivingController::class, 'index'])->name('asset.department-receiving.index');
 Route::get('/asset/ASS-005-receive-department-registered-asset/{id}/receive', [AssetDepartmentReceivingController::class, 'receive'])->name('asset.department-receiving.receive')->where('id', '[0-9]+');

@@ -68,6 +68,8 @@ function initServerSearchableSelect(wrapper) {
     let timer      = null;
     let ctrl       = null;
     let activeIdx  = -1;
+    const resultCache = new Map();
+    let renderedQuery = null;
 
     /* ── Input handling ── */
     input.addEventListener('input', () => {
@@ -113,19 +115,33 @@ function initServerSearchableSelect(wrapper) {
 
     /* ── Server fetch ── */
     function doFetch(q) {
+        if (resultCache.has(q)) {
+            if (renderedQuery === q && list.childElementCount > 0) {
+                _open(wrapper);
+            } else {
+                render(resultCache.get(q));
+            }
+            return;
+        }
+
         if (ctrl) ctrl.abort();
         ctrl = new AbortController();
         const url = endpoint + encodeURIComponent(q);
         fetch(url, { signal: ctrl.signal })
             .then((r) => r.json())
-            .then((json) => render(json.data || []))
+            .then((json) => {
+                const items = json.data || [];
+                resultCache.set(q, items);
+                render(items, q);
+            })
             .catch(() => {/* aborted or network error — silent */});
     }
 
     /* ── Render suggestion list ── */
-    function render(items) {
+    function render(items, query = input.value.trim()) {
         list.innerHTML = '';
         activeIdx = -1;
+        renderedQuery = query;
 
         if (!items.length) {
             const empty = document.createElement('div');

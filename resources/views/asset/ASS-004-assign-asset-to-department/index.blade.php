@@ -34,7 +34,7 @@
             <form method="GET" action="{{ route('asset.assignments.index') }}" class="toolbar">
                 <div class="field-group">
                     <label>จัดสรรให้หน่วยงาน</label>
-                    <div class="guja-autocomplete" data-server-select
+                    <div class="guja-autocomplete" data-server-select data-min-chars="0"
                          data-endpoint="{{ route('search.suggestions') }}?entity=assign_org&limit=15&q="
                          data-initial-label="{{ $filterOrgName }}">
                         <input type="text"   class="guja-autocomplete__input" placeholder="พิมพ์ชื่อหน่วยงาน" autocomplete="off" spellcheck="false">
@@ -46,7 +46,7 @@
 
                 <div class="field-group">
                     <label>ผู้จัดสรร</label>
-                    <div class="guja-autocomplete" data-server-select
+                    <div class="guja-autocomplete" data-server-select data-min-chars="0"
                          data-endpoint="{{ route('search.suggestions') }}?entity=assign_user&limit=15&q="
                          data-initial-label="{{ $filterAssignerName }}">
                         <input type="text"   class="guja-autocomplete__input" placeholder="พิมพ์ชื่อผู้จัดสรร" autocomplete="off" spellcheck="false">
@@ -126,23 +126,14 @@
 
             {{-- Pagination footer --}}
             <div class="table-footer">
-                <p class="result-text">
-                    แสดง {{ $total > 0 ? ($page - 1) * $perPage + 1 : 0 }}
-                    ถึง {{ min($page * $perPage, $total) }}
-                    จาก {{ $total }} รายการ
+                <p class="app-pagination-summary">
+                    @if ($records->total() > 0)
+                        แสดง {{ $records->firstItem() }}–{{ $records->lastItem() }} จากทั้งหมด {{ $records->total() }} รายการ
+                    @else
+                        แสดงทั้งหมด 0 รายการ
+                    @endif
                 </p>
-                @if ($totalPages > 1)
-                    <div class="pagination">
-                        <a class="page-btn{{ $page <= 1 ? ' disabled' : '' }}"
-                           href="{{ $page > 1 ? request()->fullUrlWithQuery(['page' => $page - 1]) : '#' }}">‹</a>
-                        @for ($p = 1; $p <= $totalPages; $p++)
-                            <a class="page-btn{{ $p === $page ? ' active' : '' }}"
-                               href="{{ request()->fullUrlWithQuery(['page' => $p]) }}">{{ $p }}</a>
-                        @endfor
-                        <a class="page-btn{{ $page >= $totalPages ? ' disabled' : '' }}"
-                           href="{{ $page < $totalPages ? request()->fullUrlWithQuery(['page' => $page + 1]) : '#' }}">›</a>
-                    </div>
-                @endif
+                <x-app-pagination :paginator="$records" />
             </div>
         </section>
     </div>

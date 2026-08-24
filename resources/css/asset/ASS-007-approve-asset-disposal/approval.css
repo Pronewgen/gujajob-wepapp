@@ -1,0 +1,85 @@
+.approval-page .table-footer { margin-top: 28px; }
+.approval-page .disposal-table .col-request-no { width: 20%; }
+.approval-page .disposal-table .col-request-date { width: 17%; }
+.approval-page .disposal-table .col-request-org { width: 25%; }
+.approval-page .disposal-table .col-reason { width: 15%; }
+.approval-page .disposal-table .col-status { width: 14%; }
+.approval-page .disposal-table .col-actions { width: 9%; }
+
+.approval-page .disposal-table th:nth-child(1),
+.approval-page .disposal-table td:nth-child(1) { width: 20%; }
+.approval-page .disposal-table th:nth-child(2),
+.approval-page .disposal-table td:nth-child(2) { width: 17%; }
+.approval-page .disposal-table th:nth-child(3),
+.approval-page .disposal-table td:nth-child(3) { width: 25%; }
+.approval-page .disposal-table th:nth-child(4),
+.approval-page .disposal-table td:nth-child(4) { width: 15%; }
+.approval-page .disposal-table th:nth-child(5),
+.approval-page .disposal-table td:nth-child(5) { width: 14%; }
+.approval-page .disposal-table th:nth-child(6),
+.approval-page .disposal-table td:nth-child(6) { width: 9%; }
+.approve-action-btn,
+.reject-action-btn {
+    height: 40px;
+    min-width: 110px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 4px;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.approve-action-btn { background: #059669; }
+.reject-action-btn { background: #ef4444; }
+.approval-page .confirm-modal textarea {
+    width: 100%;
+    min-height: 80px;
+    margin-top: 8px;
+    padding: 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    font: inherit;
+}
+
+.approval-page #rejectReasonField {
+    text-align: left;
+    margin-bottom: 8px;
+}
+
+.approval-page #rejectReasonField label {
+    color: #111827;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.price-input {
+    width: 100%;
+    height: 30px;
+    border: 1px solid #cfd8e4;
+    border-radius: 3px;
+    background: #ffffff;
+    color: #1f2937;
+    font-size: 11px;
+    text-align: center;
+    padding: 0 6px;
+    outline: none;
+}
+
+.price-input:focus {
+    border-color: #2f55ab;
+}
+
+.price-input.is-invalid {
+    border-color: #ef4444;
+    background: #fff7f7;
+}
+
+.price-error-msg {
+    display: block;
+    margin-top: 4px;
+    color: #dc2626;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.3;
+}

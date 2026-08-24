@@ -32,8 +32,8 @@
 
                         <div class="form-group">
                             <label class="form-label">หน่วยงานผู้รับจัดสรร <span class="required">*</span></label>
-                            <div class="guja-autocomplete @error('target_org_id') is-invalid @enderror"
-                                 data-server-select
+                                                        <div class="guja-autocomplete @error('target_org_id') is-invalid @enderror"
+                                                                 data-server-select data-min-chars="0"
                                  data-endpoint="{{ route('search.suggestions') }}?entity=assign_org&limit=20&q="
                                  data-initial-label="{{ old('_target_org_label', '') }}">
                                 <input type="text"   class="guja-autocomplete__input" placeholder="พิมพ์ชื่อหน่วยงาน" autocomplete="off">
@@ -48,8 +48,8 @@
                     <div class="form-grid two-col" style="max-width:760px;margin-top:10px;">
                         <div class="form-group">
                             <label class="form-label">ผู้จัดสรร <span class="required">*</span></label>
-                            <div class="guja-autocomplete @error('assigner_id') is-invalid @enderror"
-                                 data-server-select
+                                                        <div class="guja-autocomplete @error('assigner_id') is-invalid @enderror"
+                                                                 data-server-select data-min-chars="0"
                                  data-endpoint="{{ route('search.suggestions') }}?entity=assign_user&limit=20&q="
                                  data-initial-label="{{ old('_assigner_label', $currentUser->user_name ?? '') }}">
                                 <input type="text"   class="guja-autocomplete__input" placeholder="พิมพ์ชื่อผู้จัดสรร" autocomplete="off">

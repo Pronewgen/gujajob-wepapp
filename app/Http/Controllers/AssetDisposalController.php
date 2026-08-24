@@ -137,6 +137,201 @@ class AssetDisposalController extends Controller
         ]);
     }
 
+    public function approvalIndex(Request $request): View
+    {
+        $searchBy  = $request->input('search_by', 'all');
+        $keyword   = trim($request->string('keyword')->value());
+        $status    = $request->input('status', 'pending');
+        $sort      = $request->input('sort', '');
+        $direction = strtolower($request->input('direction', 'asc')) === 'desc' ? 'desc' : 'asc';
+        $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
+
+        $query = DB::connection('oracle')->table('ASSET_SELLING AS s')
+            ->leftJoin('GLB_ORGANIZATION AS o', 'o.org_id', '=', 's.req_org_id')
+            ->selectRaw("s.id, s.selling_code, s.selling_req_date,
+                CASE WHEN s.selling_req_date IS NOT NULL THEN TO_CHAR(s.selling_req_date, 'DD-MM-') || TO_CHAR(s.selling_req_date + INTERVAL '543' YEAR(3), 'YYYY') END AS req_date_th,
+                o.org_name AS req_org_name, s.reason, s.remarks, s.selling_approval_status")
+            ->whereIn('s.app_org_id', $visibleOrgIds);
+
+        if ($keyword !== '') {
+            $escaped = $this->escapeLike($keyword);
+            $columns = ['request_no' => 's.selling_code', 'org_name' => 'o.org_name'];
+            $query->where(function ($q) use ($searchBy, $columns, $escaped): void {
+                if (isset($columns[$searchBy])) {
+                    $q->whereRaw("UPPER({$columns[$searchBy]}) LIKE UPPER(?) ESCAPE '\\'", ["%{$escaped}%"]);
+                } else {
+                    $q->whereRaw("UPPER(s.selling_code) LIKE UPPER(?) ESCAPE '\\'", ["%{$escaped}%"])
+                        ->orWhereRaw("UPPER(o.org_name) LIKE UPPER(?) ESCAPE '\\'", ["%{$escaped}%"]);
+                }
+            });
+        }
+
+        if ($status === 'pending') {
+            $query->where(function ($q): void {
+                $q->whereNull('s.selling_approval_status')->orWhere('s.selling_approval_status', 0);
+            });
+        } elseif ($status === 'approved') {
+            $query->where('s.selling_approval_status', 1);
+        } elseif ($status === 'rejected') {
+            $query->where('s.selling_approval_status', 2);
+        }
+
+        $sortMap = [
+            'request_no' => 's.selling_code',
+            'request_date' => 's.selling_req_date',
+            'org_name' => 'o.org_name',
+            'status' => 's.selling_approval_status',
+        ];
+        if (isset($sortMap[$sort])) {
+            $query->orderByRaw("{$sortMap[$sort]} {$direction}, s.id ASC");
+        } else {
+            $query->orderByRaw('s.selling_req_date DESC NULLS LAST, s.id ASC');
+        }
+
+        $records = $query->paginate(self::PER_PAGE)->withQueryString();
+        $records->getCollection()->transform(function ($item) {
+            $info = self::STATUS_MAP[(int) ($item->selling_approval_status ?? 0)] ?? self::STATUS_MAP[0];
+            $item->status_label = $info['label'];
+            $item->status_type = $info['type'];
+            return $item;
+        });
+
+        return view('asset.ASS-007-approve-asset-disposal.index', compact(
+            'records', 'searchBy', 'keyword', 'status', 'sort', 'direction'
+        ) + ['pageTitle' => 'อนุมัติแจ้งจำหน่ายครุภัณฑ์']);
+    }
+
+    public function approvalShow(Request $request, int $id): View
+    {
+        $itemSearchBy  = $request->input('item_search_by', 'all');
+        $itemKeyword   = trim($request->string('item_keyword')->value());
+        $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
+
+        $record = DB::connection('oracle')->table('ASSET_SELLING AS s')
+            ->leftJoin('GLB_ORGANIZATION AS o', 'o.org_id', '=', 's.req_org_id')
+            ->leftJoin('GLB_ORGANIZATION AS aorg', 'aorg.org_id', '=', 's.app_org_id')
+            ->selectRaw("s.*, o.org_name AS req_org_name, aorg.org_name AS app_org_name,
+                CASE WHEN s.selling_req_date IS NOT NULL THEN TO_CHAR(s.selling_req_date, 'DD-MM-') || TO_CHAR(s.selling_req_date + INTERVAL '543' YEAR(3), 'YYYY') END AS req_date_th,
+                CASE WHEN s.selling_approval_date IS NOT NULL THEN TO_CHAR(s.selling_approval_date, 'DD-MM-') || TO_CHAR(s.selling_approval_date + INTERVAL '543' YEAR(3), 'YYYY') END AS approval_date_th")
+            ->where('s.id', $id)->whereIn('s.app_org_id', $visibleOrgIds)->first();
+        abort_if(! $record, 404);
+
+        $itemsQuery = DB::connection('oracle')->table('ASSET_SELLING_LIST AS sl')
+            ->join('ASSET AS a', 'a.id', '=', 'sl.ass_id')
+            ->leftJoin('ASSET_CATEGORY AS c', 'c.id', '=', 'a.asscat_id')
+            ->select('sl.id', 'a.ass_code', 'c.asscat_name', 'a.ass_price', 'sl.selling_min_price', 'sl.selling_real_price')
+            ->where('sl.selling_id', $id);
+
+        if ($itemKeyword !== '') {
+            $escaped = $this->escapeLike($itemKeyword);
+            $itemColumnMap = ['code' => 'a.ass_code', 'name' => 'c.asscat_name'];
+            if (isset($itemColumnMap[$itemSearchBy])) {
+                $col = $itemColumnMap[$itemSearchBy];
+                $itemsQuery->whereRaw("UPPER({$col}) LIKE UPPER(?) ESCAPE '\\'", ["%{$escaped}%"]);
+            } else {
+                $itemsQuery->where(function ($q) use ($escaped): void {
+                    $q->whereRaw("UPPER(a.ass_code) LIKE UPPER(?) ESCAPE '\\'", ["%{$escaped}%"])
+                        ->orWhereRaw("UPPER(c.asscat_name) LIKE UPPER(?) ESCAPE '\\'", ["%{$escaped}%"]);
+                });
+            }
+        }
+
+        $items      = $itemsQuery->orderBy('sl.id')->get();
+        $statusInfo = self::STATUS_MAP[(int) ($record->selling_approval_status ?? 0)] ?? self::STATUS_MAP[0];
+        $reasonLabel = self::REASON_OPTIONS[$record->reason ?? ''] ?? ($record->reason ?? '-');
+
+        return view('asset.ASS-007-approve-asset-disposal.show', compact(
+            'record', 'items', 'statusInfo', 'reasonLabel', 'itemSearchBy', 'itemKeyword'
+        ) + ['pageTitle' => 'พิจารณาแจ้งจำหน่ายครุภัณฑ์']);
+    }
+
+    public function approve(Request $request, int $id): RedirectResponse
+    {
+        $validated = $request->validate([
+            'approval_date' => ['required', 'date'],
+            'items'         => ['required', 'array', 'min:1'],
+            'items.*.selling_min_price' => ['required', 'numeric', 'min:0', 'regex:/^\d+(\.\d{1,2})?$/'],
+        ]);
+
+        return $this->finalizeApproval($id, 1, $validated['approval_date'], $validated['items'], null);
+    }
+
+    public function reject(Request $request, int $id): RedirectResponse
+    {
+        $validated = $request->validate([
+            'approval_date' => ['required', 'date'],
+            'reject_reason' => ['required', 'string', 'max:500'],
+        ]);
+
+        return $this->finalizeApproval($id, 2, $validated['approval_date'], [], trim($validated['reject_reason']));
+    }
+
+    /**
+     * Applies the approve/reject decision inside a single Oracle transaction:
+     * re-checks the pending state under lock, writes per-item selling prices
+     * (approve only), then updates the ASSET_SELLING header.
+     *
+     * @param  array<int, array{selling_min_price?: mixed}>  $items
+     */
+    private function finalizeApproval(int $id, int $status, string $approvalDate, array $items, ?string $rejectReason): RedirectResponse
+    {
+        $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
+        $userId        = (int) Auth::user()->id;
+
+        try {
+            $updated = DB::connection('oracle')->transaction(function () use ($id, $status, $approvalDate, $items, $rejectReason, $userId, $visibleOrgIds) {
+                $header = DB::connection('oracle')->table('ASSET_SELLING')
+                    ->where('id', $id)
+                    ->whereIn('app_org_id', $visibleOrgIds)
+                    ->lockForUpdate()
+                    ->first();
+
+                $isPending = $header && ($header->selling_approval_status === null || (int) $header->selling_approval_status === 0);
+                if (! $isPending) {
+                    return 0;
+                }
+
+                if ($status === 1) {
+                    $validItemIds = DB::connection('oracle')->table('ASSET_SELLING_LIST')
+                        ->where('selling_id', $id)->pluck('id')->map(fn ($v) => (int) $v)->all();
+
+                    foreach ($items as $itemId => $row) {
+                        $itemId = (int) $itemId;
+                        if (! in_array($itemId, $validItemIds, true)) {
+                            continue;
+                        }
+                        DB::connection('oracle')->table('ASSET_SELLING_LIST')
+                            ->where('id', $itemId)->where('selling_id', $id)
+                            ->update([
+                                'selling_min_price' => (float) $row['selling_min_price'],
+                                'updated_by'         => $userId,
+                                'updated_at'         => now(),
+                            ]);
+                    }
+                }
+
+                return DB::connection('oracle')->table('ASSET_SELLING')
+                    ->where('id', $id)
+                    ->update([
+                        'selling_approval_status' => $status,
+                        'selling_approval_date'   => $approvalDate,
+                        'reject_reason'           => $rejectReason,
+                        'updated_by'              => $userId,
+                        'updated_at'              => now(),
+                    ]);
+            });
+        } catch (Throwable $e) {
+            Log::error('ASS-007 approval failed', ['id' => $id, 'error' => $e->getMessage()]);
+
+            return back()->withErrors(['_error' => 'เกิดข้อผิดพลาดขณะบันทึกผลการอนุมัติ กรุณาลองใหม่'])->withInput();
+        }
+
+        abort_if($updated !== 1, 404);
+
+        return redirect()->route('asset.disposals.approval.index')->with('success', 'บันทึกผลการอนุมัติเรียบร้อย');
+    }
+
+
     // ──────────────────────────────────────────────────────────────────────
     //  DETAIL
     // ──────────────────────────────────────────────────────────────────────

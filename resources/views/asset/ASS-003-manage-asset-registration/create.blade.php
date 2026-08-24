@@ -25,19 +25,6 @@
             <form class="registration-form" method="POST" action="{{ route('asset.registrations.store') }}" autocomplete="off" enctype="multipart/form-data">
                 @csrf
 
-                {{-- ─────────────────────────────────────────────────────── --}}
-                <h3 class="section-title">1. ข้อมูลทั่วไปของครุภัณฑ์</h3>
-
-                <div class="form-row one-col short-row">
-                    <div class="form-field">
-                        <label for="assCode">รหัสทะเบียนครุภัณฑ์ <span class="required">*</span></label>
-                        <input id="assCode" name="ass_code" type="text" maxlength="50"
-                               placeholder="กรอกรหัสทะเบียนครุภัณฑ์"
-                               value="{{ old('ass_code') }}" autocomplete="off">
-                        @error('ass_code')<span class="field-error" style="color:#dc2626;font-size:11px;">{{ $message }}</span>@enderror
-                    </div>
-                </div>
-
                 {{-- Search panel for category --}}
                 <div class="search-panel">
                     <span class="search-panel-label">ค้นหาประเภทครุภัณฑ์</span>
@@ -54,6 +41,19 @@
                             <input id="catSearchInput" type="search" autocomplete="off" placeholder="พิมพ์เพื่อค้นหา" spellcheck="false">
                         </div>
                         <button class="small-search-btn" type="button" id="catSearchBtn">ค้นหา</button>
+                    </div>
+                </div>
+
+                {{-- ─────────────────────────────────────────────────────── --}}
+                <h3 class="section-title">1. ข้อมูลทั่วไปของครุภัณฑ์</h3>
+
+                <div class="form-row four-col">
+                    <div class="form-field">
+                        <label for="assCode">รหัสทะเบียนครุภัณฑ์ <span class="required">*</span></label>
+                        <input id="assCode" name="ass_code" type="text" maxlength="50"
+                               placeholder="กรอกรหัสทะเบียนครุภัณฑ์"
+                               value="{{ old('ass_code') }}" autocomplete="off">
+                        @error('ass_code')<span class="field-error" style="color:#dc2626;font-size:11px;">{{ $message }}</span>@enderror
                     </div>
                 </div>
 

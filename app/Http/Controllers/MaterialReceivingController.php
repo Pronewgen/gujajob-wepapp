@@ -823,15 +823,10 @@ class MaterialReceivingController extends Controller
                 ->orderBy('method_id')
                 ->pluck('method_name', 'method_id')
                 ->toArray();
-            return $data ?: $this->fallbackMethodOptions();
+            return $data;
         } catch (\Throwable $e) {
-            return $this->fallbackMethodOptions();
+            return [];
         }
-    }
-
-    private function fallbackMethodOptions(): array
-    {
-        return [1 => 'เฉพาะเจาะจง', 2 => 'ประกวดราคา', 3 => 'คัดเลือก'];
     }
 
     private function vatOptions(): array

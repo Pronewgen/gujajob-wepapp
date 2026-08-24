@@ -143,6 +143,7 @@
     </style>
     @yield('page-style')
     @vite(['resources/css/components/form-buttons.css'])
+    @vite(['resources/css/components/page-layout.css'])
 </head>
 <body>
     <svg class="svg-sprite" xmlns="http://www.w3.org/2000/svg">
@@ -463,12 +464,12 @@
                             <span>รับครุภัณฑ์ลงทะเบียนหน่วยงาน</span>
                         </a>
 
-                        <a class="menu-item {{ request()->routeIs('asset.disposals.*') ? 'active' : '' }}" href="{{ route('asset.disposals.index') }}">
+                        <a class="menu-item {{ request()->routeIs('asset.disposals.index', 'asset.disposals.create', 'asset.disposals.show', 'asset.disposals.edit') ? 'active' : '' }}" href="{{ route('asset.disposals.index') }}">
                             <svg class="menu-icon"><use href="#icon-bell"></use></svg>
                             <span>แจ้งขอจำหน่ายครุภัณฑ์</span>
                         </a>
 
-                        <a class="menu-item disabled-link" href="#">
+                        <a class="menu-item {{ request()->routeIs('asset.disposals.approval.*') ? 'active' : '' }}" href="{{ route('asset.disposals.approval.index') }}">
                             <svg class="menu-icon"><use href="#icon-check-circle"></use></svg>
                             <span>อนุมัติแจ้งจำหน่ายครุภัณฑ์</span>
                         </a>

@@ -17,7 +17,7 @@ use Throwable;
 
 class AssetAssignmentController extends Controller
 {
-    private const PER_PAGE = 15;
+    private const PER_PAGE = 10;
 
     public function __construct(private readonly OrganizationVisibilityService $orgVisibility) {}
 
@@ -30,7 +30,6 @@ class AssetAssignmentController extends Controller
         $filterOrgId    = (int) $request->input('filter_org_id', 0);
         $filterSubOrgId = (int) $request->input('filter_sub_org_id', 0);
         $filterAssigner = trim($request->string('filter_assigner_id')->value());
-        $page           = max(1, (int) $request->input('page', 1));
 
         $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
 
@@ -73,28 +72,33 @@ class AssetAssignmentController extends Controller
             $query->where('aa.assigner_id', (int) $filterAssigner);
         }
 
-        $total      = (clone $query)->count();
-        $perPage    = self::PER_PAGE;
-        $offset     = ($page - 1) * $perPage;
-        $records    = $query->offset($offset)->limit($perPage)->get();
-        $totalPages = (int) ceil($total / $perPage);
+        $records = $query->paginate(self::PER_PAGE)->withQueryString();
 
         // Labels for current filters
-        $filterOrgName    = $filterOrgId > 0    ? (GlbOrganization::find($filterOrgId)?->org_name ?? '')    : '';
-        $filterSubOrgName = $filterSubOrgId > 0 ? (GlbOrganization::find($filterSubOrgId)?->org_name ?? '') : '';
+        $filterOrgName = $filterOrgId > 0
+            ? (GlbOrganization::query()
+                ->whereIn('org_id', $visibleOrgIds)
+                ->where('org_id', $filterOrgId)
+                ->value('org_name') ?? '')
+            : '';
+        $filterSubOrgName = $filterSubOrgId > 0
+            ? (GlbOrganization::query()
+                ->whereIn('org_id', $visibleOrgIds)
+                ->where('org_id', $filterSubOrgId)
+                ->value('org_name') ?? '')
+            : '';
         $filterAssignerName = '';
         if ($filterAssigner !== '') {
-            $u = DB::connection('oracle')->selectOne('SELECT user_name FROM SYS_USER WHERE id = ?', [(int) $filterAssigner]);
-            $filterAssignerName = $u?->user_name ?? '';
+            $filterAssignerName = DB::connection('oracle')
+                ->table('SYS_USER')
+                ->whereIn('org_id', $visibleOrgIds)
+                ->where('id', (int) $filterAssigner)
+                ->value('user_name') ?? '';
         }
 
         return view('asset.ASS-004-assign-asset-to-department.index', [
             'pageTitle'           => 'จัดสรรครุภัณฑ์ให้หน่วยงาน',
             'records'             => $records,
-            'total'               => $total,
-            'page'                => $page,
-            'perPage'             => $perPage,
-            'totalPages'          => $totalPages,
             'filterOrgId'         => $filterOrgId,
             'filterOrgName'       => $filterOrgName,
             'filterSubOrgId'      => $filterSubOrgId,
