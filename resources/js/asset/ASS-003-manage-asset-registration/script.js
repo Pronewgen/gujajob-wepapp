@@ -153,11 +153,11 @@ function initializeForecastToggle() {
     const closeBtn        = document.getElementById('forecastCloseBtn');
     const forecastSection = document.getElementById('forecastSection');
     const calcBtn         = document.getElementById('forecastCalcBtn');
+    const printBtn        = document.getElementById('forecastPrintBtn');
     const resultEl        = document.getElementById('forecastResult');
     const yearsEl         = document.getElementById('forecastYears');
-    // forecastCatId and forecastOrgId are now hidden inputs managed by x-searchable-select
-    const catIdEl  = document.getElementById('forecastCatId');
-    const orgIdEl  = document.getElementById('forecastOrgId');
+    const catIdEl         = document.getElementById('forecastCatId');
+    const orgIdEl         = document.getElementById('forecastOrgId');
 
     if (!forecastSection) return;
 
@@ -181,115 +181,155 @@ function initializeForecastToggle() {
 
     closeBtn?.addEventListener('click', hideForecast);
 
-    let lastForecastData = [];
-
     calcBtn?.addEventListener('click', async () => {
-        if (!resultEl) return;
-        resultEl.innerHTML = '<p style="color:#6d28d9;font-size:12px;font-weight:700;">กำลังคำนวณ...</p>';
+        if (!resultEl || !calcBtn) return;
 
-        const years = yearsEl?.value || '1';
-        const catId = catIdEl?.value || '';
-        const orgId = orgIdEl?.value || '';
-        const url   = new URL('/asset/ASS-003-manage-asset-registration/forecast-data', window.location.origin);
-        url.searchParams.set('years_ahead', years);
-        if (catId) url.searchParams.set('filter_cat_id', catId);
-        if (orgId) url.searchParams.set('filter_org_id', orgId);
+        calcBtn.disabled = true;
+        calcBtn.textContent = 'กำลังคำนวณ...';
+        if (printBtn) printBtn.disabled = true;
+        resultEl.innerHTML = '<p class="forecast-loading-msg">กำลังวิเคราะห์ข้อมูลและพยากรณ์...</p>';
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+        const payload   = {
+            forecast_years: parseInt(yearsEl?.value || '1', 10),
+            filter_cat_id:  catIdEl?.value ? parseInt(catIdEl.value, 10) : null,
+            filter_org_id:  orgIdEl?.value ? parseInt(orgIdEl.value, 10) : null,
+        };
 
         try {
-            const res  = await fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const res  = await fetch('/asset/ASS-003-manage-asset-registration/ai-forecast', {
+                method:  'POST',
+                headers: {
+                    'Content-Type':     'application/json',
+                    'Accept':           'application/json',
+                    'X-CSRF-TOKEN':     csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify(payload),
+            });
+
             const json = await res.json();
-            lastForecastData = json.data ?? [];
-            renderForecast(json, resultEl, lastForecastData);
+
+            if (!res.ok || !json.success) {
+                const msg = json.message || 'เกิดข้อผิดพลาด กรุณาลองอีกครั้ง';
+                resultEl.innerHTML = `<p class="forecast-error-msg">${msg}</p>`;
+                return;
+            }
+
+            renderAiForecast(json, resultEl);
+            if (printBtn && json.total_assets >= 0) {
+                printBtn.disabled = false;
+            }
         } catch {
-            resultEl.innerHTML = '<p style="color:#dc2626;font-size:12px;font-weight:700;">เกิดข้อผิดพลาด กรุณาลองอีกครั้ง</p>';
+            resultEl.innerHTML = '<p class="forecast-error-msg">ไม่สามารถเชื่อมต่อบริการได้ กรุณาลองอีกครั้ง</p>';
+        } finally {
+            calcBtn.disabled    = false;
+            calcBtn.textContent = 'คำนวณ';
         }
     });
 
-    document.getElementById('forecastPrintBtn')?.addEventListener('click', () => window.print());
-}
-
-function renderForecast(res, container, allRows) {
-    const rows = allRows ?? res.data ?? [];
-    if (!rows.length) {
-        container.innerHTML = '<p style="color:#6d28d9;font-size:12px;font-weight:700;">ไม่พบครุภัณฑ์ที่คาดว่าจะหมดอายุในช่วงเวลาที่เลือก</p>';
-        return;
-    }
-
-    const totalBudget = (res.summary?.total_budget ?? 0).toLocaleString('th-TH', { minimumFractionDigits: 2 });
-    const totalCount  = res.summary?.total_count ?? 0;
-
-    const searchBarHtml = `<div class="forecast-search-bar">
-        <div class="forecast-search-field"><label>ค้นหาจาก</label><select id="forecastTableSearchType"><option value="code">รหัสครุภัณฑ์</option><option value="name">ชื่อครุภัณฑ์</option><option value="org">หน่วยงาน</option></select></div>
-        <div class="forecast-search-field"><label>คำค้นหา</label><input id="forecastTableSearchInput" type="search" autocomplete="off" placeholder="ค้นหา..."></div>
-        <button class="forecast-search-btn" type="button" id="forecastTableSearchBtn">ค้นหา</button>
-    </div>`;
-
-    const summaryHtml = `<div class="forecast-summary">
-        <div class="summary-box"><span>ครุภัณฑ์ที่คาดจะหมดอายุ</span><strong>${totalCount} รายการ</strong></div>
-        <div class="summary-box"><span>งบประมาณรวม</span><strong>${totalBudget} บาท</strong></div>
-    </div>`;
-
-    container.innerHTML = summaryHtml + `<div class="forecast-table-card">
-        ${searchBarHtml}
-        <div id="forecastTableBody"></div>
-    </div>`;
-
-    renderForecastRows(rows);
-
-    document.getElementById('forecastTableSearchBtn')?.addEventListener('click', () => {
-        const type    = document.getElementById('forecastTableSearchType')?.value || 'code';
-        const keyword = (document.getElementById('forecastTableSearchInput')?.value || '').trim().toUpperCase();
-        if (!keyword) {
-            renderForecastRows(allRows);
-            return;
-        }
-        const keyMap = { code: 'code', name: 'name', org: 'org' };
-        const key    = keyMap[type] || 'code';
-        const filtered = allRows.filter((r) => String(r[key] ?? '').toUpperCase().includes(keyword));
-        renderForecastRows(filtered);
+    printBtn?.addEventListener('click', () => {
+        window.open('/asset/ASS-003-manage-asset-registration/forecast-print', '_blank');
     });
 }
 
-function renderForecastRows(rows) {
-    const tbody = document.getElementById('forecastTableBody');
-    if (!tbody) return;
-
-    if (!rows.length) {
-        tbody.innerHTML = '<table class="forecast-table"><tbody><tr><td class="no-data" colspan="8">ไม่พบข้อมูล</td></tr></tbody></table>';
+function renderAiForecast(json, container) {
+    if (json.total_assets === 0) {
+        container.innerHTML = '<p class="forecast-empty-msg">ไม่พบครุภัณฑ์ที่คาดว่าจะถึงกำหนดทดแทนในช่วงเวลาที่เลือก</p>';
         return;
     }
 
-    let html = `<table class="forecast-table">
-        <thead><tr>
-            <th>รหัสครุภัณฑ์</th>
-            <th>ชื่อครุภัณฑ์</th>
-            <th>หน่วยงาน</th>
-            <th>อายุ (ปี)</th>
-            <th>วันที่ตรวจรับ</th>
-            <th>วันหมดอายุ</th>
-            <th>หมดใน</th>
-            <th style="text-align:right;">ราคาทดแทน</th>
-        </tr></thead>
-        <tbody>`;
+    const fmt      = (n) => Number(n).toLocaleString('th-TH', { minimumFractionDigits: 2 });
+    const totalBud = fmt(json.total_forecast_budget);
 
-    for (const r of rows) {
-        const yrs     = (r.years_remaining ?? 0);
-        const yrsText = yrs <= 0 ? 'หมดอายุแล้ว' : `${yrs.toFixed(1)} ปี`;
-        const price   = (r.price ?? 0).toLocaleString('th-TH', { minimumFractionDigits: 2 });
+    // ── Summary ───────────────────────────────────────────────────────────────
+    let html = `
+    <div class="forecast-ai-summary">
+        <div class="ai-summary-row">
+            <div class="ai-summary-item">
+                <span>ระยะเวลาพยากรณ์</span>
+                <strong>${json.forecast_years} ปี</strong>
+            </div>
+            <div class="ai-summary-item">
+                <span>จำนวนครุภัณฑ์ที่คาดว่าจะทดแทน</span>
+                <strong>${json.total_assets} รายการ</strong>
+            </div>
+            <div class="ai-summary-item highlight">
+                <span>งบประมาณรวมที่คาดการณ์</span>
+                <strong>${totalBud} บาท</strong>
+            </div>
+        </div>
+    </div>`;
+
+    // ── Year-by-year table ────────────────────────────────────────────────────
+    html += `<div class="forecast-year-table-wrap">
+        <div class="forecast-section-title">ผลการพยากรณ์รายปี</div>
+        <table class="forecast-year-table">
+            <thead><tr>
+                <th>ปี</th>
+                <th style="text-align:center;">จำนวนครุภัณฑ์</th>
+                <th style="text-align:right;">งบประมาณที่คาดการณ์ (บาท)</th>
+            </tr></thead>
+            <tbody>`;
+
+    for (const y of json.years) {
         html += `<tr>
-            <td class="asset-code">${r.code ?? '-'}</td>
-            <td>${r.name ?? '-'}</td>
-            <td>${r.org ?? '-'}</td>
-            <td style="text-align:center;">${r.lifetime ?? '-'}</td>
-            <td>${r.inspect_date ?? '-'}</td>
-            <td class="expire-date">${r.end_date ?? '-'}</td>
-            <td style="text-align:center;">${yrsText}</td>
-            <td style="text-align:right;">${price}</td>
+            <td>พ.ศ. ${y.year + 543} <span class="year-ce">(ค.ศ. ${y.year})</span></td>
+            <td style="text-align:center;">${y.asset_count}</td>
+            <td style="text-align:right;">${fmt(y.forecast_budget)}</td>
         </tr>`;
     }
 
-    html += '</tbody></table>';
-    tbody.innerHTML = html;
+    html += `</tbody></table></div>`;
+
+    // ── Asset details ─────────────────────────────────────────────────────────
+    if (json.assets && json.assets.length > 0) {
+        html += `<div class="forecast-asset-detail-wrap">
+            <div class="forecast-section-title">รายละเอียดครุภัณฑ์</div>
+            <div class="forecast-table-card">
+                <table class="forecast-table">
+                    <thead><tr>
+                        <th>รหัสครุภัณฑ์</th>
+                        <th>ชื่อครุภัณฑ์</th>
+                        <th>หมวดครุภัณฑ์</th>
+                        <th>หน่วยงาน</th>
+                        <th>วันที่ตรวจรับ</th>
+                        <th style="text-align:center;">ปีที่คาดว่าจะทดแทน</th>
+                        <th style="text-align:right;">มูลค่าเดิม</th>
+                        <th style="text-align:right;">มูลค่าทดแทน (AI)</th>
+                    </tr></thead>
+                    <tbody>`;
+
+        for (const a of json.assets) {
+            const yearTh   = (a.forecast_year + 543);
+            const curVal   = a.current_value !== null && a.current_value !== undefined
+                ? fmt(a.current_value) : '-';
+            const predCost = fmt(a.predicted_replacement_cost);
+
+            html += `<tr>
+                <td><a class="ass-code-link asset-code" href="/asset/ASS-003-manage-asset-registration?search_by=code&keyword=${encodeURIComponent(a.asset_code ?? '')}">${a.asset_code ?? '-'}</a></td>
+                <td>${a.asset_name ?? '-'}</td>
+                <td>${a.category_name ?? '-'}</td>
+                <td>${a.organization_name ?? '-'}</td>
+                <td>${a.acceptance_date ?? '-'}</td>
+                <td style="text-align:center;">พ.ศ. ${yearTh}</td>
+                <td style="text-align:right;">${curVal}</td>
+                <td style="text-align:right;" class="ai-cost-cell">${predCost}</td>
+            </tr>`;
+        }
+
+        html += `</tbody></table></div></div>`;
+    }
+
+    // ── Model badge ───────────────────────────────────────────────────────────
+    const m = json.model;
+    if (m) {
+        let modelInfo = `โมเดล: ${m.name ?? 'AI'} · ข้อมูลฝึกสอน: ${m.training_records ?? '-'} รายการ`;
+        if (m.mae !== null && m.mae !== undefined) modelInfo += ` · MAE: ${Number(m.mae).toLocaleString('th-TH')}`;
+        html += `<div class="forecast-model-badge">${modelInfo}</div>`;
+    }
+
+    container.innerHTML = html;
 }
 
 document.addEventListener('DOMContentLoaded', () => {

@@ -187,7 +187,7 @@
             </div>
         </section>
 
-        {{-- Forecast frame — hidden until toggle button is clicked --}}
+        {{-- AI Forecast frame — hidden until toggle button is clicked --}}
         <section class="forecast-card" id="forecastSection" style="display:none;" aria-hidden="true">
             <div class="forecast-header">
                 <h3>พยากรณ์งบประมาณจัดซื้อครุภัณฑ์ทดแทน</h3>
@@ -226,7 +226,7 @@
                         />
                     </div>
                     <button class="calculate-btn" type="button" id="forecastCalcBtn">คำนวณ</button>
-                    <button class="print-forecast-btn" type="button" id="forecastPrintBtn">จัดพิมพ์รายงาน</button>
+                    <button class="print-forecast-btn" type="button" id="forecastPrintBtn" disabled>จัดพิมพ์รายงาน</button>
                 </div>
 
                 <div id="forecastResult" style="margin-top:16px;" aria-live="polite">

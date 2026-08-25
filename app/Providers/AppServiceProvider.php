@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Auth\OraclePlainTextUserProvider;
+use App\Services\ReplacementBudgetForecastService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\ServiceProvider;
 
@@ -13,7 +14,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(ReplacementBudgetForecastService::class, function ($app) {
+            $cfg = $app['config']['services.ai_forecast'];
+            return new ReplacementBudgetForecastService(
+                baseUrl: $cfg['url'],
+                timeout: $cfg['timeout'],
+            );
+        });
     }
 
     /**
