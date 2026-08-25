@@ -8,6 +8,7 @@ use App\Models\AssetImage;
 use App\Models\Dealer;
 use App\Models\GlbOrganization;
 use App\Services\OrganizationVisibilityService;
+use App\Services\ReplacementBudgetForecastService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -487,6 +488,233 @@ class AssetController extends Controller
 
         return redirect()->route('asset.registrations.index')
             ->with('asset_success', 'ลบข้อมูลครุภัณฑ์เรียบร้อยแล้ว');
+    }
+
+    // =========================================================================
+    // AI Budget Forecast (ASS-003)
+    // =========================================================================
+
+    /**
+     * POST endpoint: browser → Laravel → Oracle → FastAPI AI → browser
+     * Stores last result in session (per-user) for the print view.
+     */
+    public function aiForecastBudget(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'forecast_years' => ['required', 'integer', 'min:1', 'max:3'],
+            'filter_cat_id'  => ['nullable', 'integer'],
+            'filter_org_id'  => ['nullable', 'integer'],
+        ]);
+
+        $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
+
+        if (empty($visibleOrgIds)) {
+            $empty = $this->emptyForecastResult((int) $validated['forecast_years']);
+            return response()->json($empty);
+        }
+
+        $forecastYears = (int) $validated['forecast_years'];
+        $filterCatId   = isset($validated['filter_cat_id']) ? (int) $validated['filter_cat_id'] : null;
+        $filterOrgId   = isset($validated['filter_org_id']) ? (int) $validated['filter_org_id'] : null;
+        $currentYear   = (int) date('Y');
+
+        // 1. Candidate assets — those due for replacement in the selected period
+        $candidateAssets = $this->queryCandidateAssets(
+            $forecastYears, $filterCatId, $filterOrgId, $visibleOrgIds, $currentYear
+        );
+
+        // 2. Resolve display labels for print params
+        $categoryName = ($filterCatId !== null)
+            ? (AssetCategory::find($filterCatId)?->asscat_name ?? 'ทั้งหมด')
+            : 'ทั้งหมด';
+
+        $orgName = ($filterOrgId !== null)
+            ? (DB::connection('oracle')->table('GLB_ORGANIZATION')
+                ->where('org_id', $filterOrgId)->value('org_name') ?? 'ทั้งหมด')
+            : 'ทั้งหมด';
+
+        $forecastParams = [
+            'forecast_years'  => $forecastYears,
+            'filter_cat_name' => $categoryName,
+            'filter_org_name' => $orgName,
+        ];
+
+        // 3. No candidates — return zero-budget result without calling AI
+        if (empty($candidateAssets)) {
+            $result = $this->emptyForecastResult($forecastYears);
+            session(['ai_forecast_latest' => $result, 'ai_forecast_params' => $forecastParams]);
+            return response()->json($result);
+        }
+
+        // 4. Historical records for ML training
+        $trainingRecords = $this->queryTrainingRecords($visibleOrgIds);
+
+        // 5. Demo data fallback (AI_FORECAST_DEMO=true in .env only for testing)
+        if (config('services.ai_forecast.demo', false) && empty($trainingRecords)) {
+            $demoPath = base_path('ai-service/data/demo_training.csv');
+            if (file_exists($demoPath)) {
+                $trainingRecords = $this->loadDemoCsv($demoPath);
+            }
+        }
+
+        // 6. Call AI service
+        try {
+            $aiResult = app(ReplacementBudgetForecastService::class)->forecast([
+                'forecast_years'   => $forecastYears,
+                'training_records' => $trainingRecords,
+                'candidate_assets' => $candidateAssets,
+            ]);
+        } catch (Throwable $e) {
+            Log::error('AI forecast service unreachable', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'code'    => 'SERVICE_UNAVAILABLE',
+                'message' => 'ไม่สามารถเชื่อมต่อบริการพยากรณ์ได้ กรุณาตรวจสอบ AI Service',
+            ], 503);
+        }
+
+        // 7. Store result in session for print (user-scoped via Laravel session)
+        session(['ai_forecast_latest' => $aiResult, 'ai_forecast_params' => $forecastParams]);
+
+        return response()->json($aiResult);
+    }
+
+    /**
+     * GET: renders the print view using the last forecasted result stored in session.
+     */
+    public function forecastPrint(): View
+    {
+        $result = session('ai_forecast_latest');
+        $params = session('ai_forecast_params', []);
+
+        if (!$result) {
+            abort(404, 'ไม่พบข้อมูลการพยากรณ์ กรุณาคำนวณก่อนจัดพิมพ์');
+        }
+
+        $printDate = date('d/m/') . (date('Y') + 543);
+
+        return view('asset.ASS-003-manage-asset-registration.forecast-print', [
+            'result'    => $result,
+            'params'    => $params,
+            'printDate' => $printDate,
+        ]);
+    }
+
+    // -------------------------------------------------------------------------
+    // Private helpers for AI forecast
+    // -------------------------------------------------------------------------
+
+    private function queryCandidateAssets(
+        int $forecastYears,
+        ?int $filterCatId,
+        ?int $filterOrgId,
+        array $visibleOrgIds,
+        int $currentYear,
+    ): array {
+        $endDateExpr = 'ADD_MONTHS(a.inspect_date, a.ass_lifetime * 12)';
+        $endYearExpr = "EXTRACT(YEAR FROM {$endDateExpr})";
+
+        $query = DB::connection('oracle')->table('ASSET AS a')
+            ->join('ASSET_CATEGORY AS c', 'a.asscat_id', '=', 'c.id')
+            ->leftJoin('GLB_ORGANIZATION AS org', 'a.org_id', '=', 'org.org_id')
+            ->whereIn('a.org_id', $visibleOrgIds)
+            ->whereNotNull('a.inspect_date')
+            ->whereNotNull('a.ass_lifetime')
+            ->where('a.ass_lifetime', '>', 0)
+            ->where('a.ass_status', '!=', '3')
+            ->whereRaw("{$endYearExpr} >= ?", [$currentYear + 1])
+            ->whereRaw("{$endYearExpr} <= ?", [$currentYear + $forecastYears])
+            ->select([
+                'a.id',
+                'a.ass_code',
+                'a.ass_desc',
+                'c.id AS category_id',
+                'c.asscat_name AS category_name',
+                'a.org_id AS organization_id',
+                'org.org_name AS organization_name',
+                DB::raw("TO_CHAR(a.inspect_date, 'DD/MM/') || TO_CHAR(a.inspect_date + INTERVAL '543' YEAR(3), 'YYYY') AS acceptance_date"),
+                'a.remain_price AS current_value',
+                DB::raw("EXTRACT(YEAR FROM {$endDateExpr}) AS forecast_year"),
+            ]);
+
+        if ($filterCatId !== null) {
+            $query->where('a.asscat_id', $filterCatId);
+        }
+
+        if ($filterOrgId !== null && in_array($filterOrgId, $visibleOrgIds, true)) {
+            $query->where('a.org_id', $filterOrgId);
+        }
+
+        return $query->get()->map(fn ($r) => [
+            'asset_id'          => (int) $r->id,
+            'asset_code'        => $r->ass_code ?? '-',
+            'asset_name'        => $r->ass_desc,
+            'category_id'       => (int) $r->category_id,
+            'category_name'     => $r->category_name ?? '-',
+            'organization_id'   => (int) $r->organization_id,
+            'organization_name' => $r->organization_name,
+            'acceptance_date'   => $r->acceptance_date,
+            'current_value'     => $r->current_value !== null ? (float) $r->current_value : null,
+            'forecast_year'     => (int) $r->forecast_year,
+        ])->values()->all();
+    }
+
+    private function queryTrainingRecords(array $visibleOrgIds): array
+    {
+        return DB::connection('oracle')->table('ASSET AS a')
+            ->join('ASSET_CATEGORY AS c', 'a.asscat_id', '=', 'c.id')
+            ->whereIn('a.org_id', $visibleOrgIds)
+            ->whereNotNull('a.inspect_date')
+            ->whereNotNull('a.ass_price')
+            ->where('a.ass_price', '>', 0)
+            ->select([
+                DB::raw('EXTRACT(YEAR FROM a.inspect_date) AS acquisition_year'),
+                'a.asscat_id AS category_id',
+                'c.asscat_name AS category_name',
+                'a.ass_price AS acquisition_value',
+            ])
+            ->get()
+            ->map(fn ($r) => [
+                'acquisition_year'  => (int) $r->acquisition_year,
+                'category_id'       => (int) $r->category_id,
+                'category_name'     => $r->category_name ?? '-',
+                'acquisition_value' => (float) $r->acquisition_value,
+            ])->values()->all();
+    }
+
+    private function emptyForecastResult(int $forecastYears): array
+    {
+        return [
+            'success'              => true,
+            'forecast_years'       => $forecastYears,
+            'total_assets'         => 0,
+            'total_forecast_budget'=> 0.0,
+            'years'                => [],
+            'assets'               => [],
+            'model'                => ['name' => 'Ridge Regression', 'training_records' => 0, 'mae' => null, 'mape' => null],
+        ];
+    }
+
+    private function loadDemoCsv(string $path): array
+    {
+        $records = [];
+        if (($handle = fopen($path, 'r')) === false) {
+            return [];
+        }
+        $header = null;
+        while (($row = fgetcsv($handle)) !== false) {
+            if ($header === null) { $header = $row; continue; }
+            $rec = array_combine($header, $row);
+            if ($rec === false) continue;
+            $records[] = [
+                'acquisition_year'  => (int) $rec['acquisition_year'],
+                'category_id'       => (int) $rec['category_id'],
+                'category_name'     => $rec['category_name'],
+                'acquisition_value' => (float) $rec['acquisition_value'],
+            ];
+        }
+        fclose($handle);
+        return $records;
     }
 
     /** Returns direct child org records (not self) for the forecast dropdown. */

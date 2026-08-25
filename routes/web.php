@@ -717,6 +717,8 @@ Route::get('/api/tambons', [DealerController::class, 'tambonsByAmphur'])->name('
 Route::get('/asset/ASS-003-manage-asset-registration', [AssetController::class, 'index'])->name('asset.registrations.index');
 Route::get('/asset/ASS-003-manage-asset-registration/create', [AssetController::class, 'create'])->name('asset.registrations.create');
 Route::get('/asset/ASS-003-manage-asset-registration/forecast-data', [AssetController::class, 'forecastData'])->name('asset.registrations.forecast');
+Route::post('/asset/ASS-003-manage-asset-registration/ai-forecast', [AssetController::class, 'aiForecastBudget'])->name('asset.registrations.ai-forecast');
+Route::get('/asset/ASS-003-manage-asset-registration/forecast-print', [AssetController::class, 'forecastPrint'])->name('asset.registrations.forecast-print');
 Route::post('/asset/ASS-003-manage-asset-registration', [AssetController::class, 'store'])->name('asset.registrations.store');
 Route::get('/asset/ASS-003-manage-asset-registration/{id}', [AssetController::class, 'show'])->name('asset.registrations.show');
 Route::get('/asset/ASS-003-manage-asset-registration/{id}/edit', [AssetController::class, 'edit'])->name('asset.registrations.edit');
