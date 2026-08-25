@@ -27,7 +27,7 @@
             <div class="form-row four-col compact-top">
                 <div class="form-field">
                     <label>รหัสประเภทครุภัณฑ์</label>
-                    <input type="text" readonly value="{{ $asset->inspect_date ? ($asset->category->asscat_code ?? '-') : '' }}">
+                    <input type="text" readonly value="{{ $asset->category->asscat_code ?? '-' }}">
                 </div>
                 <div class="form-field">
                     <label>หมวดครุภัณฑ์</label>

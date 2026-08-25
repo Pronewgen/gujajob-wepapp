@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Asset;
+use App\Models\AssetAssignment;
 use App\Services\OrganizationVisibilityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,7 +37,7 @@ class AssetDepartmentReceivingController extends Controller
         $assignSub = DB::connection('oracle')
             ->table('ASSET_ASSIGNMENT_LIST AS aal')
             ->join('ASSET_ASSIGNMENT AS aa', 'aa.id', '=', 'aal.ass_assign_id')
-            ->where('aa.status', '1')
+            ->whereIn('aa.status', [AssetAssignment::STATUS_ACTIVE, AssetAssignment::STATUS_RECEIVED])
             ->selectRaw('aal.asset_id, MAX(aa.id) AS latest_assign_id')
             ->groupBy('aal.asset_id');
 
@@ -49,17 +50,18 @@ class AssetDepartmentReceivingController extends Controller
             ->selectRaw("
                 a.id,
                 a.ass_code,
+                c.asscat_code,
                 c.asscat_name,
                 c.asscat_group,
                 a.ass_price,
-                a.inspect_date,
-                CASE WHEN a.inspect_date IS NOT NULL THEN
-                    TO_CHAR(a.inspect_date,'DD-MM-')||TO_CHAR(a.inspect_date+INTERVAL '543' YEAR(3),'YYYY')
-                END AS inspect_date_th,
                 torg.org_name AS target_org_name,
                 aa.id AS assignment_id,
                 aa.target_org_id,
-                aa.assign_date
+                aa.status AS aa_status,
+                a.ass_trans_date,
+                CASE WHEN a.ass_trans_date IS NOT NULL THEN
+                    TO_CHAR(a.ass_trans_date,'DD-MM-')||TO_CHAR(a.ass_trans_date+INTERVAL '543' YEAR(3),'YYYY')
+                END AS ass_trans_date_th
             ");
 
         if (empty($visibleOrgIds)) {
@@ -92,13 +94,13 @@ class AssetDepartmentReceivingController extends Controller
             'name'     => 'c.asscat_name',
             'category' => 'c.asscat_group',
             'price'    => 'a.ass_price',
-            'date'     => 'a.inspect_date',
+            'date'     => 'a.ass_trans_date',
         ];
 
         if (isset($sortMap[$sort])) {
             $query->orderByRaw("{$sortMap[$sort]} {$direction}");
         } else {
-            $query->orderByRaw('aa.assign_date DESC, a.id ASC');
+            $query->orderByRaw('a.ass_trans_date DESC, a.id ASC');
         }
 
         $assets = $query->paginate(self::PER_PAGE)->withQueryString();
@@ -126,7 +128,7 @@ class AssetDepartmentReceivingController extends Controller
     {
         $asset = $this->findAssetForCurrentUser($id);
 
-        if (! $asset || $asset->inspect_date !== null) {
+        if (! $asset || $asset->aa_status !== AssetAssignment::STATUS_ACTIVE) {
             abort(404);
         }
 
@@ -145,7 +147,7 @@ class AssetDepartmentReceivingController extends Controller
     {
         $asset = $this->findAssetForCurrentUser($id);
 
-        if (! $asset || $asset->inspect_date !== null) {
+        if (! $asset || $asset->aa_status !== AssetAssignment::STATUS_ACTIVE) {
             abort(404);
         }
 
@@ -165,15 +167,21 @@ class AssetDepartmentReceivingController extends Controller
         $user = Auth::user();
 
         try {
-            DB::connection('oracle')->transaction(function () use ($id, $validated, $subOrgId, $user) {
+            DB::connection('oracle')->transaction(function () use ($id, $asset, $validated, $subOrgId, $user) {
                 Asset::where('id', $id)->update([
-                    'inspect_date'     => $validated['receive_date'],
-                    'ass_trans_date'   => now(),
+                    'ass_trans_date'   => $validated['receive_date'],
                     'ass_trans_person' => $user->user_name,
                     'ass_trans_remark' => $validated['remark'] ?? null,
                     'sub_org_id'       => $subOrgId,
                     'updated_by'       => $user->id,
                 ]);
+                DB::connection('oracle')->table('ASSET_ASSIGNMENT')
+                    ->where('id', $asset->assignment_id)
+                    ->update([
+                        'status'     => AssetAssignment::STATUS_RECEIVED,
+                        'updated_by' => $user->id,
+                        'updated_at' => DB::raw('SYSTIMESTAMP'),
+                    ]);
             });
         } catch (Throwable $e) {
             Log::error('ASS-005 store failed', ['id' => $id, 'error' => $e->getMessage()]);
@@ -199,7 +207,7 @@ class AssetDepartmentReceivingController extends Controller
         }
 
         // Not received yet — redirect to the receive form instead
-        if ($asset->inspect_date === null) {
+        if ($asset->aa_status === AssetAssignment::STATUS_ACTIVE) {
             return redirect()->route('asset.department-receiving.receive', $id);
         }
 
@@ -217,7 +225,7 @@ class AssetDepartmentReceivingController extends Controller
     {
         $asset = $this->findAssetForCurrentUser($id);
 
-        if (! $asset || $asset->inspect_date === null) {
+        if (! $asset || $asset->aa_status !== AssetAssignment::STATUS_RECEIVED) {
             abort(404);
         }
 
@@ -237,13 +245,19 @@ class AssetDepartmentReceivingController extends Controller
         $user = Auth::user();
 
         try {
-            DB::connection('oracle')->transaction(function () use ($id, $validated, $subOrgId, $user) {
+            DB::connection('oracle')->transaction(function () use ($id, $asset, $validated, $subOrgId, $user) {
                 Asset::where('id', $id)->update([
-                    'inspect_date'     => $validated['receive_date'],
+                    'ass_trans_date'   => $validated['receive_date'],
                     'ass_trans_remark' => $validated['remark'] ?? null,
                     'sub_org_id'       => $subOrgId,
                     'updated_by'       => $user->id,
                 ]);
+                DB::connection('oracle')->table('ASSET_ASSIGNMENT')
+                    ->where('id', $asset->assignment_id)
+                    ->update([
+                        'updated_by' => $user->id,
+                        'updated_at' => DB::raw('SYSTIMESTAMP'),
+                    ]);
             });
         } catch (Throwable $e) {
             Log::error('ASS-005 update failed', ['id' => $id, 'error' => $e->getMessage()]);
@@ -289,7 +303,7 @@ class AssetDepartmentReceivingController extends Controller
         $assignSub = DB::connection('oracle')
             ->table('ASSET_ASSIGNMENT_LIST AS aal')
             ->join('ASSET_ASSIGNMENT AS aa', 'aa.id', '=', 'aal.ass_assign_id')
-            ->where('aa.status', '1')
+            ->whereIn('aa.status', [AssetAssignment::STATUS_ACTIVE, AssetAssignment::STATUS_RECEIVED])
             ->selectRaw('aal.asset_id, MAX(aa.id) AS latest_assign_id')
             ->groupBy('aal.asset_id');
 
@@ -308,8 +322,6 @@ class AssetDepartmentReceivingController extends Controller
                 a.ass_price,
                 a.sub_org_id,
                 a.inspect_date,
-                a.ass_trans_person,
-                a.ass_trans_remark,
                 TO_CHAR(a.inspect_date, 'YYYY-MM-DD') AS inspect_date_iso,
                 CASE WHEN a.inspect_date IS NOT NULL THEN
                     TO_CHAR(a.inspect_date,'DD-MM-')||TO_CHAR(a.inspect_date+INTERVAL '543' YEAR(3),'YYYY')
@@ -320,7 +332,15 @@ class AssetDepartmentReceivingController extends Controller
                 torg.org_id AS target_org_id,
                 sorg.org_name AS sub_org_name,
                 aa.id AS assignment_id,
-                aa.assign_date
+                aa.status AS aa_status,
+                aa.assign_date,
+                a.ass_trans_date,
+                a.ass_trans_person,
+                a.ass_trans_remark,
+                TO_CHAR(a.ass_trans_date, 'YYYY-MM-DD') AS ass_trans_date_iso,
+                CASE WHEN a.ass_trans_date IS NOT NULL THEN
+                    TO_CHAR(a.ass_trans_date,'DD-MM-')||TO_CHAR(a.ass_trans_date+INTERVAL '543' YEAR(3),'YYYY')
+                END AS ass_trans_date_th
             ")
             ->where('a.id', $id)
             ->whereIn('aa.target_org_id', $visibleOrgIds)
@@ -336,7 +356,7 @@ class AssetDepartmentReceivingController extends Controller
         $assignSub = DB::connection('oracle')
             ->table('ASSET_ASSIGNMENT_LIST AS aal')
             ->join('ASSET_ASSIGNMENT AS aa', 'aa.id', '=', 'aal.ass_assign_id')
-            ->where('aa.status', '1')
+            ->whereIn('aa.status', [AssetAssignment::STATUS_ACTIVE, AssetAssignment::STATUS_RECEIVED])
             ->selectRaw('aal.asset_id, MAX(aa.id) AS latest_assign_id')
             ->groupBy('aal.asset_id');
 

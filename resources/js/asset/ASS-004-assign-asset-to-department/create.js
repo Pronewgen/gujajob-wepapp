@@ -63,11 +63,12 @@ function initAssetSelection() {
 
     function addToSelected(checkbox) {
         if (!selectedBody) return;
-        const id   = checkbox.value;
-        const code = checkbox.dataset.assetCode ?? '';
-        const name = checkbox.dataset.assetName ?? '';
-        const cat  = checkbox.dataset.category ?? '';
-        const val  = checkbox.dataset.assetValue ?? '-';
+        const id          = checkbox.value;
+        const code        = checkbox.dataset.assetCode ?? '';
+        const name        = checkbox.dataset.assetName ?? '';
+        const cat         = checkbox.dataset.category ?? '';
+        const val         = checkbox.dataset.assetValue ?? '-';
+        const inspectDate = checkbox.dataset.inspectDate ?? '-';
         if (selectedBody.querySelector(`tr[data-asset-id="${id}"]`)) return;
         const tr = document.createElement('tr');
         tr.dataset.assetId = id;
@@ -76,6 +77,7 @@ function initAssetSelection() {
             <td>${name}</td>
             <td>${cat}</td>
             <td class="right">${val}</td>
+            <td>${inspectDate}</td>
             <td class="center">
                 <button class="table-action-icon table-action-delete" type="button" data-id="${id}"
                         aria-label="\u0e19\u0e33\u0e2d\u0e2d\u0e01" data-tooltip="\u0e19\u0e33\u0e2d\u0e2d\u0e01">

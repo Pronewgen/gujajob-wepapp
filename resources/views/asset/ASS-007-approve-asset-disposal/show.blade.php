@@ -78,6 +78,7 @@
                                         <th>รหัสครุภัณฑ์</th>
                                         <th>ชื่อครุภัณฑ์</th>
                                         <th>มูลค่าครุภัณฑ์</th>
+                                        <th>มูลค่าคงเหลือ</th>
                                         <th>ราคาขาย @if ($isPending)<span class="required">*</span>@endif</th>
                                         <th>ราคาขายจริง</th>
                                     </tr>
@@ -86,9 +87,16 @@
                                     @forelse ($items as $i => $item)
                                         <tr>
                                             <td class="center">{{ $i + 1 }}</td>
-                                            <td class="code-cell">{{ $item->ass_code ?? '-' }}</td>
+                                            <td class="code-cell">
+                                                @if ($item->aa_status === '2')
+                                                    {{ ($item->asscat_code ?? '') . $item->ass_code }}
+                                                @else
+                                                    {{ $item->ass_code ?? '-' }}
+                                                @endif
+                                            </td>
                                             <td>{{ $item->asscat_name ?? '-' }}</td>
                                             <td class="center">{{ $item->ass_price !== null ? number_format((float) $item->ass_price, 2) : '-' }}</td>
+                                            <td class="center">{{ $item->remain_price !== null ? number_format((float) $item->remain_price, 2) : '-' }}</td>
                                             <td class="center">
                                                 @if ($isPending)
                                                     <input type="number" step="0.01" min="0" class="price-input"
@@ -105,7 +113,7 @@
                                             <td class="center">{{ $item->selling_real_price !== null ? number_format((float) $item->selling_real_price, 2) : '-' }}</td>
                                         </tr>
                                     @empty
-                                        <tr><td class="no-data" colspan="6">ไม่พบรายการครุภัณฑ์ที่ตรงกับคำค้นหา</td></tr>
+                                        <tr><td class="no-data" colspan="7">ไม่พบรายการครุภัณฑ์ที่ตรงกับคำค้นหา</td></tr>
                                     @endforelse
                                 </tbody>
                             </table>

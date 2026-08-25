@@ -68,7 +68,7 @@
                             name="receive_date"
                             type="text"
                             class="js-date-picker"
-                            value="{{ old('receive_date', $asset->inspect_date_iso ?? '') }}"
+                            value="{{ old('receive_date', $asset->ass_trans_date_iso ?? '') }}"
                             placeholder="DD-MM-BBBB"
                             data-required="true"
                             required

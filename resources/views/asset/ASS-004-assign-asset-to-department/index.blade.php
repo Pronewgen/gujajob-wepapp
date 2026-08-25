@@ -89,7 +89,9 @@
                                 <td>{{ $record->target_org_name ?? '-' }}</td>
                                 <td>
                                     @if ($record->status == \App\Models\AssetAssignment::STATUS_ACTIVE)
-                                        <span class="status-badge status-active">ใช้งาน</span>
+                                        <span class="status-badge status-pending">รอรับ</span>
+                                    @elseif ($record->status == \App\Models\AssetAssignment::STATUS_RECEIVED)
+                                        <span class="status-badge status-received">รับแล้ว</span>
                                     @else
                                         <span class="status-badge status-cancelled">ยกเลิก</span>
                                     @endif

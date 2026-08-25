@@ -35,7 +35,7 @@
                         <label for="assetSearchType">ค้นหาจาก</label>
                         <select id="assetSearchType" name="search_by">
                             <option value="all" @selected(($searchBy ?? 'all') === 'all')>ทั้งหมด</option>
-                            <option value="code" @selected(($searchBy ?? 'all') === 'code')>รหัสครุภัณฑ์</option>
+                            <option value="code" @selected(($searchBy ?? 'all') === 'code')>รหัสทะเบียนครุภัณฑ์</option>
                             <option value="name" @selected(($searchBy ?? 'all') === 'name')>ชื่อครุภัณฑ์</option>
                             <option value="org"  @selected(($searchBy ?? 'all') === 'org')>หน่วยงาน</option>
                         </select>
@@ -88,7 +88,7 @@
                 <table class="registration-table">
                     <thead>
                         <tr>
-                            <x-sortable-th label="รหัสครุภัณฑ์"    key="code"   :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'status_filter'=>$statusFilter]" />
+                            <x-sortable-th label="รหัสทะเบียนครุภัณฑ์" key="code"   :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'status_filter'=>$statusFilter]" />
                             <x-sortable-th label="ชื่อครุภัณฑ์"    key="name"   :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'status_filter'=>$statusFilter]" />
                             <th>หน่วยงาน</th>
                             <th>วันที่ตรวจรับ</th>
@@ -112,7 +112,13 @@
                             <tr class="{{ $asset->ass_status === '3' ? 'dispose-row' : '' }}">
                                 <td>
                                     <a class="ass-code-link" href="{{ route('asset.registrations.show', $asset->id) }}">
-                                        <span class="asset-code">{{ $asset->ass_code ?? '-' }}</span>
+                                        <span class="asset-code">
+                                            @if ($asset->aa_status === '2')
+                                                {{ ($asset->asscat_code ?? '') . $asset->ass_code }}
+                                            @else
+                                                {{ $asset->ass_code ?? '-' }}
+                                            @endif
+                                        </span>
                                     </a>
                                 </td>
                                 <td>

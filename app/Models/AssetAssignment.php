@@ -19,6 +19,7 @@ class AssetAssignment extends Model
 
     public const STATUS_ACTIVE    = '1';
     public const STATUS_CANCELLED = '0';
+    public const STATUS_RECEIVED   = '2';
 
     protected $casts = [
         'assign_date' => 'date',

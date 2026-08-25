@@ -303,12 +303,7 @@ function initializeCategorySearch() {
 
     function fillCategoryFields(item) {
         const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
-        // asscatCode is NOT filled here: must show only after asset is received (PART J4)
-        const asscatCodeEl = document.getElementById('asscatCode');
-        const fillCode = asscatCodeEl?.dataset.fillOnSelect === 'true';
-        if (fillCode) {
-            set('asscatCode', item.asscat_code ?? '');
-        }
+        set('asscatCode',       item.asscat_code ?? '');
         set('asscatId',        item.id ?? '');
         set('asscatGroup',     item.asscat_group ?? '');
         set('asscatType',      item.asscat_type ?? '');
@@ -342,6 +337,18 @@ function initializeCategorySearch() {
     });
 
     searchBtn?.addEventListener('click', () => ac.triggerSearch());
+}
+
+/** Force-sync any Flatpickr altInput values into their hidden ISO inputs. */
+function flushDatePickers() {
+    document.querySelectorAll('.js-date-picker').forEach((input) => {
+        const fp = input._flatpickr;
+        if (!fp || !fp.altInput) return;
+        const display = fp.altInput.value.trim();
+        if (!display) return;
+        // setDate re-parses the visible Buddhist-Era string and updates input.value
+        fp.setDate(display, false, fp.config.altFormat);
+    });
 }
 
 function initializeCreateInteractions() {
@@ -384,6 +391,7 @@ function initializeCreateInteractions() {
                 return;
             }
 
+            flushDatePickers();
             confirmSaveButton.disabled = true;
             const form = document.querySelector('.registration-form');
             if (form) {
@@ -469,6 +477,7 @@ function initializeEditInteractions() {
             closeOverlay(editOverlay);
             return;
         }
+        flushDatePickers();
         confirmEditBtn.disabled = true;
         const form = document.querySelector('.registration-form');
         if (form) form.submit();

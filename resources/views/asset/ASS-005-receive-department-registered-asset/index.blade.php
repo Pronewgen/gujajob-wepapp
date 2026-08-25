@@ -63,7 +63,7 @@
                 <table class="receiving-table">
                     <thead>
                         <tr>
-                            <x-sortable-th label="รหัสครุภัณฑ์"  key="code"     :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'category'=>$category]" />
+                            <x-sortable-th label="รหัสครุภัณฑ์" key="code"     :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'category'=>$category]" />
                             <x-sortable-th label="ชื่อครุภัณฑ์"  key="name"     :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'category'=>$category]" />
                             <x-sortable-th label="หมวดครุภัณฑ์"  key="category" :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'category'=>$category]" />
                             <x-sortable-th label="มูลค่า"         key="price"    :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'category'=>$category]" />
@@ -76,31 +76,29 @@
                         @forelse ($assets as $asset)
                             <tr>
                                 <td>
-                                    @if ($asset->inspect_date === null)
-                                        <span class="code-text">{{ $asset->ass_code ?? '-' }}</span>
-                                    @else
-                                        <a class="ass-code-link" href="{{ route('asset.department-receiving.show', $asset->id) }}">
-                                            <span class="code-text">{{ $asset->ass_code ?? '-' }}</span>
-                                        </a>
-                                    @endif
+                                    <a class="code-link" href="{{ route('asset.department-receiving.show', $asset->id) }}">
+                                        @if ($asset->aa_status === '2')
+                                            {{ ($asset->asscat_code ?? '') . $asset->ass_code }}
+                                        @else
+                                            {{ $asset->ass_code ?? '-' }}
+                                        @endif
+                                    </a>
                                 </td>
                                 <td>{{ $asset->asscat_name ?? '-' }}</td>
                                 <td>{{ $asset->asscat_group ?? '-' }}</td>
                                 <td class="value-text">
                                     {{ $asset->ass_price !== null ? number_format((float) $asset->ass_price, 2) : '-' }}
                                 </td>
-                                <td class="date-text {{ $asset->inspect_date === null ? 'pending' : 'received' }}">
-                                    {{ $asset->inspect_date_th ?? '-' }}
+                                <td class="date-text {{ $asset->aa_status === '2' ? 'received' : 'pending' }}">
+                                    {{ $asset->ass_trans_date_th ?? '-' }}
                                 </td>
                                 <td class="action-column">
                                     <div class="table-action-buttons">
-                                        <a class="receive-btn" href="{{ route('asset.department-receiving.receive', $asset->id) }}">รับ</a>
-                                        <a class="table-action-icon table-action-edit"
-                                           aria-label="แก้ไข" title="แก้ไข" data-tooltip="แก้ไข"
-                                           href="{{ route('asset.department-receiving.edit', $asset->id) }}"
-                                        >
-                                            <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
-                                        </a>
+                                        @if ($asset->aa_status === '1')
+                                            <a class="receive-btn" href="{{ route('asset.department-receiving.receive', $asset->id) }}">รับ</a>
+                                        @else
+                                            <span class="received-label">รับแล้ว</span>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>

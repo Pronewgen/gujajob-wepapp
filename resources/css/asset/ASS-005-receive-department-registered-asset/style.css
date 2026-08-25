@@ -384,6 +384,17 @@ svg.svg-sprite {
     font-weight: 800;
 }
 
+.code-link {
+    color: #1d3f91;
+    font-weight: 800;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.code-link:hover {
+    color: #1e40af;
+}
+
 .sub-code {
     margin-left: 6px;
     color: var(--text-muted);
@@ -428,6 +439,19 @@ svg.svg-sprite {
 .receive-btn:hover {
     background: #047857;
     border-color: #047857;
+}
+
+.received-label {
+    height: 24px;
+    padding-inline: 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    color: var(--success);
+    background: #d1fae5;
+    border: 1px solid #a7f3d0;
 }
 
 .detail-btn {

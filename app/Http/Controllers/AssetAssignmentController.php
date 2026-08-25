@@ -52,7 +52,7 @@ class AssetAssignmentController extends Controller
                 u.user_name       AS assigner_name,
                 (SELECT COUNT(*) FROM ASSET_ASSIGNMENT_LIST aal WHERE aal.ass_assign_id = aa.id) AS item_count
             ')
-            ->where('aa.status', AssetAssignment::STATUS_ACTIVE)
+            ->whereIn('aa.status', [AssetAssignment::STATUS_ACTIVE, AssetAssignment::STATUS_RECEIVED])
             ->orderByDesc('aa.assign_date')
             ->orderByDesc('aa.id');
 

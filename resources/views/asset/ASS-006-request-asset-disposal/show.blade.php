@@ -77,9 +77,10 @@
                             <thead>
                                 <tr>
                                     <th>ลำดับ</th>
-                                    <th>รหัสครุภัณฑ์</th>
+                                    <th>รหัสทะเบียนครุภัณฑ์</th>
                                     <th>ชื่อครุภัณฑ์</th>
                                     <th>มูลค่าครุภัณฑ์</th>
+                                    <th>มูลค่าคงเหลือ</th>
                                     <th>ราคาจำหน่ายขั้นต้น</th>
                                     <th>ราคาที่ขายได้จริง</th>
                                 </tr>
@@ -88,10 +89,19 @@
                                 @forelse ($items as $i => $item)
                                     <tr>
                                         <td class="center">{{ $i + 1 }}</td>
-                                        <td class="code-cell">{{ $item->ass_code ?? '-' }}</td>
+                                        <td class="code-cell">
+                                            @if ($item->aa_status === '2')
+                                                {{ ($item->asscat_code ?? '') . $item->ass_code }}
+                                            @else
+                                                {{ $item->ass_code ?? '-' }}
+                                            @endif
+                                        </td>
                                         <td>{{ $item->asscat_name ?? '-' }}</td>
                                         <td class="center">
                                             {{ $item->ass_price !== null ? number_format((float) $item->ass_price, 2) : '-' }}
+                                        </td>
+                                        <td class="center">
+                                            {{ $item->remain_price !== null ? number_format((float) $item->remain_price, 2) : '-' }}
                                         </td>
                                         <td class="center">
                                             {{ $item->selling_min_price !== null ? number_format((float) $item->selling_min_price, 2) : '-' }}
@@ -102,11 +112,11 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td class="no-data" colspan="6">ไม่มีรายการครุภัณฑ์</td>
+                                        <td class="no-data" colspan="7">ไม่มีรายการครุภัณฑ์</td>
                                     </tr>
                                 @endforelse
                                 <tr class="summary-row">
-                                    <td colspan="6">รวมจำนวนรายการทั้งสิ้น <strong>{{ $items->count() }}</strong> รายการ</td>
+                                    <td colspan="7">รวมจำนวนรายการทั้งสิ้น <strong>{{ $items->count() }}</strong> รายการ</td>
                                 </tr>
                             </tbody>
                         </table>

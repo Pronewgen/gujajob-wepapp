@@ -149,12 +149,13 @@
                                     <th>ชื่อครุภัณฑ์</th>
                                     <th>หมวดครุภัณฑ์</th>
                                     <th class="col-value">มูลค่า (บาท)</th>
+                                    <th>วันที่ตรวจรับ</th>
                                     <th class="col-action">นำออก</th>
                                 </tr>
                             </thead>
                             <tbody id="selectedAssetsBody">
                                 <tr class="no-selection-row" id="noSelectionRow" style="display:none;">
-                                    <td colspan="5" class="no-data">ยังไม่ได้เลือกรายการ</td>
+                                    <td colspan="6" class="no-data">ยังไม่ได้เลือกรายการ</td>
                                 </tr>
                             </tbody>
                         </table>

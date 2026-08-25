@@ -58,7 +58,7 @@
                 <div class="receive-grid">
                     <div class="field-group">
                         <label>วันที่รับ</label>
-                        <input type="text" value="{{ $asset->inspect_date_th ?? '-' }}" readonly>
+                        <input type="text" value="{{ $asset->ass_trans_date_th ?? '-' }}" readonly>
                     </div>
 
                     <div class="field-group">

@@ -59,10 +59,16 @@ class AssetController extends Controller
                 'a.ass_price',
                 'a.remain_price',
                 'a.ass_status',
+                'a.inspect_date',
                 DB::raw("TO_CHAR(a.inspect_date, 'DD-MM-') || TO_CHAR(a.inspect_date + INTERVAL '543' YEAR(3), 'YYYY') AS inspect_date_th"),
+                'c.asscat_code',
                 'c.asscat_name',
                 'c.asscat_type',
                 'org.org_name',
+                DB::raw("(SELECT MAX(aa2.status) KEEP (DENSE_RANK LAST ORDER BY aa2.id)
+                          FROM ASSET_ASSIGNMENT_LIST aal2
+                          JOIN ASSET_ASSIGNMENT aa2 ON aa2.id = aal2.ass_assign_id
+                          WHERE aal2.asset_id = a.id) AS aa_status"),
             ]);
 
         if (empty($visibleOrgIds)) {
@@ -195,11 +201,26 @@ class AssetController extends Controller
 
     public function create(): View
     {
+        $user      = Auth::user();
+        $userOrgId = (int) $user->org_id;
+
+        // Resolve default org name — restores label after validation-error redirect
+        $flashOld  = session('_old_input', []);
+        $prevOrgId = isset($flashOld['org_id']) ? (int) $flashOld['org_id'] : null;
+        if ($prevOrgId && $prevOrgId !== $userOrgId) {
+            $defaultOrgName = GlbOrganization::where('org_id', $prevOrgId)->value('org_name')
+                ?? GlbOrganization::where('org_id', $userOrgId)->value('org_name') ?? '';
+        } else {
+            $defaultOrgName = GlbOrganization::where('org_id', $userOrgId)->value('org_name') ?? '';
+        }
+
         $categories = AssetCategory::query()->orderBy('asscat_code')->get(['id', 'asscat_code', 'asscat_name', 'asscat_type', 'asscat_group', 'asscat_unit', 'depreciation_rate']);
 
         return view('asset.ASS-003-manage-asset-registration.create', [
-            'pageTitle'  => 'จัดการทะเบียนครุภัณฑ์',
-            'categories' => $categories,
+            'pageTitle'      => 'จัดการทะเบียนครุภัณฑ์',
+            'categories'     => $categories,
+            'defaultOrgId'   => $userOrgId,
+            'defaultOrgName' => $defaultOrgName,
         ]);
     }
 
@@ -212,7 +233,7 @@ class AssetController extends Controller
             'ass_model'        => ['nullable', 'string', 'max:100'],
             'ass_serail'       => ['nullable', 'string', 'max:30'],
             'ass_price'        => ['nullable', 'numeric', 'min:0'],
-            'org_id'           => ['nullable', 'integer'],
+            'org_id'           => ['nullable', 'integer', 'min:1'],
             'ass_contact_no'   => ['nullable', 'string', 'max:20'],
             'ass_contact_date' => ['nullable', 'date'],
             'dealer_id'        => ['nullable', 'integer'],
@@ -230,6 +251,15 @@ class AssetController extends Controller
             'asscat_id.exists'   => 'ประเภทครุภัณฑ์ที่เลือกไม่ถูกต้อง',
             'asset_images.*.max' => 'ไฟล์รูปภาพต้องมีขนาดไม่เกิน 1 MB ต่อไฟล์',
         ]);
+
+        // Validate org_id is within the user's visible scope
+        if (!empty($validated['org_id'])) {
+            $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
+            if (!in_array((int) $validated['org_id'], $visibleOrgIds, true)) {
+                return back()->withInput()
+                    ->withErrors(['org_id' => 'หน่วยงานที่เลือกไม่อยู่ใน Scope ที่อนุญาต']);
+            }
+        }
 
         $newCode = trim($validated['ass_code']);
         $duplicate = DB::connection('oracle')->table('ASSET')

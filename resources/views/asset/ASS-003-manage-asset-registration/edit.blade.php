@@ -62,9 +62,9 @@
                     <div class="form-field">
                         <label for="asscatCode">รหัสประเภทครุภัณฑ์</label>
                         <input id="asscatCode" type="text" readonly
-                               value="{{ $asset->inspect_date ? ($asset->category->asscat_code ?? '') : '' }}"
+                               value="{{ $asset->category->asscat_code ?? '' }}"
                                placeholder="-"
-                               data-fill-on-select="{{ $asset->inspect_date ? 'true' : 'false' }}">
+                               data-fill-on-select="true">
                     </div>
                     <div class="form-field">
                         <label for="asscatGroup">หมวดครุภัณฑ์</label>

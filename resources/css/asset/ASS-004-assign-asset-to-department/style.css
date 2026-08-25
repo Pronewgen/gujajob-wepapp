@@ -682,6 +682,18 @@ svg.svg-sprite {
     border: 1px solid #6ee7b7;
 }
 
+.status-badge.status-pending {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+}
+
+.status-badge.status-received {
+    background: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #93c5fd;
+}
+
 .status-badge.status-cancelled {
     background: #fee2e2;
     color: #991b1b;

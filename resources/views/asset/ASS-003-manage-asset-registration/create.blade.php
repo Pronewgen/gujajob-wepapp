@@ -165,11 +165,11 @@
                                 <div class="guja-autocomplete"
                                      data-server-select
                                      data-endpoint="{{ route('search.suggestions') }}?entity=org_search&limit=20&q="
-                                     data-initial-label="{{ old('_org_label', '') }}">
+                                     data-initial-label="{{ old('_org_label', $defaultOrgName ?? '') }}">
                                     <input type="text"   class="guja-autocomplete__input" placeholder="พิมพ์ชื่อหน่วยงาน" autocomplete="off">
                                     <span               class="guja-autocomplete__arrow">▼</span>
                                     <div               class="guja-autocomplete__items"></div>
-                                    <input type="hidden" class="guja-autocomplete__value" id="orgId" name="org_id" value="{{ old('org_id', '') }}">
+                                    <input type="hidden" class="guja-autocomplete__value" id="orgId" name="org_id" value="{{ old('org_id', $defaultOrgId ?? '') }}">
                                 </div>
                                 @error('org_id')<span class="field-error" style="color:#dc2626;font-size:11px;">{{ $message }}</span>@enderror
                             </div>

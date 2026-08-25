@@ -219,7 +219,20 @@ class AssetDisposalController extends Controller
         $itemsQuery = DB::connection('oracle')->table('ASSET_SELLING_LIST AS sl')
             ->join('ASSET AS a', 'a.id', '=', 'sl.ass_id')
             ->leftJoin('ASSET_CATEGORY AS c', 'c.id', '=', 'a.asscat_id')
-            ->select('sl.id', 'a.ass_code', 'c.asscat_name', 'a.ass_price', 'sl.selling_min_price', 'sl.selling_real_price')
+            ->selectRaw("
+                sl.id,
+                a.ass_code,
+                c.asscat_code,
+                c.asscat_name,
+                a.ass_price,
+                a.remain_price,
+                sl.selling_min_price,
+                sl.selling_real_price,
+                (SELECT MAX(aa2.status) KEEP (DENSE_RANK LAST ORDER BY aa2.id)
+                 FROM ASSET_ASSIGNMENT_LIST aal2
+                 JOIN ASSET_ASSIGNMENT aa2 ON aa2.id = aal2.ass_assign_id
+                 WHERE aal2.asset_id = a.id) AS aa_status
+            ")
             ->where('sl.selling_id', $id);
 
         if ($itemKeyword !== '') {
@@ -376,7 +389,13 @@ class AssetDisposalController extends Controller
                 sl.selling_real_price,
                 a.ass_code,
                 a.ass_price,
-                c.asscat_name
+                a.remain_price,
+                c.asscat_code,
+                c.asscat_name,
+                (SELECT MAX(aa2.status) KEEP (DENSE_RANK LAST ORDER BY aa2.id)
+                 FROM ASSET_ASSIGNMENT_LIST aal2
+                 JOIN ASSET_ASSIGNMENT aa2 ON aa2.id = aal2.ass_assign_id
+                 WHERE aal2.asset_id = a.id) AS aa_status
             ")
             ->where('sl.selling_id', $id)
             ->orderByRaw('sl.id ASC')
