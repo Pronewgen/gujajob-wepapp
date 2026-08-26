@@ -369,7 +369,7 @@ svg.svg-sprite {
     padding: 0 16px;
     border: 0;
     border-radius: 4px;
-    background: #1d4ed8;
+    background: var(--primary);
     color: #ffffff;
     font-size: 12px;
     font-weight: 800;
@@ -381,7 +381,7 @@ svg.svg-sprite {
 }
 
 .create-btn:hover {
-    background: var(--primary);
+    background: #102d70;
 }
 
 .table-wrapper {
@@ -654,6 +654,17 @@ svg.svg-sprite {
     background: #f3f4f6;
 }
 
+.disposal-back-btn {
+    min-width: 88px;
+    border: 1.5px solid #ef4444;
+    background: #ffffff;
+    color: #ef4444;
+}
+
+.disposal-back-btn:hover {
+    background: #fef2f2;
+}
+
 .save-btn {
     min-width: 132px;
     border: 0;
@@ -673,10 +684,10 @@ svg.svg-sprite {
     padding: 12px 14px 14px;
 }
 
-/* Edit page gets the amber tint; create page stays white */
+/* Edit/detail pages use same white card as create page */
 .disposal-edit-page .disposal-create-card {
-    background: #fff4c2;
-    border-color: #e5d59a;
+    background: #ffffff;
+    border-color: #d7e0ea;
 }
 
 .create-title {
@@ -699,8 +710,8 @@ svg.svg-sprite {
 
 .disposal-edit-page .create-shell,
 .disposal-detail-page .create-shell {
-    border-color: #dfd2a7;
-    background: #f7efcf;
+    border-color: #d7e0ea;
+    background: #f8fbff;
 }
 
 .create-section + .create-section {
@@ -896,8 +907,8 @@ svg.svg-sprite {
 
 .disposal-detail-card {
     padding: 12px 14px 14px;
-    background: #fff4c2;
-    border-color: #e5d59a;
+    background: #ffffff;
+    border-color: #d7e0ea;
 }
 
 .detail-actions {
@@ -974,7 +985,8 @@ svg.svg-sprite {
 
 .disposal-edit-page .create-actions .save-btn {
     height: 33px;
-    min-width: 156px;
+    min-width: 100px;
+    padding: 0 20px;
     border-radius: 4px;
     font-size: 12px;
     font-weight: 800;
@@ -1054,8 +1066,8 @@ svg.svg-sprite {
 }
 
 .disposal-page .confirm-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    justify-content: center;
     gap: 10px;
 }
 
@@ -1065,11 +1077,14 @@ svg.svg-sprite {
 
 .disposal-page .modal-cancel-btn,
 .disposal-page .modal-confirm-btn {
-    height: 44px;
-    border-radius: 6px;
-    font-size: 13px;
+    height: 36px;
+    min-width: 88px;
+    padding: 0 18px;
+    border-radius: 5px;
+    font-size: 12px;
     font-weight: 800;
     cursor: pointer;
+    white-space: nowrap;
 }
 
 .disposal-page .modal-cancel-btn {
@@ -1202,7 +1217,7 @@ svg.svg-sprite {
 
     .disposal-page .modal-cancel-btn,
     .disposal-page .modal-confirm-btn {
-        height: 40px;
+        height: 36px;
         font-size: 12px;
     }
 }

@@ -739,12 +739,9 @@ Route::get('/asset/ASS-006-request-asset-disposal/assets/search', [AssetDisposal
 Route::get('/asset/ASS-006-request-asset-disposal/create', [AssetDisposalController::class, 'create'])->name('asset.disposals.create');
 Route::post('/asset/ASS-006-request-asset-disposal', [AssetDisposalController::class, 'store'])->name('asset.disposals.store');
 Route::get('/asset/ASS-006-request-asset-disposal/{id}', [AssetDisposalController::class, 'show'])->name('asset.disposals.show')->where('id', '[0-9]+');
-Route::get('/asset/ASS-006-request-asset-disposal/{requestNo}/edit', function (string $requestNo) {
-    return view('asset.ASS-006-request-asset-disposal.edit', [
-        'pageTitle' => 'แจ้งขอจำหน่ายครุภัณฑ์',
-        'request'   => [],
-    ]);
-})->name('asset.disposals.edit');
+Route::delete('/asset/ASS-006-request-asset-disposal/{id}', [AssetDisposalController::class, 'destroy'])->name('asset.disposals.destroy')->where('id', '[0-9]+');
+Route::get('/asset/ASS-006-request-asset-disposal/{requestNo}/edit', [AssetDisposalController::class, 'edit'])->name('asset.disposals.edit');
+Route::put('/asset/ASS-006-request-asset-disposal/{id}', [AssetDisposalController::class, 'update'])->name('asset.disposals.update')->where('id', '[0-9]+');
 Route::get('/asset/ASS-007-approve-asset-disposal', [AssetDisposalController::class, 'approvalIndex'])->name('asset.disposals.approval.index');
 Route::get('/asset/ASS-007-approve-asset-disposal/{id}', [AssetDisposalController::class, 'approvalShow'])->name('asset.disposals.approval.show')->where('id', '[0-9]+');
 Route::post('/asset/ASS-007-approve-asset-disposal/{id}/approve', [AssetDisposalController::class, 'approve'])->name('asset.disposals.approval.approve')->where('id', '[0-9]+');

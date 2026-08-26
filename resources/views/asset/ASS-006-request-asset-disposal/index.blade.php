@@ -99,13 +99,25 @@
                                 </td>
                                 <td class="date-text">{{ $disposal->req_date_th ?? '-' }}</td>
                                 <td>{{ $disposal->req_org_name ?? '-' }}</td>
-                                <td class="reason-text">{{ $disposal->remarks ?? ($disposal->reason ?? '-') }}</td>
+                                <td class="reason-text">{{ \App\Http\Controllers\AssetDisposalController::getReasonLabel($disposal->reason ?? '') }}</td>
                                 <td class="status-cell">
                                     <span class="status-pill {{ $disposal->status_type }}">{{ $disposal->status_label }}</span>
                                 </td>
                                 <td class="action-column">
                                     <div class="table-action-buttons">
-                                        <a class="detail-btn" href="{{ route('asset.disposals.show', $disposal->id) }}">ดูรายละเอียด</a>
+                                        <a class="table-action-icon table-action-edit"
+                                           aria-label="แก้ไข" data-tooltip="แก้ไข"
+                                           href="{{ route('asset.disposals.edit', $disposal->selling_code) }}">
+                                            <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
+                                        </a>
+                                        <button class="table-action-icon table-action-delete js-disposal-delete-btn"
+                                                type="button"
+                                                aria-label="ลบ" data-tooltip="ลบ"
+                                                data-disposal-id="{{ $disposal->id }}"
+                                                data-selling-code="{{ $disposal->selling_code ?? '-' }}"
+                                                data-delete-url="{{ route('asset.disposals.destroy', $disposal->id) }}">
+                                            <svg aria-hidden="true"><use href="#icon-trash"></use></svg>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -126,6 +138,25 @@
                 <x-app-pagination :paginator="$disposals" />
             </div>
         </section>
+
+        {{-- Delete confirmation modal --}}
+        <div class="confirm-overlay" id="disposalDeleteOverlay" aria-hidden="true">
+            <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="disposalDeleteConfirmTitle">
+                <div class="confirm-icon delete-confirm-icon">
+                    <svg><use href="#icon-alert-triangle"></use></svg>
+                </div>
+                <h3 id="disposalDeleteConfirmTitle">ยืนยันการลบข้อมูล</h3>
+                <p>คุณแน่ใจหรือไม่ว่าต้องการลบเลขที่ใบขอจำหน่าย <strong id="disposalDeleteCode"></strong><br>การดำเนินการนี้ไม่สามารถเรียกคืนได้</p>
+                <div class="confirm-actions">
+                    <button class="modal-cancel-btn" id="cancelDisposalDeleteBtn" type="button">ยกเลิก</button>
+                    <button class="modal-confirm-btn delete-confirm-btn" id="confirmDisposalDeleteBtn" type="button">ยืนยันการลบ</button>
+                </div>
+            </div>
+        </div>
+        <form id="disposalDeleteForm" method="POST" style="display:none;">
+            @csrf
+            @method('DELETE')
+        </form>
     </div>
 @endsection
 

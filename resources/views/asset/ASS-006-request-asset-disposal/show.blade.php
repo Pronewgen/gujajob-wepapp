@@ -45,7 +45,7 @@
 
                         <div class="field-group">
                             <label>เหตุผล</label>
-                            <input type="text" value="{{ $disposal->remarks ?? ($disposal->reason ?? '-') }}" readonly>
+                            <input type="text" value="{{ $reasonLabel }}" readonly>
                         </div>
 
                         @if ($disposal->buyer)
@@ -128,43 +128,6 @@
                 </div>
             </div>
         </section>
-    </div>
-@endsection
-
-@section('page-script')
-    @vite(['resources/js/asset/ASS-006-request-asset-disposal/script.js'])
-@endsection
-                                </tr>
-                                <tr class="summary-row">
-                                    <td colspan="7">รวมจำนวนรายการทั้งสิ้น <strong>1</strong> รายการ</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-
-                <div class="form-actions create-actions detail-actions">
-                    <a class="cancel-btn" href="{{ route('asset.disposals.index') }}">\u0e22\u0e49\u0e2d\u0e19\u0e01\u0e25\u0e31\u0e1a</a>
-                    <button class="delete-action-btn" id="openDeleteDisposalButton" type="button" data-request-no="{{ $request['request_no'] }}" data-redirect-url="{{ route('asset.disposals.index') }}">ลบการขอจำหน่าย</button>
-                </div>
-            </div>
-        </section>
-
-        <div class="confirm-overlay" id="deleteDisposalOverlay" aria-hidden="true">
-            <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="deleteDisposalConfirmTitle">
-                <div class="confirm-icon delete-confirm-icon">
-                    <svg><use href="#icon-alert-triangle"></use></svg>
-                </div>
-
-                <h3 id="deleteDisposalConfirmTitle">ยืนยันการลบข้อมูล</h3>
-                <p>คุณแน่ใจหรือไม่ว่าต้องการลบเลขที่ใบขอจำหน่าย <span id="deleteDisposalRequestNo">'-'</span><br>การดำเนินการนี้ไม่สามารถเรียกคืนได้</p>
-
-                <div class="confirm-actions">
-                    <button class="modal-cancel-btn" id="cancelDeleteDisposalButton" type="button">ยกเลิก</button>
-                    <button class="modal-confirm-btn delete-confirm-btn" id="confirmDeleteDisposalButton" type="button">ยืนยันการลบ</button>
-                </div>
-            </div>
-        </div>
     </div>
 @endsection
 

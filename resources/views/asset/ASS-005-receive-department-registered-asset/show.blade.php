@@ -18,7 +18,10 @@
         @endif
 
         <section class="receive-card detail-edit-card">
-            <h3 class="receive-card-title">ข้อมูลครุภัณฑ์ที่จะรับ</h3>
+            <h4 class="receive-card-title">
+                <svg class="section-title-icon" aria-hidden="true"><use href="#icon-square-pen"></use></svg>
+                ข้อมูลครุภัณฑ์ที่รับ
+            </h4>
 
             <div class="asset-summary">
                 <div class="summary-item">

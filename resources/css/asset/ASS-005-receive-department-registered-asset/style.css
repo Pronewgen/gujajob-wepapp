@@ -436,9 +436,15 @@ svg.svg-sprite {
     color: #ffffff;
 }
 
-.receive-btn:hover {
-    background: #047857;
-    border-color: #047857;
+.receive-btn.receive-btn-confirm {
+    border: 1px solid var(--primary);
+    background: var(--primary);
+    color: #ffffff;
+}
+
+.receive-btn.receive-btn-confirm:hover {
+    background: #102d70;
+    border-color: #102d70;
 }
 
 .received-label {

@@ -152,9 +152,9 @@
                     </section>
 
                     <div class="form-actions create-actions">
-                        <a class="cancel-btn" href="{{ route('asset.disposals.index') }}">ยกเลิก</a>
+                        <a class="cancel-btn disposal-back-btn" href="{{ route('asset.disposals.index') }}">ย้อนกลับ</a>
                         <button class="save-btn" id="saveDisposalButton" type="button">
-                            บันทึกการแจ้งขอจำหน่าย
+                            บันทึก
                         </button>
                     </div>
                 </div>
@@ -175,7 +175,7 @@
                                 type="button">ยกเลิก</button>
                         <button class="modal-confirm-btn success-confirm-btn"
                                 id="confirmSaveDisposalButton" type="button">
-                            ยืนยันการแจ้งขอจำหน่าย
+                            ยืนยัน
                         </button>
                     </div>
                 </div>

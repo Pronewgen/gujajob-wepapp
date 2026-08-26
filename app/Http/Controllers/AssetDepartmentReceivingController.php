@@ -100,7 +100,8 @@ class AssetDepartmentReceivingController extends Controller
         if (isset($sortMap[$sort])) {
             $query->orderByRaw("{$sortMap[$sort]} {$direction}");
         } else {
-            $query->orderByRaw('a.ass_trans_date DESC, a.id ASC');
+            // Default: sort by display code (ASSCAT_CODE||ASS_CODE when received, else ASS_CODE)
+            $query->orderByRaw("CASE WHEN a.ass_trans_date IS NOT NULL THEN c.asscat_code || a.ass_code ELSE a.ass_code END ASC, a.id ASC");
         }
 
         $assets = $query->paginate(self::PER_PAGE)->withQueryString();
@@ -132,9 +133,17 @@ class AssetDepartmentReceivingController extends Controller
             abort(404);
         }
 
+        // Load sub-orgs under the assignment's target org
+        $subOrgs = DB::connection('oracle')
+            ->table('GLB_ORGANIZATION')
+            ->where('org_org_id', $asset->target_org_id)
+            ->orderBy('org_name')
+            ->get(['org_id', 'org_name']);
+
         return view('asset.ASS-005-receive-department-registered-asset.receive', [
             'pageTitle'   => 'รับครุภัณฑ์ลงทะเบียนหน่วยงาน',
             'asset'       => $asset,
+            'subOrgs'     => $subOrgs,
             'currentUser' => Auth::user(),
         ]);
     }
@@ -160,6 +169,17 @@ class AssetDepartmentReceivingController extends Controller
         $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
         $subOrgId = (int) $validated['sub_org_id'];
 
+        // Validate sub_org_id is a child of the assignment's target org
+        $isValidSubOrg = DB::connection('oracle')
+            ->table('GLB_ORGANIZATION')
+            ->where('org_id', $subOrgId)
+            ->where('org_org_id', $asset->target_org_id)
+            ->exists();
+
+        if (! $isValidSubOrg) {
+            abort(403, 'หน่วยงานย่อยที่เลือกไม่ถูกต้อง');
+        }
+
         if (! in_array($subOrgId, $visibleOrgIds, true)) {
             abort(403, 'หน่วยงานย่อยที่เลือกไม่ถูกต้อง');
         }
@@ -170,7 +190,6 @@ class AssetDepartmentReceivingController extends Controller
             DB::connection('oracle')->transaction(function () use ($id, $asset, $validated, $subOrgId, $user) {
                 Asset::where('id', $id)->update([
                     'ass_trans_date'   => $validated['receive_date'],
-                    'ass_trans_person' => $user->user_name,
                     'ass_trans_remark' => $validated['remark'] ?? null,
                     'sub_org_id'       => $subOrgId,
                     'updated_by'       => $user->id,
@@ -190,7 +209,7 @@ class AssetDepartmentReceivingController extends Controller
                 ->with('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง');
         }
 
-        return redirect()->route('asset.department-receiving.show', $id)
+        return redirect()->route('asset.department-receiving.index')
             ->with('success', 'บันทึกการรับครุภัณฑ์เรียบร้อยแล้ว');
     }
 
@@ -237,6 +256,17 @@ class AssetDepartmentReceivingController extends Controller
 
         $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
         $subOrgId = (int) $validated['sub_org_id'];
+
+        // Validate sub_org_id is a child of the assignment's target org
+        $isValidSubOrg = DB::connection('oracle')
+            ->table('GLB_ORGANIZATION')
+            ->where('org_id', $subOrgId)
+            ->where('org_org_id', $asset->target_org_id)
+            ->exists();
+
+        if (! $isValidSubOrg) {
+            abort(403, 'หน่วยงานย่อยที่เลือกไม่ถูกต้อง');
+        }
 
         if (! in_array($subOrgId, $visibleOrgIds, true)) {
             abort(403, 'หน่วยงานย่อยที่เลือกไม่ถูกต้อง');

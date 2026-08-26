@@ -279,9 +279,25 @@ function initializeDisposalCreatePage() {
     }
 
     const searchUrl = form.dataset.assetSearchUrl || '';
+    const disposalId = form.dataset.disposalId || '';
 
     // Draft list stored by asset id to enable duplicate detection
     const draftItems = [];
+
+    // Pre-load existing items when editing
+    try {
+        const initial = JSON.parse(tableBody.dataset.initialItems || '[]');
+        initial.forEach((item) => {
+            if (item.id) {
+                draftItems.push({
+                    id:         Number(item.id),
+                    ass_code:   String(item.ass_code   || ''),
+                    asset_name: String(item.asset_name || ''),
+                    ass_price:  String(item.ass_price  || '-'),
+                });
+            }
+        });
+    } catch (e) { /* ignore */ }
 
     // ── render draft table ────────────────────────────────────────────────
     function renderDraft() {
@@ -346,6 +362,7 @@ function initializeDisposalCreatePage() {
         resultBox.style.display = 'block';
 
         const params = new URLSearchParams({ q: keyword, field, limit: 20 });
+        if (disposalId) params.set('disposal_id', disposalId);
 
         fetch(`${searchUrl}?${params.toString()}`, {
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
@@ -517,9 +534,47 @@ function escapeHtml(str) {
         .replace(/"/g, '&quot;');
 }
 
+function initializeIndexDeleteButtons() {
+    const overlay      = document.getElementById('disposalDeleteOverlay');
+    const cancelBtn    = document.getElementById('cancelDisposalDeleteBtn');
+    const confirmBtn   = document.getElementById('confirmDisposalDeleteBtn');
+    const deleteForm   = document.getElementById('disposalDeleteForm');
+    const deleteCodeEl = document.getElementById('disposalDeleteCode');
+
+    if (!overlay || !cancelBtn || !confirmBtn || !deleteForm) {
+        return;
+    }
+
+    document.querySelectorAll('.js-disposal-delete-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const sellingCode = String(btn.dataset.sellingCode || '-').trim();
+            const deleteUrl = String(btn.dataset.deleteUrl || '').trim();
+
+            if (deleteCodeEl) deleteCodeEl.textContent = sellingCode;
+            deleteForm.action = deleteUrl;
+            openOverlay(overlay);
+        });
+    });
+
+    cancelBtn.addEventListener('click', () => closeOverlay(overlay));
+
+    overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) closeOverlay(overlay);
+    });
+
+    confirmBtn.addEventListener('click', () => {
+        if (deleteForm.action) deleteForm.submit();
+    });
+}
+
+function initializeDisposalEditPage() {
+    // Handled by initializeDisposalCreatePage() when form id=disposalCreateForm
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initializeSidebarGroups();
     preventDisabledMenuReload();
     initializeDisposalCreatePage();
     initializeDisposalDeleteConfirm();
+    initializeIndexDeleteButtons();
 });

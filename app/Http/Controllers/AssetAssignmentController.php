@@ -53,8 +53,8 @@ class AssetAssignmentController extends Controller
                 (SELECT COUNT(*) FROM ASSET_ASSIGNMENT_LIST aal WHERE aal.ass_assign_id = aa.id) AS item_count
             ')
             ->whereIn('aa.status', [AssetAssignment::STATUS_ACTIVE, AssetAssignment::STATUS_RECEIVED])
-            ->orderByDesc('aa.assign_date')
-            ->orderByDesc('aa.id');
+            ->orderBy('aa.assign_date')
+            ->orderBy('aa.id');
 
         if (empty($visibleOrgIds)) {
             $query->whereRaw('1 = 0');
@@ -119,11 +119,11 @@ class AssetAssignmentController extends Controller
         $userOrg    = GlbOrganization::where('org_id', $userOrgId)->first(['org_id', 'org_name']);
         $visibleOrgIds = $this->orgVisibility->visibleOrgIds($userOrgId);
 
-        // Available assets: status='1' and NOT already in an active assignment
+        // Available assets: status='1' and NEVER assigned (active or received)
         $assignedAssetIds = DB::connection('oracle')
             ->table('ASSET_ASSIGNMENT_LIST AS aal')
             ->join('ASSET_ASSIGNMENT AS aa', 'aal.ass_assign_id', '=', 'aa.id')
-            ->where('aa.status', AssetAssignment::STATUS_ACTIVE)
+            ->whereIn('aa.status', [AssetAssignment::STATUS_ACTIVE, AssetAssignment::STATUS_RECEIVED])
             ->pluck('aal.asset_id')
             ->toArray();
 
@@ -208,7 +208,7 @@ class AssetAssignmentController extends Controller
         $alreadyAssigned = DB::connection('oracle')
             ->table('ASSET_ASSIGNMENT_LIST AS aal')
             ->join('ASSET_ASSIGNMENT AS aa', 'aal.ass_assign_id', '=', 'aa.id')
-            ->where('aa.status', AssetAssignment::STATUS_ACTIVE)
+            ->whereIn('aa.status', [AssetAssignment::STATUS_ACTIVE, AssetAssignment::STATUS_RECEIVED])
             ->whereIn('aal.asset_id', $validAssets)
             ->exists();
 
@@ -329,11 +329,11 @@ class AssetAssignmentController extends Controller
             ->map(fn ($x) => (int) $x)
             ->toArray();
 
-        // Asset IDs assigned by OTHER active assignments
+        // Asset IDs assigned by OTHER active/received assignments
         $otherAssignedIds = DB::connection('oracle')
             ->table('ASSET_ASSIGNMENT_LIST AS aal')
             ->join('ASSET_ASSIGNMENT AS aa', 'aal.ass_assign_id', '=', 'aa.id')
-            ->where('aa.status', AssetAssignment::STATUS_ACTIVE)
+            ->whereIn('aa.status', [AssetAssignment::STATUS_ACTIVE, AssetAssignment::STATUS_RECEIVED])
             ->where('aa.id', '!=', $id)
             ->pluck('aal.asset_id')
             ->map(fn ($x) => (int) $x)
@@ -446,7 +446,7 @@ class AssetAssignmentController extends Controller
             $conflict = DB::connection('oracle')
                 ->table('ASSET_ASSIGNMENT_LIST AS aal')
                 ->join('ASSET_ASSIGNMENT AS aa', 'aal.ass_assign_id', '=', 'aa.id')
-                ->where('aa.status', AssetAssignment::STATUS_ACTIVE)
+                ->whereIn('aa.status', [AssetAssignment::STATUS_ACTIVE, AssetAssignment::STATUS_RECEIVED])
                 ->where('aa.id', '!=', $id)
                 ->whereIn('aal.asset_id', $newIds)
                 ->exists();
@@ -547,11 +547,11 @@ class AssetAssignmentController extends Controller
             return response()->json(['data' => []]);
         }
 
-        // Asset IDs already assigned in OTHER active assignments
+        // Asset IDs already assigned in OTHER active/received assignments
         $assignedQuery = DB::connection('oracle')
             ->table('ASSET_ASSIGNMENT_LIST AS aal')
             ->join('ASSET_ASSIGNMENT AS aa', 'aal.ass_assign_id', '=', 'aa.id')
-            ->where('aa.status', AssetAssignment::STATUS_ACTIVE)
+            ->whereIn('aa.status', [AssetAssignment::STATUS_ACTIVE, AssetAssignment::STATUS_RECEIVED])
             ->select('aal.asset_id');
 
         if ($excludeId > 0) {

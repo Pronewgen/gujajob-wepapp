@@ -689,9 +689,9 @@ svg.svg-sprite {
 }
 
 .status-badge.status-received {
-    background: #dbeafe;
-    color: #1e40af;
-    border: 1px solid #93c5fd;
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
 }
 
 .status-badge.status-cancelled {

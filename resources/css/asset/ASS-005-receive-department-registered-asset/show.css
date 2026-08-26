@@ -324,10 +324,22 @@
 
 .receive-card-title {
     margin: 0 0 12px;
-    text-align: center;
-    color: #173b8f;
-    font-size: 12px;
+    color: #111827;
+    font-size: 14px;
     font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.receive-card-title .section-title-icon {
+    width: 16px;
+    height: 16px;
+    color: #2f55ab;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    flex-shrink: 0;
 }
 
 .asset-summary {
@@ -475,12 +487,9 @@
     color: #ef4444;
 }
 
-.receiving-confirm-page .save-btn {
-    background: #059669;
-}
-
-.receiving-confirm-page .save-btn:hover {
-    background: #047857;
+.receive-save-btn {
+    background: var(--primary) !important;
+    color: #ffffff !important;
 }
 
 .receiving-show-page .receive-form .field-group input,
@@ -496,7 +505,7 @@
 }
 
 .detail-edit-card {
-    background: #fff6cc;
+    background: #ffffff;
 }
 
 .receiving-show-page .remark-group {

@@ -95,7 +95,7 @@
                                 <td class="action-column">
                                     <div class="table-action-buttons">
                                         @if ($asset->aa_status === '1')
-                                            <a class="receive-btn" href="{{ route('asset.department-receiving.receive', $asset->id) }}">รับ</a>
+                                            <a class="receive-btn receive-btn-confirm" href="{{ route('asset.department-receiving.receive', $asset->id) }}">ยืนยันการรับ</a>
                                         @else
                                             <span class="received-label">รับแล้ว</span>
                                         @endif

@@ -33,6 +33,11 @@ class AssetDisposalController extends Controller
         'O' => 'อื่นๆ',
     ];
 
+    public static function getReasonLabel(string $code): string
+    {
+        return self::REASON_OPTIONS[$code] ?? ($code ?: '-');
+    }
+
     public function __construct(private readonly OrganizationVisibilityService $orgVisibility) {}
 
     // ──────────────────────────────────────────────────────────────────────
@@ -405,11 +410,52 @@ class AssetDisposalController extends Controller
         $statusInfo = self::STATUS_MAP[$statusKey] ?? self::STATUS_MAP[0];
 
         return view('asset.ASS-006-request-asset-disposal.show', [
-            'pageTitle'  => 'รายละเอียดการแจ้งขอจำหน่ายครุภัณฑ์',
-            'disposal'   => $disposal,
-            'items'      => $items,
-            'statusInfo' => $statusInfo,
+            'pageTitle'   => 'รายละเอียดการแจ้งขอจำหน่ายครุภัณฑ์',
+            'disposal'    => $disposal,
+            'items'       => $items,
+            'statusInfo'  => $statusInfo,
+            'reasonLabel' => self::REASON_OPTIONS[$disposal->reason ?? ''] ?? ($disposal->reason ?? '-'),
         ]);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    //  DESTROY (only pending records)
+    // ──────────────────────────────────────────────────────────────────────
+
+    public function destroy(int $id): RedirectResponse
+    {
+        $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
+
+        $record = DB::connection('oracle')
+            ->table('ASSET_SELLING')
+            ->where('id', $id)
+            ->whereIn('req_org_id', $visibleOrgIds)
+            ->first();
+
+        if (! $record) {
+            return redirect()->route('asset.disposals.index')
+                ->withErrors(['_error' => 'ไม่พบข้อมูลหรือไม่มีสิทธิ์']);
+        }
+
+        $isPending = $record->selling_approval_status === null || (int) $record->selling_approval_status === 0;
+        if (! $isPending) {
+            return redirect()->route('asset.disposals.index')
+                ->withErrors(['_error' => 'ไม่สามารถลบรายการที่ผ่านการอนุมัติแล้ว']);
+        }
+
+        try {
+            DB::connection('oracle')->transaction(function () use ($id) {
+                DB::connection('oracle')->table('ASSET_SELLING_LIST')->where('selling_id', $id)->delete();
+                DB::connection('oracle')->table('ASSET_SELLING')->where('id', $id)->delete();
+            });
+        } catch (Throwable $e) {
+            Log::error('AssetDisposalController::destroy failed', ['id' => $id, 'error' => $e->getMessage()]);
+            return redirect()->route('asset.disposals.index')
+                ->withErrors(['_error' => 'เกิดข้อผิดพลาดขณะลบข้อมูล']);
+        }
+
+        return redirect()->route('asset.disposals.index')
+            ->with('success', 'ลบรายการแจ้งขอจำหน่ายเรียบร้อยแล้ว');
     }
 
     private function escapeLike(string $value): string
@@ -433,6 +479,169 @@ class AssetDisposalController extends Controller
             'userOrg'       => $userOrg,
             'reasonOptions' => self::REASON_OPTIONS,
         ]);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    //  EDIT FORM
+    // ──────────────────────────────────────────────────────────────────────
+
+    public function edit(string $requestNo): View
+    {
+        $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
+
+        $record = DB::connection('oracle')
+            ->table('ASSET_SELLING AS s')
+            ->leftJoin('GLB_ORGANIZATION AS rorg', 'rorg.org_id', '=', 's.req_org_id')
+            ->selectRaw("
+                s.id,
+                s.selling_code,
+                TO_CHAR(s.selling_req_date, 'YYYY-MM-DD') AS req_date_input,
+                rorg.org_name AS req_org_name,
+                s.reason,
+                s.remarks,
+                s.selling_approval_status
+            ")
+            ->where('s.selling_code', $requestNo)
+            ->whereIn('s.req_org_id', $visibleOrgIds)
+            ->first();
+
+        abort_if(! $record, 404);
+        abort_if((int) ($record->selling_approval_status ?? 0) !== 0, 403);
+
+        $items = DB::connection('oracle')
+            ->table('ASSET_SELLING_LIST AS sl')
+            ->join('ASSET AS a', 'a.id', '=', 'sl.ass_id')
+            ->leftJoin('ASSET_CATEGORY AS c', 'c.id', '=', 'a.asscat_id')
+            ->selectRaw("
+                sl.id,
+                a.id AS asset_id,
+                a.ass_code,
+                c.asscat_name AS asset_name,
+                a.ass_price,
+                sl.selling_min_price,
+                sl.selling_real_price
+            ")
+            ->where('sl.selling_id', $record->id)
+            ->orderByRaw('sl.id ASC')
+            ->get();
+
+        return view('asset.ASS-006-request-asset-disposal.edit', [
+            'pageTitle'     => 'แก้ไขการแจ้งขอจำหน่ายครุภัณฑ์',
+            'record'        => $record,
+            'items'         => $items,
+            'reasonOptions' => self::REASON_OPTIONS,
+        ]);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    //  UPDATE (PUT)
+    // ──────────────────────────────────────────────────────────────────────
+
+    public function update(Request $request, int $id): RedirectResponse
+    {
+        $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
+
+        $record = DB::connection('oracle')
+            ->table('ASSET_SELLING')
+            ->where('id', $id)
+            ->whereIn('req_org_id', $visibleOrgIds)
+            ->first();
+
+        abort_if(! $record, 404);
+        abort_if((int) ($record->selling_approval_status ?? 0) !== 0, 403);
+
+        $validated = $request->validate([
+            'selling_req_date' => ['required', 'date'],
+            'reason'           => ['required', 'string', 'size:1', Rule::in(array_keys(self::REASON_OPTIONS))],
+            'remarks'          => ['nullable', 'string', 'max:500'],
+            'asset_ids'        => ['required', 'array', 'min:1'],
+            'asset_ids.*'      => ['integer', 'min:1'],
+        ]);
+
+        $newAssetIds = array_unique(array_map('intval', (array) $validated['asset_ids']));
+        $user        = Auth::user();
+
+        // Current items in this disposal
+        $existingItems = DB::connection('oracle')
+            ->table('ASSET_SELLING_LIST')
+            ->where('selling_id', $id)
+            ->get(['id', 'ass_id']);
+        $existingAssetIds = $existingItems->pluck('ass_id')->map(fn ($v) => (int) $v)->toArray();
+        $existingMap      = $existingItems->keyBy(fn ($r) => (int) $r->ass_id);
+
+        $toAdd    = array_values(array_diff($newAssetIds, $existingAssetIds));
+        $toRemove = array_values(array_diff($existingAssetIds, $newAssetIds));
+
+        // Validate new assets are eligible (existing items are grandfathered)
+        if (! empty($toAdd)) {
+            $validNew = DB::connection('oracle')
+                ->table('ASSET')
+                ->whereIn('id', $toAdd)
+                ->where('ass_status', '1')
+                ->whereIn('org_id', $visibleOrgIds)
+                ->pluck('id')
+                ->map(fn ($v) => (int) $v)
+                ->toArray();
+
+            if (count($validNew) !== count($toAdd)) {
+                return back()->withErrors(['_error' => 'ครุภัณฑ์บางรายการไม่ถูกต้องหรือไม่อยู่ใน Scope ที่อนุญาต'])->withInput();
+            }
+
+            $alreadyInOtherDisposal = DB::connection('oracle')
+                ->table('ASSET_SELLING_LIST AS sl')
+                ->join('ASSET_SELLING AS s', 'sl.selling_id', '=', 's.id')
+                ->whereIn('sl.ass_id', $toAdd)
+                ->where('s.id', '!=', $id)
+                ->where(function ($q) {
+                    $q->whereNull('s.selling_approval_status')
+                      ->orWhere('s.selling_approval_status', 0)
+                      ->orWhere('s.selling_approval_status', 1);
+                })
+                ->exists();
+
+            if ($alreadyInOtherDisposal) {
+                return back()->withErrors(['_error' => 'ครุภัณฑ์บางรายการอยู่ในรายการแจ้งจำหน่ายอื่นอยู่แล้ว'])->withInput();
+            }
+        }
+
+        try {
+            DB::connection('oracle')->transaction(function () use ($id, $validated, $toAdd, $toRemove, $existingMap, $user) {
+                DB::connection('oracle')->table('ASSET_SELLING')
+                    ->where('id', $id)
+                    ->update([
+                        'selling_req_date' => $validated['selling_req_date'],
+                        'reason'           => $validated['reason'],
+                        'remarks'          => $validated['remarks'] ?? null,
+                        'updated_by'       => $user->id,
+                        'updated_at'       => DB::raw('SYSTIMESTAMP'),
+                    ]);
+
+                foreach ($toRemove as $assetId) {
+                    $listId = (int) $existingMap[(int) $assetId]->id;
+                    DB::connection('oracle')->table('ASSET_SELLING_LIST')->where('id', $listId)->delete();
+                }
+
+                $now = now();
+                foreach ($toAdd as $assetId) {
+                    $listId = (int) DB::connection('oracle')->selectOne('SELECT ASSET_SELLING_LIST_SEQ.NEXTVAL AS id FROM DUAL')->id;
+                    DB::connection('oracle')->table('ASSET_SELLING_LIST')->insert([
+                        'id'         => $listId,
+                        'selling_id' => $id,
+                        'ass_id'     => $assetId,
+                        'created_by' => $user->id,
+                        'updated_by' => $user->id,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
+                }
+            });
+        } catch (Throwable $e) {
+            Log::error('AssetDisposalController::update failed', ['id' => $id, 'error' => $e->getMessage()]);
+            return back()->withErrors(['_error' => 'เกิดข้อผิดพลาดขณะบันทึก กรุณาลองใหม่'])->withInput();
+        }
+
+        return redirect()->route('asset.disposals.index')
+            ->with('success', 'บันทึกการแก้ไขแจ้งขอจำหน่ายเรียบร้อย');
     }
 
     // ──────────────────────────────────────────────────────────────────────
@@ -541,22 +750,26 @@ class AssetDisposalController extends Controller
         $field         = $request->string('field', '')->value();
         $keyword       = trim($request->string('q', '')->value());
         $limit         = min((int) $request->input('limit', 20), 50);
+        $disposalId    = (int) $request->input('disposal_id', 0);
         $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
 
         if (empty($visibleOrgIds)) {
             return response()->json(['data' => []]);
         }
 
-        // Exclude assets already in an active/pending disposal request
-        $inDisposalIds = DB::connection('oracle')
+        // Exclude assets in active/pending disposals; when editing, skip the current disposal
+        $inDisposalQuery = DB::connection('oracle')
             ->table('ASSET_SELLING_LIST AS sl')
             ->join('ASSET_SELLING AS s', 'sl.selling_id', '=', 's.id')
             ->where(function ($q) {
                 $q->whereNull('s.selling_approval_status')
                   ->orWhere('s.selling_approval_status', 0)
                   ->orWhere('s.selling_approval_status', 1);
-            })
-            ->pluck('sl.ass_id')
+            });
+        if ($disposalId > 0) {
+            $inDisposalQuery->where('s.id', '!=', $disposalId);
+        }
+        $inDisposalIds = $inDisposalQuery->pluck('sl.ass_id')
             ->map(fn ($id) => (int) $id)
             ->toArray();
 

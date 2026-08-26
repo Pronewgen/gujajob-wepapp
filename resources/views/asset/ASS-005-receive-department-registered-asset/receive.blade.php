@@ -19,7 +19,10 @@
         @endif
 
         <section class="receive-card">
-            <h3 class="receive-card-title">ข้อมูลครุภัณฑ์ที่จะรับ</h3>
+            <h4 class="receive-card-title">
+                <svg class="section-title-icon" aria-hidden="true"><use href="#icon-square-pen"></use></svg>
+                ข้อมูลครุภัณฑ์ที่จะรับ
+            </h4>
 
             <div class="asset-summary">
                 <div class="summary-item">
@@ -95,30 +98,12 @@
 
                     <div class="field-group">
                         <label>หน่วยงานย่อยที่รับการจัดสรร <span class="required-mark">*</span></label>
-                        <div class="guja-autocomplete" data-server-select
-                             data-endpoint="{{ route('search.suggestions') }}?entity=assign_org&limit=20&q=">
-                            <div class="guja-autocomplete__wrap">
-                                <input
-                                    type="text"
-                                    class="guja-autocomplete__input"
-                                    placeholder="ค้นหาหน่วยงานย่อย..."
-                                    autocomplete="off"
-                                    data-required="true"
-                                >
-                                <input
-                                    type="hidden"
-                                    class="guja-autocomplete__value"
-                                    name="sub_org_id"
-                                    value="{{ old('sub_org_id') }}"
-                                >
-                                <button type="button" class="guja-autocomplete__arrow" tabindex="-1" aria-hidden="true">
-                                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                                        <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-                                    </svg>
-                                </button>
-                            </div>
-                            <ul class="guja-autocomplete__items" role="listbox"></ul>
-                        </div>
+                        <select name="sub_org_id" required>
+                            <option value="">-- เลือกหน่วยงานย่อย --</option>
+                            @foreach ($subOrgs as $org)
+                                <option value="{{ $org->org_id }}" @selected(old('sub_org_id') == $org->org_id)>{{ $org->org_name }}</option>
+                            @endforeach
+                        </select>
                         @error('sub_org_id')
                             <span class="field-error">{{ $message }}</span>
                         @enderror
@@ -128,8 +113,8 @@
 
             <div class="form-actions">
                 <a class="cancel-btn" href="{{ route('asset.department-receiving.index') }}">ย้อนกลับ</a>
-                <button class="save-btn" id="openReceiveConfirmButton" type="button">
-                    ยืนยันรับครุภัณฑ์
+                <button class="save-btn receive-save-btn" id="openReceiveConfirmButton" type="button">
+                    ยืนยัน
                 </button>
             </div>
         </section>
@@ -146,7 +131,7 @@
 
             <div class="confirm-actions">
                 <button class="modal-cancel-btn" id="cancelReceiveConfirmButton" type="button">ยกเลิก</button>
-                <button class="modal-confirm-btn success-confirm-btn" id="confirmReceiveButton" type="button">ยืนยันรับครุภัณฑ์</button>
+                <button class="modal-confirm-btn success-confirm-btn" id="confirmReceiveButton" type="button">ยืนยัน</button>
             </div>
         </div>
     </div>
