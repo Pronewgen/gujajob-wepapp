@@ -60,8 +60,12 @@
                         <label for="assetStatusFilter">สถานะ</label>
                         <select id="assetStatusFilter" name="status_filter">
                             <option value=""  @selected(($statusFilter ?? '') === '')>ทั้งหมด</option>
-                            <option value="1" @selected(($statusFilter ?? '') === '1')>ปกติ</option>
+                            <option value="1" @selected(($statusFilter ?? '') === '1')>รอจัดสรร</option>
+                            <option value="2" @selected(($statusFilter ?? '') === '2')>ปกติ</option>
                             <option value="3" @selected(($statusFilter ?? '') === '3')>พร้อมจำหน่าย</option>
+                            <option value="4" @selected(($statusFilter ?? '') === '4')>จำหน่ายแล้ว</option>
+                            <option value="5" @selected(($statusFilter ?? '') === '5')>ชำรุด</option>
+                            <option value="6" @selected(($statusFilter ?? '') === '6')>สูญหาย</option>
                         </select>
                     </div>
 
@@ -88,13 +92,13 @@
                 <table class="registration-table">
                     <thead>
                         <tr>
-                            <x-sortable-th label="รหัสทะเบียนครุภัณฑ์" key="code"   :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'status_filter'=>$statusFilter]" />
-                            <x-sortable-th label="ชื่อครุภัณฑ์"    key="name"   :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'status_filter'=>$statusFilter]" />
+                            <x-sortable-th label="รหัสทะเบียนครุภัณฑ์" key="code"         :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'status_filter'=>$statusFilter]" />
+                            <x-sortable-th label="ชื่อครุภัณฑ์"    key="name"         :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'status_filter'=>$statusFilter]" />
                             <th>หน่วยงาน</th>
-                            <th>วันที่ตรวจรับ</th>
-                            <x-sortable-th label="มูลค่า"           key="price"  :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'status_filter'=>$statusFilter]" />
-                            <th style="text-align:right;">มูลค่าคงเหลือ</th>
-                            <x-sortable-th label="สถานะ"            key="status" :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'status_filter'=>$statusFilter]" />
+                            <x-sortable-th label="วันที่ตรวจรับ"   key="inspect_date" :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'status_filter'=>$statusFilter]" />
+                            <x-sortable-th label="มูลค่า"           key="price"        :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'status_filter'=>$statusFilter]" />
+                            <x-sortable-th label="มูลค่าคงเหลือ"    key="remain"       :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'status_filter'=>$statusFilter]" style="text-align:right;" />
+                            <x-sortable-th label="สถานะ"            key="status"       :currentSort="$sort" :currentDirection="$direction" :extraParams="['search_by'=>$searchBy,'keyword'=>$keyword,'status_filter'=>$statusFilter]" />
                             <th class="action-column">จัดการ</th>
                         </tr>
                     </thead>
@@ -102,14 +106,9 @@
                     <tbody>
                         @forelse ($assets as $asset)
                             @php
-                                $statusLabel = match($asset->ass_status) {
-                                    '1' => ['text' => 'ปกติ',          'class' => 'status-normal'],
-                                    '2' => ['text' => 'ชำรุด',         'class' => 'status-dispose'],
-                                    '3' => ['text' => 'พร้อมจำหน่าย', 'class' => 'status-dispose'],
-                                    default => ['text' => $asset->ass_status ?? '-', 'class' => ''],
-                                };
+                                $statusInfo = \App\Http\Controllers\AssetController::assetStatusLabel($asset->ass_status ?? '');
                             @endphp
-                            <tr class="{{ $asset->ass_status === '3' ? 'dispose-row' : '' }}">
+                            <tr class="{{ in_array($asset->ass_status, ['3','4','5','6']) ? 'dispose-row' : '' }}">
                                 <td>
                                     <a class="ass-code-link" href="{{ route('asset.registrations.show', $asset->id) }}">
                                         <span class="asset-code">
@@ -141,10 +140,10 @@
                                     @endif
                                 </td>
                                 <td class="status-cell">
-                                    @if ($statusLabel['class'])
-                                        <span class="status-badge {{ $statusLabel['class'] }}">{{ $statusLabel['text'] }}</span>
+                                    @if ($statusInfo['class'])
+                                        <span class="status-badge {{ $statusInfo['class'] }}">{{ $statusInfo['label'] }}</span>
                                     @else
-                                        {{ $statusLabel['text'] }}
+                                        {{ $statusInfo['label'] }}
                                     @endif
                                 </td>
                                 <td class="action-column">

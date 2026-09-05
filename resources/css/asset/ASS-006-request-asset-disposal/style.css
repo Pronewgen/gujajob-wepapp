@@ -895,6 +895,18 @@ svg.svg-sprite {
     color: #1d3f91;
 }
 
+.disposal-page:not(.approval-page):not(.result-page) .table-action-icon.is-disabled,
+.disposal-page:not(.approval-page):not(.result-page) .table-action-icon:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    filter: grayscale(1);
+    pointer-events: none;
+}
+
+.disposal-page:not(.approval-page):not(.result-page) .table-action-icon.is-disabled:hover {
+    background: inherit;
+}
+
 .create-actions {
     margin-top: 12px;
     border-top: 0;
@@ -971,25 +983,6 @@ svg.svg-sprite {
 
 .detail-actions .edit-action-btn:hover {
     background: #b45309;
-}
-
-.disposal-edit-page .create-actions .cancel-btn {
-    min-width: 88px;
-    height: 33px;
-    border: 1.5px solid #ef4444;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 800;
-    color: #ef4444;
-}
-
-.disposal-edit-page .create-actions .save-btn {
-    height: 33px;
-    min-width: 100px;
-    padding: 0 20px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 800;
 }
 
 .disposal-page .confirm-overlay {

@@ -66,7 +66,7 @@
                             <input class="form-control js-date-picker @error('assign_date') is-invalid @enderror"
                                    type="text" id="assign_date" name="assign_date"
                                    placeholder="วว-ดด-ปปปป"
-                                   value="{{ old('assign_date', $assignment->assign_date ? \Carbon\Carbon::parse($assignment->assign_date)->format('Y-m-d') : '') }}"
+                                   value="{{ old('assign_date', $assignment->assign_date ? \Carbon\Carbon::parse($assignment->assign_date)->format('Y-m-d') : now()->format('Y-m-d')) }}"
                                    autocomplete="off" required>
                             @error('assign_date')<p class="field-error">{{ $message }}</p>@enderror
                         </div>

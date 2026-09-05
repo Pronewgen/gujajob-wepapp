@@ -30,6 +30,10 @@ class AssetAssignmentController extends Controller
         $filterOrgId    = (int) $request->input('filter_org_id', 0);
         $filterSubOrgId = (int) $request->input('filter_sub_org_id', 0);
         $filterAssigner = trim($request->string('filter_assigner_id')->value());
+        $sort           = $request->string('sort', '')->value();
+        $direction      = strtolower($request->string('direction', 'asc')->value()) === 'desc' ? 'desc' : 'asc';
+
+        $allowedSorts = ['assign_date' => 'aa.assign_date'];
 
         $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
 
@@ -52,9 +56,14 @@ class AssetAssignmentController extends Controller
                 u.user_name       AS assigner_name,
                 (SELECT COUNT(*) FROM ASSET_ASSIGNMENT_LIST aal WHERE aal.ass_assign_id = aa.id) AS item_count
             ')
-            ->whereIn('aa.status', [AssetAssignment::STATUS_ACTIVE, AssetAssignment::STATUS_RECEIVED])
-            ->orderBy('aa.assign_date')
-            ->orderBy('aa.id');
+            ->whereIn('aa.status', [AssetAssignment::STATUS_ACTIVE, AssetAssignment::STATUS_RECEIVED]);
+
+        // When an explicit sort is requested use it; otherwise keep business-priority default
+        if (array_key_exists($sort, $allowedSorts)) {
+            $query->orderByRaw("{$allowedSorts[$sort]} {$direction} NULLS LAST");
+        } else {
+            $query->orderByRaw("CASE aa.status WHEN '" . AssetAssignment::STATUS_ACTIVE . "' THEN 0 ELSE 1 END ASC, aa.id DESC");
+        }
 
         if (empty($visibleOrgIds)) {
             $query->whereRaw('1 = 0');
@@ -105,6 +114,8 @@ class AssetAssignmentController extends Controller
             'filterSubOrgName'    => $filterSubOrgName,
             'filterAssignerId'    => $filterAssigner,
             'filterAssignerName'  => $filterAssignerName,
+            'sort'                => $sort,
+            'direction'           => $direction,
         ]);
     }
 
@@ -264,7 +275,7 @@ class AssetAssignmentController extends Controller
     public function show(int $id): View|RedirectResponse
     {
         $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
-        $assignment    = $this->findAuthorized($id, $visibleOrgIds);
+        $assignment    = $this->findVisibleAssignment($id, $visibleOrgIds);
         if ($assignment === null) {
             return redirect()->route('asset.assignments.index')
                 ->withErrors(['_error' => 'ไม่พบข้อมูลหรือไม่มีสิทธิ์เข้าถึง']);
@@ -624,6 +635,19 @@ class AssetAssignmentController extends Controller
             ->table('ASSET_ASSIGNMENT')
             ->whereIn('org_id', $visibleOrgIds)
             ->where('status', AssetAssignment::STATUS_ACTIVE)
+            ->where('id', $id)
+            ->first();
+    }
+
+    private function findVisibleAssignment(int $id, array $visibleOrgIds): ?object
+    {
+        if (empty($visibleOrgIds)) {
+            return null;
+        }
+
+        return DB::connection('oracle')
+            ->table('ASSET_ASSIGNMENT')
+            ->whereIn('org_id', $visibleOrgIds)
             ->where('id', $id)
             ->first();
     }

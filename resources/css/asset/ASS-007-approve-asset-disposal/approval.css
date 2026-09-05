@@ -1,28 +1,88 @@
 .approval-page .table-footer { margin-top: 28px; }
 .approval-page .disposal-table .col-request-no { width: 20%; }
-.approval-page .disposal-table .col-request-date { width: 17%; }
-.approval-page .disposal-table .col-request-org { width: 25%; }
+.approval-page .disposal-table .col-request-date { width: 15%; }
+.approval-page .disposal-table .col-request-org { width: 24%; }
 .approval-page .disposal-table .col-reason { width: 15%; }
-.approval-page .disposal-table .col-status { width: 14%; }
-.approval-page .disposal-table .col-actions { width: 9%; }
+.approval-page .disposal-table .col-status { width: 12%; }
+.approval-page .disposal-table .col-actions { width: 14%; }
 
 .approval-page .disposal-table th:nth-child(1),
 .approval-page .disposal-table td:nth-child(1) { width: 20%; }
 .approval-page .disposal-table th:nth-child(2),
-.approval-page .disposal-table td:nth-child(2) { width: 17%; }
+.approval-page .disposal-table td:nth-child(2) { width: 15%; }
 .approval-page .disposal-table th:nth-child(3),
-.approval-page .disposal-table td:nth-child(3) { width: 25%; }
+.approval-page .disposal-table td:nth-child(3) { width: 24%; }
 .approval-page .disposal-table th:nth-child(4),
 .approval-page .disposal-table td:nth-child(4) { width: 15%; }
 .approval-page .disposal-table th:nth-child(5),
-.approval-page .disposal-table td:nth-child(5) { width: 14%; }
+.approval-page .disposal-table td:nth-child(5) { width: 12%; }
 .approval-page .disposal-table th:nth-child(6),
-.approval-page .disposal-table td:nth-child(6) { width: 9%; }
+.approval-page .disposal-table td:nth-child(6) { width: 14%; }
+.approval-page .disposal-table th.action-column,
+.approval-page .disposal-table td.action-column {
+    text-align: center;
+}
+
+.approval-page .create-shell,
+.approval-page .create-section,
+.approval-page .asset-search-toolbar,
+.approval-page .asset-table-shell {
+    background: #ffffff;
+}
+
+.approval-page .approval-action-buttons {
+    gap: 6px;
+}
+
+.approval-page .approval-consider-btn {
+    min-width: 82px;
+    height: 22px;
+    padding: 0 10px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1;
+    text-decoration: none;
+}
+
+.approval-page .approval-result-done {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 82px;
+    height: 22px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: var(--success-light);
+    color: var(--success);
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.approval-page .approval-note-field textarea {
+    min-height: 76px;
+}
+
+.approval-page .approval-edit-save-btn {
+    min-width: 0;
+    padding: 0 16px;
+}
+
+.approval-page .field-error {
+    display: block;
+    margin-top: 4px;
+    color: #dc2626;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.3;
+}
 .approve-action-btn,
 .reject-action-btn {
-    height: 40px;
-    min-width: 110px;
-    padding: 0 18px;
+    height: 32px;
+    min-width: 86px;
+    padding: 0 14px;
     border: 0;
     border-radius: 4px;
     color: #ffffff;

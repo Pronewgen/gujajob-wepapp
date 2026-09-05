@@ -105,19 +105,32 @@
                                 </td>
                                 <td class="action-column">
                                     <div class="table-action-buttons">
-                                        <a class="table-action-icon table-action-edit"
-                                           aria-label="แก้ไข" data-tooltip="แก้ไข"
-                                           href="{{ route('asset.disposals.edit', $disposal->selling_code) }}">
-                                            <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
-                                        </a>
-                                        <button class="table-action-icon table-action-delete js-disposal-delete-btn"
-                                                type="button"
-                                                aria-label="ลบ" data-tooltip="ลบ"
-                                                data-disposal-id="{{ $disposal->id }}"
-                                                data-selling-code="{{ $disposal->selling_code ?? '-' }}"
-                                                data-delete-url="{{ route('asset.disposals.destroy', $disposal->id) }}">
-                                            <svg aria-hidden="true"><use href="#icon-trash"></use></svg>
-                                        </button>
+                                        @if ($disposal->status_type === 'approved')
+                                            <span class="table-action-icon table-action-edit is-disabled"
+                                                  aria-label="แก้ไขไม่ได้หลังอนุมัติ" aria-disabled="true"
+                                                  data-tooltip="แก้ไขไม่ได้หลังอนุมัติ">
+                                                <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
+                                            </span>
+                                            <button class="table-action-icon table-action-delete is-disabled"
+                                                    type="button" disabled aria-disabled="true"
+                                                    aria-label="ลบไม่ได้หลังอนุมัติ" data-tooltip="ลบไม่ได้หลังอนุมัติ">
+                                                <svg aria-hidden="true"><use href="#icon-trash"></use></svg>
+                                            </button>
+                                        @else
+                                            <a class="table-action-icon table-action-edit"
+                                               aria-label="แก้ไข" data-tooltip="แก้ไข"
+                                               href="{{ route('asset.disposals.edit', $disposal->selling_code) }}">
+                                                <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
+                                            </a>
+                                            <button class="table-action-icon table-action-delete js-disposal-delete-btn"
+                                                    type="button"
+                                                    aria-label="ลบ" data-tooltip="ลบ"
+                                                    data-disposal-id="{{ $disposal->id }}"
+                                                    data-selling-code="{{ $disposal->selling_code ?? '-' }}"
+                                                    data-delete-url="{{ route('asset.disposals.destroy', $disposal->id) }}">
+                                                <svg aria-hidden="true"><use href="#icon-trash"></use></svg>
+                                            </button>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>

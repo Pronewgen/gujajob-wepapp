@@ -352,9 +352,15 @@ function initializeDisposalCreatePage() {
     });
 
     // ── asset search ──────────────────────────────────────────────────────
+    function getSelectedReason() {
+        const reasonEl = document.getElementById('reason');
+        return reasonEl ? reasonEl.value : '';
+    }
+
     function runSearch() {
         const field   = searchTypeEl ? searchTypeEl.value : '';
         const keyword = searchInputEl ? searchInputEl.value.trim() : '';
+        const reason  = getSelectedReason();
 
         if (!resultBox || !resultBody) return;
 
@@ -363,6 +369,7 @@ function initializeDisposalCreatePage() {
 
         const params = new URLSearchParams({ q: keyword, field, limit: 20 });
         if (disposalId) params.set('disposal_id', disposalId);
+        if (reason) params.set('reason', reason);
 
         fetch(`${searchUrl}?${params.toString()}`, {
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
@@ -407,6 +414,22 @@ function initializeDisposalCreatePage() {
                 runSearch();
             }
         });
+    }
+
+    // Reload list whenever reason changes; auto-load if reason already set (e.g. after validation error)
+    const reasonSelect = document.getElementById('reason');
+    if (reasonSelect) {
+        reasonSelect.addEventListener('change', () => {
+            if (getSelectedReason()) {
+                runSearch();
+            } else if (resultBox) {
+                resultBox.style.display = 'none';
+                if (resultBody) resultBody.innerHTML = '';
+            }
+        });
+        if (getSelectedReason()) {
+            runSearch();
+        }
     }
 
     // ── add to draft ──────────────────────────────────────────────────────

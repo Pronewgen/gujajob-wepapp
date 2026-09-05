@@ -143,12 +143,12 @@
                     </div>
                     <div class="form-field">
                         <label for="assContactDate">วันที่ทำสัญญา</label>
-                        <input id="assContactDate" name="ass_contact_date" type="text" class="js-date-picker" value="{{ old('ass_contact_date') }}" placeholder="วว-ดด-ปปปป" data-picker-position="below">
+                        <input id="assContactDate" name="ass_contact_date" type="text" class="js-date-picker" value="{{ old('ass_contact_date', now()->format('Y-m-d')) }}" placeholder="วว-ดด-ปปปป" data-picker-position="below">
                         @error('ass_contact_date')<span class="field-error" style="color:#dc2626;font-size:11px;">{{ $message }}</span>@enderror
                     </div>
                     <div class="form-field">
                         <label for="inspectDate">วันที่ตรวจรับ</label>
-                        <input id="inspectDate" name="inspect_date" type="text" class="js-date-picker" value="{{ old('inspect_date') }}" placeholder="วว-ดด-ปปปป" data-picker-position="below">
+                        <input id="inspectDate" name="inspect_date" type="text" class="js-date-picker" value="{{ old('inspect_date', now()->format('Y-m-d')) }}" placeholder="วว-ดด-ปปปป" data-picker-position="below">
                         @error('inspect_date')<span class="field-error" style="color:#dc2626;font-size:11px;">{{ $message }}</span>@enderror
                     </div>
                 </div>
@@ -159,25 +159,13 @@
                 <div class="section3-grid">
                     {{-- Left: fields --}}
                     <div class="section3-left">
-                        <div class="form-row two-col">
+                        <div class="form-row one-col">
                             <div class="form-field">
-                                <label for="orgId">หน่วยงานผู้ใช้</label>
-                                <div class="guja-autocomplete"
-                                     data-server-select
-                                     data-endpoint="{{ route('search.suggestions') }}?entity=org_search&limit=20&q="
-                                     data-initial-label="{{ old('_org_label', $defaultOrgName ?? '') }}">
-                                    <input type="text"   class="guja-autocomplete__input" placeholder="พิมพ์ชื่อหน่วยงาน" autocomplete="off">
-                                    <span               class="guja-autocomplete__arrow">▼</span>
-                                    <div               class="guja-autocomplete__items"></div>
-                                    <input type="hidden" class="guja-autocomplete__value" id="orgId" name="org_id" value="{{ old('org_id', $defaultOrgId ?? '') }}">
-                                </div>
-                                @error('org_id')<span class="field-error" style="color:#dc2626;font-size:11px;">{{ $message }}</span>@enderror
-                            </div>
-                            <div class="form-field">
-                                <label for="assStatus">สถานะ</label>
-                                <select id="assStatus" name="ass_status">
-                                    <option value="1" @selected(old('ass_status', '1') === '1')>ปกติ</option>
-                                    <option value="3" @selected(old('ass_status') === '3')>พร้อมจำหน่าย</option>
+                                <label for="assStatus">สถานะ <span class="required-mark">*</span></label>
+                                <select id="assStatus" name="ass_status" required>
+                                    @foreach (\App\Http\Controllers\AssetController::ASSET_STATUS as $val => $info)
+                                        <option value="{{ $val }}" @selected(old('ass_status', '1') === (string) $val)>{{ $info['label'] }}</option>
+                                    @endforeach
                                 </select>
                                 @error('ass_status')<span class="field-error" style="color:#dc2626;font-size:11px;">{{ $message }}</span>@enderror
                             </div>

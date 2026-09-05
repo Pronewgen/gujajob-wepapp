@@ -13,23 +13,25 @@ const approveForm = document.getElementById('approveForm');
 if (approveForm) {
     const approveTriggerBtn  = document.getElementById('approveTriggerBtn');
     const rejectTriggerBtn   = document.getElementById('rejectTriggerBtn');
+    const saveEditBtn        = document.getElementById('saveApprovalEditBtn');
     const overlay            = document.getElementById('approvalConfirmOverlay');
     const iconWrapper        = document.getElementById('approvalConfirmIcon');
     const iconUse            = document.getElementById('approvalConfirmIconUse');
     const titleEl            = document.getElementById('approvalConfirmTitle');
     const messageEl          = document.getElementById('approvalConfirmMessage');
-    const reasonField        = document.getElementById('rejectReasonField');
     const reasonInput        = document.getElementById('rejectReasonInput');
     const reasonError        = document.getElementById('rejectReasonError');
-    const reasonHidden       = document.getElementById('rejectReasonHidden');
     const cancelBtn          = document.getElementById('cancelApprovalButton');
     const confirmBtn         = document.getElementById('confirmApprovalButton');
     const validationAlert    = document.getElementById('approvalValidationAlert');
     const approvalDateInput  = document.getElementById('approvalDate');
+    const approvalDecision   = document.getElementById('approvalDecision');
     const priceInputs        = Array.from(document.querySelectorAll('.price-input'));
 
     const approveUrl = approveForm.action;
     const rejectUrl  = approveForm.dataset.rejectUrl || '';
+    const formMode = approveForm.dataset.formMode || 'consider';
+    const isLost = approveForm.dataset.isLost === '1';
 
     let pendingMode = null;
 
@@ -42,6 +44,7 @@ if (approveForm) {
     function hideAlert() {
         if (!validationAlert) return;
         validationAlert.hidden = true;
+        validationAlert.textContent = '';
     }
 
     function clearPriceErrors() {
@@ -72,6 +75,18 @@ if (approveForm) {
         return valid;
     }
 
+    function validateRejectReason() {
+        if (!reasonInput) return true;
+        if (reasonInput.value.trim() !== '') {
+            reasonError.hidden = true;
+            return true;
+        }
+        reasonError.textContent = 'กรุณากรอกหมายเหตุหากไม่อนุมัติ';
+        reasonError.hidden = false;
+        reasonInput.focus();
+        return false;
+    }
+
     function openModal(mode) {
         pendingMode = mode;
         if (mode === 'approve') {
@@ -80,16 +95,18 @@ if (approveForm) {
             titleEl.textContent = 'ยืนยันการอนุมัติ';
             messageEl.textContent = 'คุณแน่ใจหรือไม่ว่าต้องการอนุมัติใบแจ้งจำหน่ายนี้';
             confirmBtn.className = 'modal-confirm-btn success-confirm-btn';
-            reasonField.hidden = true;
-        } else {
+        } else if (mode === 'reject') {
             iconWrapper.className = 'confirm-icon delete-confirm-icon';
             iconUse.setAttribute('href', '#icon-alert-triangle');
             titleEl.textContent = 'ยืนยันไม่อนุมัติ';
-            messageEl.textContent = 'กรุณาระบุเหตุผลการไม่อนุมัติก่อนยืนยัน';
+            messageEl.textContent = 'คุณแน่ใจหรือไม่ว่าต้องการไม่อนุมัติใบแจ้งจำหน่ายนี้';
             confirmBtn.className = 'modal-confirm-btn delete-confirm-btn';
-            reasonField.hidden = false;
-            reasonInput.value = '';
-            reasonError.hidden = true;
+        } else {
+            iconWrapper.className = 'confirm-icon success-confirm-icon';
+            iconUse.setAttribute('href', '#icon-square-pen');
+            titleEl.textContent = 'ยืนยันการบันทึก';
+            messageEl.textContent = 'คุณแน่ใจหรือไม่ว่าต้องการบันทึกผลการอนุมัตินี้';
+            confirmBtn.className = 'modal-confirm-btn success-confirm-btn';
         }
         overlay.classList.add('is-visible');
         overlay.setAttribute('aria-hidden', 'false');
@@ -103,14 +120,29 @@ if (approveForm) {
 
     approveTriggerBtn?.addEventListener('click', () => {
         hideAlert();
-        if (!validateApprovalDate() || !validatePrices()) return;
+        if (!validateApprovalDate() || (!isLost && !validatePrices())) return;
         openModal('approve');
     });
 
     rejectTriggerBtn?.addEventListener('click', () => {
         hideAlert();
-        if (!validateApprovalDate()) return;
+        if (!validateApprovalDate() || !validateRejectReason()) return;
         openModal('reject');
+    });
+
+    saveEditBtn?.addEventListener('click', () => {
+        hideAlert();
+        const decision = approvalDecision?.value || '1';
+        if (!validateApprovalDate()) return;
+        if (decision === '1' && !isLost && !validatePrices()) return;
+        if (decision === '2' && !validateRejectReason()) return;
+        openModal('edit');
+    });
+
+    reasonInput?.addEventListener('input', () => {
+        if (reasonInput.value.trim() !== '') {
+            reasonError.hidden = true;
+        }
     });
 
     cancelBtn?.addEventListener('click', closeModal);
@@ -122,16 +154,14 @@ if (approveForm) {
     });
 
     confirmBtn?.addEventListener('click', () => {
+        if (formMode === 'edit') {
+            approveForm.submit();
+            return;
+        }
+
         if (pendingMode === 'reject') {
-            const reason = reasonInput.value.trim();
-            if (reason === '') {
-                reasonError.hidden = false;
-                return;
-            }
-            reasonHidden.value = reason;
             approveForm.action = rejectUrl;
         } else {
-            reasonHidden.value = '';
             approveForm.action = approveUrl;
         }
         approveForm.submit();

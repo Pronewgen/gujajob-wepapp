@@ -106,11 +106,12 @@
                     <div class="form-row two-col">
                         <div class="form-field">
                             <label>หน่วยงานผู้ใช้</label>
-                            <input type="text" readonly value="{{ $asset->organization->org_name ?? '-' }}">
+                            <input type="text" readonly value="{{ $asset->subOrganization->org_name ?? ($asset->sub_org_id ? '-' : '') }}">
                         </div>
                         <div class="form-field">
+                            @php $statusInfo = \App\Http\Controllers\AssetController::assetStatusLabel($asset->ass_status ?? ''); @endphp
                             <label>สถานะ</label>
-                            <input type="text" readonly value="{{ match($asset->ass_status ?? '') { '1' => 'ปกติ', '3' => 'พร้อมจำหน่าย', default => $asset->ass_status ?? '-' } }}">
+                            <input type="text" readonly value="{{ $statusInfo['label'] }}">
                         </div>
                     </div>
                     <div class="form-row two-col">

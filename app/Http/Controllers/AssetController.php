@@ -29,7 +29,21 @@ class AssetController extends Controller
         'org'  => 'org.org_name',
     ];
 
-    private const STATUS_MAP = ['1' => '1', '3' => '3'];
+    private const STATUS_MAP = ['1'=>'1','2'=>'2','3'=>'3','4'=>'4','5'=>'5','6'=>'6'];
+
+    public const ASSET_STATUS = [
+        '1' => ['label' => 'รอจัดสรร',     'class' => 'status-pending'],
+        '2' => ['label' => 'ปกติ',          'class' => 'status-normal'],
+        '3' => ['label' => 'พร้อมจำหน่าย', 'class' => 'status-dispose'],
+        '4' => ['label' => 'จำหน่ายแล้ว',     'class' => 'status-sold'],
+        '5' => ['label' => 'ชำรุด',         'class' => 'status-damaged'],
+        '6' => ['label' => 'สูญหาย',        'class' => 'status-lost'],
+    ];
+
+    public static function assetStatusLabel(string $status): array
+    {
+        return self::ASSET_STATUS[$status] ?? ['label' => ($status ?: '-'), 'class' => ''];
+    }
 
     public function __construct(private readonly OrganizationVisibilityService $orgVisibility) {}
 
@@ -43,23 +57,38 @@ class AssetController extends Controller
 
         $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
 
+        $completedDamagedDisposals = DB::connection('oracle')
+            ->table('ASSET_SELLING AS s')
+            ->join('ASSET_SELLING_LIST AS sl', 'sl.selling_id', '=', 's.id')
+            ->distinct()
+            ->select('sl.ass_id')
+            ->where('s.reason', '2')
+            ->where('s.selling_approval_status', 1)
+            ->whereRaw('TRIM(s.buyer) IS NOT NULL')
+            ->whereRaw('NOT EXISTS (SELECT 1 FROM ASSET_SELLING_LIST unpriced WHERE unpriced.selling_id = s.id AND unpriced.selling_real_price IS NULL)');
+
+        $effectiveStatusSql = "CASE WHEN a.ass_status = '5' AND completed_damaged.ass_id IS NOT NULL THEN '4' ELSE a.ass_status END";
+
         $allowedSorts = [
-            'code'   => 'a.ass_code',
-            'name'   => 'c.asscat_name',
-            'status' => 'a.ass_status',
-            'price'  => 'a.ass_price',
+            'code'         => 'a.ass_code',
+            'name'         => 'c.asscat_name',
+            'status'       => $effectiveStatusSql,
+            'price'        => 'a.ass_price',
+            'remain'       => 'a.remain_price',
+            'inspect_date' => 'a.inspect_date',
         ];
 
         $query = DB::connection('oracle')->table('ASSET AS a')
             ->join('ASSET_CATEGORY AS c', 'a.asscat_id', '=', 'c.id')
             ->leftJoin('GLB_ORGANIZATION AS org', 'a.org_id', '=', 'org.org_id')
+            ->leftJoinSub($completedDamagedDisposals, 'completed_damaged', 'completed_damaged.ass_id', '=', 'a.id')
             ->select([
                 'a.id',
                 'a.ass_code',
                 'a.ass_desc',
                 'a.ass_price',
                 'a.remain_price',
-                'a.ass_status',
+                DB::raw("{$effectiveStatusSql} AS ass_status"),
                 'a.inspect_date',
                 DB::raw("TO_CHAR(a.inspect_date, 'DD-MM-') || TO_CHAR(a.inspect_date + INTERVAL '543' YEAR(3), 'YYYY') AS inspect_date_th"),
                 'c.asscat_code',
@@ -79,7 +108,7 @@ class AssetController extends Controller
         }
 
         if ($statusFilter !== '' && array_key_exists($statusFilter, self::STATUS_MAP)) {
-            $query->where('a.ass_status', self::STATUS_MAP[$statusFilter]);
+            $query->whereRaw("{$effectiveStatusSql} = ?", [self::STATUS_MAP[$statusFilter]]);
         }
 
         if ($keyword !== '') {
@@ -202,26 +231,11 @@ class AssetController extends Controller
 
     public function create(): View
     {
-        $user      = Auth::user();
-        $userOrgId = (int) $user->org_id;
-
-        // Resolve default org name — restores label after validation-error redirect
-        $flashOld  = session('_old_input', []);
-        $prevOrgId = isset($flashOld['org_id']) ? (int) $flashOld['org_id'] : null;
-        if ($prevOrgId && $prevOrgId !== $userOrgId) {
-            $defaultOrgName = GlbOrganization::where('org_id', $prevOrgId)->value('org_name')
-                ?? GlbOrganization::where('org_id', $userOrgId)->value('org_name') ?? '';
-        } else {
-            $defaultOrgName = GlbOrganization::where('org_id', $userOrgId)->value('org_name') ?? '';
-        }
-
         $categories = AssetCategory::query()->orderBy('asscat_code')->get(['id', 'asscat_code', 'asscat_name', 'asscat_type', 'asscat_group', 'asscat_unit', 'depreciation_rate']);
 
         return view('asset.ASS-003-manage-asset-registration.create', [
-            'pageTitle'      => 'จัดการทะเบียนครุภัณฑ์',
-            'categories'     => $categories,
-            'defaultOrgId'   => $userOrgId,
-            'defaultOrgName' => $defaultOrgName,
+            'pageTitle'  => 'จัดการทะเบียนครุภัณฑ์',
+            'categories' => $categories,
         ]);
     }
 
@@ -234,7 +248,6 @@ class AssetController extends Controller
             'ass_model'        => ['nullable', 'string', 'max:100'],
             'ass_serail'       => ['nullable', 'string', 'max:30'],
             'ass_price'        => ['nullable', 'numeric', 'min:0'],
-            'org_id'           => ['nullable', 'integer', 'min:1'],
             'ass_contact_no'   => ['nullable', 'string', 'max:20'],
             'ass_contact_date' => ['nullable', 'date'],
             'dealer_id'        => ['nullable', 'integer'],
@@ -242,7 +255,7 @@ class AssetController extends Controller
             'warranty'         => ['nullable', 'integer', 'min:0'],
             'ass_lifetime'     => ['nullable', 'integer', 'min:0'],
             'remarks'          => ['nullable', 'string', 'max:500'],
-            'ass_status'       => ['nullable', 'string', 'max:1'],
+            'ass_status'       => ['nullable', 'string', 'in:1,2,3,4,5,6'],
             'asset_images'     => ['nullable', 'array', 'max:3'],
             'asset_images.*'   => ['nullable', 'image', 'mimes:jpeg,jpg,png,gif', 'max:1024'],
         ], [
@@ -250,17 +263,9 @@ class AssetController extends Controller
             'ass_code.max'       => 'รหัสทะเบียนครุภัณฑ์ต้องไม่เกิน 50 ตัวอักษร',
             'asscat_id.required' => 'กรุณาเลือกประเภทครุภัณฑ์',
             'asscat_id.exists'   => 'ประเภทครุภัณฑ์ที่เลือกไม่ถูกต้อง',
+            'ass_status.in'      => 'สถานะที่เลือกไม่ถูกต้อง',
             'asset_images.*.max' => 'ไฟล์รูปภาพต้องมีขนาดไม่เกิน 1 MB ต่อไฟล์',
         ]);
-
-        // Validate org_id is within the user's visible scope
-        if (!empty($validated['org_id'])) {
-            $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
-            if (!in_array((int) $validated['org_id'], $visibleOrgIds, true)) {
-                return back()->withInput()
-                    ->withErrors(['org_id' => 'หน่วยงานที่เลือกไม่อยู่ใน Scope ที่อนุญาต']);
-            }
-        }
 
         $newCode = trim($validated['ass_code']);
         $duplicate = DB::connection('oracle')->table('ASSET')
@@ -286,14 +291,13 @@ class AssetController extends Controller
                     'ass_model'        => $validated['ass_model'] ?? null,
                     'ass_serail'       => $validated['ass_serail'] ?? null,
                     'ass_price'        => isset($validated['ass_price']) ? (float) $validated['ass_price'] : null,
-                    'org_id'           => isset($validated['org_id']) ? (int) $validated['org_id'] : null,
+                    'org_id'           => (int) Auth::user()->org_id,
                     'ass_contact_no'   => $validated['ass_contact_no'] ?? null,
                     'ass_contact_date' => $validated['ass_contact_date'] ?? null,
                     'dealer_id'        => isset($validated['dealer_id']) ? (int) $validated['dealer_id'] : null,
                     'inspect_date'     => $validated['inspect_date'] ?? null,
                     'warranty'         => isset($validated['warranty']) ? (int) $validated['warranty'] : null,
                     'ass_lifetime'     => isset($validated['ass_lifetime']) ? (int) $validated['ass_lifetime'] : null,
-                    // remain_price starts equal to ass_price; no Depreciation Service formula found (PART M BLOCKER)
                     'remain_price'     => isset($validated['ass_price']) ? (float) $validated['ass_price'] : null,
                     'remarks'          => $validated['remarks'] ?? null,
                     'ass_status'       => $validated['ass_status'] ?? '1',
@@ -335,7 +339,7 @@ class AssetController extends Controller
     public function show(int $id): View
     {
         $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
-        $asset = Asset::with(['category', 'organization', 'dealer'])
+        $asset = Asset::with(['category', 'organization', 'dealer', 'subOrganization'])
             ->whereIn('org_id', $visibleOrgIds)
             ->findOrFail($id);
 
@@ -357,20 +361,11 @@ class AssetController extends Controller
     {
         $user          = Auth::user();
         $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) $user->org_id);
-        $asset         = Asset::with(['category', 'dealer', 'organization'])
+        $asset         = Asset::with(['category', 'dealer', 'organization', 'subOrganization'])
             ->whereIn('org_id', $visibleOrgIds)
             ->findOrFail($id);
         $categories = AssetCategory::query()->orderBy('asscat_code')
             ->get(['id', 'asscat_code', 'asscat_name', 'asscat_type', 'asscat_group', 'asscat_unit', 'depreciation_rate']);
-
-        // Default org: existing value, or current user's org as fallback (PART F)
-        $defaultOrgId   = (int) ($asset->org_id ?? (int) $user->org_id);
-        $defaultOrgName = old('_org_label', '');
-        if ($defaultOrgName === '') {
-            $orgRow = DB::connection('oracle')
-                ->selectOne('SELECT org_name FROM GLB_ORGANIZATION WHERE org_id = ?', [$defaultOrgId]);
-            $defaultOrgName = $orgRow?->org_name ?? '';
-        }
 
         $images = DB::connection('oracle')->table('ASSET_IMAGE')
             ->where('ass_id', $id)->orderBy('id')
@@ -380,12 +375,10 @@ class AssetController extends Controller
             ->values();
 
         return view('asset.ASS-003-manage-asset-registration.edit', [
-            'pageTitle'      => 'จัดการทะเบียนครุภัณฑ์',
-            'asset'          => $asset,
-            'categories'     => $categories,
-            'images'         => $images,
-            'defaultOrgId'   => $defaultOrgId,
-            'defaultOrgName' => $defaultOrgName,
+            'pageTitle'  => 'จัดการทะเบียนครุภัณฑ์',
+            'asset'      => $asset,
+            'categories' => $categories,
+            'images'     => $images,
         ]);
     }
 
@@ -401,7 +394,6 @@ class AssetController extends Controller
             'ass_model'          => ['nullable', 'string', 'max:100'],
             'ass_serail'         => ['nullable', 'string', 'max:30'],
             'ass_price'          => ['nullable', 'numeric', 'min:0'],
-            'org_id'             => ['nullable', 'integer'],
             'ass_contact_no'     => ['nullable', 'string', 'max:20'],
             'ass_contact_date'   => ['nullable', 'date'],
             'dealer_id'          => ['nullable', 'integer'],
@@ -409,8 +401,9 @@ class AssetController extends Controller
             'warranty'           => ['nullable', 'integer', 'min:0'],
             'ass_lifetime'       => ['nullable', 'integer', 'min:0'],
             'remarks'            => ['nullable', 'string', 'max:500'],
-            'asset_images'       => ['nullable', 'array', 'max:3'],
-            'asset_images.*'     => ['nullable', 'image', 'mimes:jpeg,jpg,png,gif', 'max:1024'],
+            'ass_status'       => ['required', 'string', 'in:1,2,3,4,5,6'],
+            'asset_images'     => ['nullable', 'array', 'max:3'],
+            'asset_images.*'   => ['nullable', 'image', 'mimes:jpeg,jpg,png,gif', 'max:1024'],
             'remove_image_ids'   => ['nullable', 'array'],
             'remove_image_ids.*' => ['integer'],
         ], [
@@ -418,6 +411,8 @@ class AssetController extends Controller
             'ass_code.max'       => 'รหัสทะเบียนครุภัณฑ์ต้องไม่เกิน 50 ตัวอักษร',
             'asscat_id.required' => 'กรุณาเลือกประเภทครุภัณฑ์',
             'asscat_id.exists'   => 'ประเภทครุภัณฑ์ที่เลือกไม่ถูกต้อง',
+            'ass_status.required' => 'กรุณาเลือกสถานะ',
+            'ass_status.in'       => 'สถานะที่เลือกไม่ถูกต้อง',
             'asset_images.*.max' => 'ไฟล์รูปภาพต้องมีขนาดไม่เกิน 1 MB ต่อไฟล์',
         ]);
 
@@ -443,16 +438,14 @@ class AssetController extends Controller
                     'ass_model'        => $validated['ass_model'] ?? null,
                     'ass_serail'       => $validated['ass_serail'] ?? null,
                     'ass_price'        => isset($validated['ass_price']) ? (float) $validated['ass_price'] : null,
-                    'org_id'           => isset($validated['org_id']) ? (int) $validated['org_id'] : null,
                     'ass_contact_no'   => $validated['ass_contact_no'] ?? null,
                     'ass_contact_date' => $validated['ass_contact_date'] ?? null,
                     'dealer_id'        => isset($validated['dealer_id']) ? (int) $validated['dealer_id'] : null,
                     'inspect_date'     => $validated['inspect_date'] ?? null,
                     'warranty'         => isset($validated['warranty']) ? (int) $validated['warranty'] : null,
                     'ass_lifetime'     => isset($validated['ass_lifetime']) ? (int) $validated['ass_lifetime'] : null,
-                    // remain_price: system-managed, no Depreciation Service formula (PART M BLOCKER)
                     'remarks'          => $validated['remarks'] ?? null,
-                    // ass_status: NOT updated from this form (PART G)
+                    'ass_status'       => $validated['ass_status'],
                     'updated_by'       => $userId,
                 ]);
 

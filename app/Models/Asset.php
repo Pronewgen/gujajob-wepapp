@@ -61,4 +61,9 @@ class Asset extends Model
     {
         return $this->belongsTo(Dealer::class, 'dealer_id');
     }
+
+    public function subOrganization(): BelongsTo
+    {
+        return $this->belongsTo(GlbOrganization::class, 'sub_org_id', 'org_id');
+    }
 }

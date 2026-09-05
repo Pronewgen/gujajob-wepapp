@@ -474,12 +474,12 @@
                             <span>อนุมัติแจ้งจำหน่ายครุภัณฑ์</span>
                         </a>
 
-                        <a class="menu-item disabled-link" href="#">
+                        <a class="menu-item {{ request()->routeIs('asset.disposals.results.*') ? 'active' : '' }}" href="{{ route('asset.disposals.results.index') }}">
                             <svg class="menu-icon"><use href="#icon-list-check"></use></svg>
                             <span>บันทึกผลการจำหน่ายครุภัณฑ์</span>
                         </a>
 
-                        <a class="menu-item disabled-link" href="#">
+                        <a class="menu-item {{ request()->routeIs('asset.reports.*') ? 'active' : '' }}" href="{{ route('asset.reports.index') }}">
                             <svg class="menu-icon"><use href="#icon-printer"></use></svg>
                             <span>จัดพิมพ์รายงาน</span>
                         </a>

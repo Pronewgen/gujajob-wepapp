@@ -5,6 +5,7 @@
         'resources/css/components/table-actions.css',
         'resources/css/components/pagination.css',
         'resources/css/components/searchable-select.css',
+        'resources/css/components/sort-icon.css',
         'resources/css/asset/ASS-004-assign-asset-to-department/style.css',
     ])
 @endsection
@@ -66,7 +67,8 @@
                 <table class="assignment-table">
                     <thead>
                         <tr>
-                            <th class="col-date">วันที่จัดสรร</th>
+                            <x-sortable-th label="วันที่จัดสรร" key="assign_date" :currentSort="$sort" :currentDirection="$direction"
+                               :extraParams="['filter_org_id'=>$filterOrgId,'filter_assigner_id'=>$filterAssignerId]" class="col-date" />
                             <th class="col-org">จัดสรรให้หน่วยงาน</th>
                             <th class="col-status">สถานะ</th>
                             <th class="col-qty">จำนวน</th>
@@ -100,20 +102,31 @@
                                 <td>{{ $record->assigner_name ?? '-' }}</td>
                                 <td class="center action-column">
                                     <div class="table-action-buttons">
-                                        <a class="table-action-icon table-action-edit"
-                                           aria-label="แก้ไข" data-tooltip="แก้ไข"
-                                           href="{{ route('asset.assignments.edit', $record->id) }}">
-                                            <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
-                                        </a>
-                                        <button class="table-action-icon table-action-delete js-cancel-btn"
-                                                type="button"
-                                                aria-label="ยกเลิกการจัดสรร" data-tooltip="ยกเลิกการจัดสรร"
-                                                data-assignment-id="{{ $record->id }}"
-                                                data-assign-date="{{ $dateLabel }}"
-                                                data-org-name="{{ $record->target_org_name ?? '' }}"
-                                                data-cancel-url="{{ route('asset.assignments.cancel', $record->id) }}">
-                                            <svg aria-hidden="true"><use href="#icon-trash"></use></svg>
-                                        </button>
+                                        @if ($record->status === \App\Models\AssetAssignment::STATUS_RECEIVED)
+                                            <span class="table-action-icon table-action-edit is-disabled" aria-label="แก้ไขไม่ได้หลังรับครุภัณฑ์" data-tooltip="แก้ไขไม่ได้หลังรับครุภัณฑ์">
+                                                <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
+                                            </span>
+                                            <button class="table-action-icon table-action-delete is-disabled"
+                                                    type="button" disabled
+                                                    aria-label="ยกเลิกไม่ได้หลังรับครุภัณฑ์" data-tooltip="ยกเลิกไม่ได้หลังรับครุภัณฑ์">
+                                                <svg aria-hidden="true"><use href="#icon-trash"></use></svg>
+                                            </button>
+                                        @else
+                                            <a class="table-action-icon table-action-edit"
+                                               aria-label="แก้ไข" data-tooltip="แก้ไข"
+                                               href="{{ route('asset.assignments.edit', $record->id) }}">
+                                                <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
+                                            </a>
+                                            <button class="table-action-icon table-action-delete js-cancel-btn"
+                                                    type="button"
+                                                    aria-label="ยกเลิกการจัดสรร" data-tooltip="ยกเลิกการจัดสรร"
+                                                    data-assignment-id="{{ $record->id }}"
+                                                    data-assign-date="{{ $dateLabel }}"
+                                                    data-org-name="{{ $record->target_org_name ?? '' }}"
+                                                    data-cancel-url="{{ route('asset.assignments.cancel', $record->id) }}">
+                                                <svg aria-hidden="true"><use href="#icon-trash"></use></svg>
+                                            </button>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>

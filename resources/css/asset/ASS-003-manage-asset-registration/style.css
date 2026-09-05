@@ -578,9 +578,24 @@ svg.svg-sprite {
     color: #059669;
 }
 
+/* รอจัดสรร */
+.status-pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+/* พร้อมจำหน่าย */
 .status-dispose {
-    background: #fde68a;
-    color: #b45309;
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* จำหน่ายแล้ว / ชำรุด / สูญหาย */
+.status-sold,
+.status-damaged,
+.status-lost {
+    background: #065f46;
+    color: #ffffff;
 }
 
 .detail-btn {

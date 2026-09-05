@@ -387,9 +387,8 @@
 }
 
 .remark-group {
-    grid-column: 3;
-    grid-row: 1 / span 2;
-    align-self: start;
+    grid-column: auto;
+    grid-row: auto;
 }
 
 .receive-form .field-group {
@@ -420,17 +419,18 @@
 
 .receive-form .field-group textarea {
     width: 100%;
-    min-height: 108px;
+    height: 32px;
+    min-height: 32px;
     border: 1px solid #c5ced9;
-    border-radius: 4px;
+    border-radius: 3px;
     background: #ffffff;
     color: #334155;
     font-family: inherit;
     font-size: 11px;
     font-weight: 500;
-    padding: 10px 12px;
+    padding: 7px 8px;
     outline: none;
-    resize: vertical;
+    resize: none;
 }
 
 .receive-form .field-group textarea::placeholder {
@@ -441,7 +441,7 @@
 }
 
 .remark-group textarea {
-    height: 100%;
+    height: 32px;
 }
 
 .receive-form .field-group input:focus,

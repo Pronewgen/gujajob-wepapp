@@ -10,6 +10,7 @@
 @section('content')
     @php
         $isPending = $statusInfo['type'] === 'pending';
+        $approvalDateValue = $isLostReason ? ($record->created_at_input ?? '') : old('approval_date', now()->format('Y-m-d'));
     @endphp
 
     <div class="page-container disposal-page disposal-detail-page approval-page">
@@ -20,14 +21,14 @@
         @enderror
 
         <section class="detail-card disposal-detail-card">
-            <h3 class="create-title">พิจารณาแจ้งขอจำหน่ายครุภัณฑ์</h3>
+            <h3 class="create-title">พิจารณาใบแจ้งขอจำหน่าย</h3>
 
             <form id="approveForm" method="POST" action="{{ route('asset.disposals.approval.approve', $record->id) }}"
-                  data-reject-url="{{ route('asset.disposals.approval.reject', $record->id) }}">
+                data-reject-url="{{ route('asset.disposals.approval.reject', $record->id) }}" data-is-lost="{{ $isLostReason ? '1' : '0' }}">
                 @csrf
                 <div class="create-shell">
                     <section class="create-section">
-                        <h4 class="create-section-title"><svg class="section-title-icon" aria-hidden="true"><use href="#icon-check-circle"></use></svg>ข้อมูลใบแจ้งขอจำหน่าย</h4>
+                        <h4 class="create-section-title"><svg class="section-title-icon" aria-hidden="true"><use href="#icon-check-circle"></use></svg>พิจารณาใบแจ้งขอจำหน่าย</h4>
                         <div class="detail-grid three-col">
                             <div class="field-group"><label>เลขที่ใบขอจำหน่าย</label><input type="text" value="{{ $record->selling_code ?? '-' }}" readonly></div>
                             <div class="field-group"><label>วันที่ขอจำหน่าย</label><input type="text" value="{{ $record->req_date_th ?? '-' }}" readonly></div>
@@ -54,21 +55,23 @@
                     <section class="create-section asset-items-section">
                         <h4 class="create-section-title"><svg class="section-title-icon" aria-hidden="true"><use href="#icon-list-check"></use></svg>รายการครุภัณฑ์ที่ขอจำหน่าย</h4>
 
-                        <div class="asset-search-toolbar">
-                            <div class="field-group">
-                                <label for="itemSearchType">ค้นหาจาก</label>
-                                <select id="itemSearchType" name="item_search_by" form="itemSearchForm">
-                                    <option value="all"  @selected($itemSearchBy === 'all')>ทั้งหมด</option>
-                                    <option value="code" @selected($itemSearchBy === 'code')>รหัสครุภัณฑ์</option>
-                                    <option value="name" @selected($itemSearchBy === 'name')>ชื่อครุภัณฑ์</option>
-                                </select>
+                        @unless ($isLostReason)
+                            <div class="asset-search-toolbar">
+                                <div class="field-group">
+                                    <label for="itemSearchType">ค้นหาจาก</label>
+                                    <select id="itemSearchType" name="item_search_by" form="itemSearchForm">
+                                        <option value="all"  @selected($itemSearchBy === 'all')>ทั้งหมด</option>
+                                        <option value="code" @selected($itemSearchBy === 'code')>รหัสครุภัณฑ์</option>
+                                        <option value="name" @selected($itemSearchBy === 'name')>ชื่อครุภัณฑ์</option>
+                                    </select>
+                                </div>
+                                <div class="field-group">
+                                    <label for="itemKeyword">คำค้นหา</label>
+                                    <input id="itemKeyword" type="search" name="item_keyword" value="{{ $itemKeyword }}" placeholder="กรอกคำค้นหา" form="itemSearchForm">
+                                </div>
+                                <button class="search-btn small" type="submit" form="itemSearchForm">ค้นหา</button>
                             </div>
-                            <div class="field-group">
-                                <label for="itemKeyword">คำค้นหา</label>
-                                <input id="itemKeyword" type="search" name="item_keyword" value="{{ $itemKeyword }}" placeholder="กรอกคำค้นหา" form="itemSearchForm">
-                            </div>
-                            <button class="search-btn small" type="submit" form="itemSearchForm">ค้นหา</button>
-                        </div>
+                        @endunless
 
                         <div class="asset-table-shell">
                             <table class="asset-item-table">
@@ -79,7 +82,7 @@
                                         <th>ชื่อครุภัณฑ์</th>
                                         <th>มูลค่าครุภัณฑ์</th>
                                         <th>มูลค่าคงเหลือ</th>
-                                        <th>ราคาขาย @if ($isPending)<span class="required">*</span>@endif</th>
+                                        <th>ราคาขาย @if ($isPending && ! $isLostReason)<span class="required">*</span>@endif</th>
                                         <th>ราคาขายจริง</th>
                                     </tr>
                                 </thead>
@@ -99,10 +102,10 @@
                                             <td class="center">{{ $item->remain_price !== null ? number_format((float) $item->remain_price, 2) : '-' }}</td>
                                             <td class="center">
                                                 @if ($isPending)
-                                                    <input type="number" step="0.01" min="0" class="price-input"
+                                                       <input type="number" step="0.01" min="0" class="price-input"
                                                            name="items[{{ $item->id }}][selling_min_price]"
-                                                           value="{{ old('items.' . $item->id . '.selling_min_price', $item->selling_min_price) }}"
-                                                           aria-label="ราคาขายของ {{ $item->ass_code }}">
+                                                           value="{{ $isLostReason ? '0.00' : old('items.' . $item->id . '.selling_min_price', $item->selling_min_price) }}"
+                                                           aria-label="ราคาขายของ {{ $item->ass_code }}" @readonly($isLostReason)>
                                                     @error('items.' . $item->id . '.selling_min_price')
                                                         <span class="price-error-msg">{{ $message }}</span>
                                                     @enderror
@@ -127,10 +130,14 @@
                                 <div class="field-group">
                                     <label for="approvalDate">วันที่พิจารณา <span class="required">*</span></label>
                                     <input id="approvalDate" type="text" class="js-date-picker" name="approval_date"
-                                           value="{{ old('approval_date', now()->format('Y-m-d')) }}"
-                                           placeholder="วว-ดด-ปปปป" data-picker-position="below">
-                                    <input type="hidden" name="reject_reason" id="rejectReasonHidden" value="{{ old('reject_reason') }}">
+                                         value="{{ $approvalDateValue }}"
+                                         placeholder="วว-ดด-ปปปป" data-picker-position="below" @readonly($isLostReason)>
                                     @error('approval_date')<span class="field-error" style="color:#dc2626;font-size:11px;">{{ $message }}</span>@enderror
+                                </div>
+                                <div class="field-group full-width approval-note-field">
+                                    <label for="rejectReasonInput">หมายเหตุ</label>
+                                    <textarea id="rejectReasonInput" name="reject_reason" maxlength="500" placeholder="กรอกหมายเหตุเมื่อไม่อนุมัติ">{{ old('reject_reason') }}</textarea>
+                                    <span class="price-error-msg" id="rejectReasonError" @if (! $errors->has('reject_reason')) hidden @endif>{{ $errors->first('reject_reason', 'กรุณากรอกหมายเหตุหากไม่อนุมัติ') }}</span>
                                 </div>
                             </div>
                             <div id="approvalValidationAlert" class="disposal-inline-validation-error" hidden></div>
@@ -138,17 +145,23 @@
                     @endif
 
                     <div class="form-actions create-actions detail-actions">
-                        @if ($isPending)
+                        @if ($isPending && $isLostReason)
+                            <a class="cancel-btn" href="{{ route('asset.disposals.approval.index') }}">ย้อนกลับ</a>
+                            <button class="reject-action-btn" type="button" id="rejectTriggerBtn">ไม่อนุมัติ</button>
+                            <button class="approve-action-btn" type="button" id="approveTriggerBtn">อนุมัติ</button>
+                        @elseif ($isPending)
                             <button class="approve-action-btn" type="button" id="approveTriggerBtn">อนุมัติ</button>
                             <button class="reject-action-btn" type="button" id="rejectTriggerBtn">ไม่อนุมัติ</button>
+                            <a class="cancel-btn" href="{{ route('asset.disposals.approval.index') }}">ยกเลิก</a>
                         @endif
-                        <a class="cancel-btn" href="{{ route('asset.disposals.approval.index') }}">ยกเลิก</a>
                     </div>
                 </div>
             </form>
 
             {{-- Search reloads this page server-side; no item data is submitted --}}
-            <form id="itemSearchForm" method="GET" action="{{ route('asset.disposals.approval.show', $record->id) }}"></form>
+            @unless ($isLostReason)
+                <form id="itemSearchForm" method="GET" action="{{ route('asset.disposals.approval.consider', $record->id) }}"></form>
+            @endunless
         </section>
 
         @if ($isPending)
@@ -159,11 +172,6 @@
                     </div>
                     <h3 id="approvalConfirmTitle"></h3>
                     <p id="approvalConfirmMessage"></p>
-                    <div id="rejectReasonField" hidden>
-                        <label for="rejectReasonInput">เหตุผลการไม่อนุมัติ <span class="required">*</span></label>
-                        <textarea id="rejectReasonInput" maxlength="500"></textarea>
-                        <span class="price-error-msg" id="rejectReasonError" hidden>กรุณาระบุเหตุผลการไม่อนุมัติ</span>
-                    </div>
                     <div class="confirm-actions">
                         <button class="modal-cancel-btn" type="button" id="cancelApprovalButton">ยกเลิก</button>
                         <button class="modal-confirm-btn success-confirm-btn" type="button" id="confirmApprovalButton">ยืนยัน</button>

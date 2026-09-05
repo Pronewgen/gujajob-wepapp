@@ -58,7 +58,7 @@
                                     name="selling_req_date"
                                     type="text"
                                     placeholder="วว-ดด-ปปปป"
-                                    value="{{ old('selling_req_date', $record->req_date_input ?? '') }}"
+                                    value="{{ old('selling_req_date', $record->req_date_input ?? now()->format('Y-m-d')) }}"
                                     autocomplete="off"
                                     required
                                 >

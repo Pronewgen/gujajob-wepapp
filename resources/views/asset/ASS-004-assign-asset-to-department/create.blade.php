@@ -65,7 +65,7 @@
                             <input class="form-control js-date-picker @error('assign_date') is-invalid @enderror"
                                    type="text" id="assign_date" name="assign_date"
                                    placeholder="วว-ดด-ปปปป"
-                                   value="{{ old('assign_date', date('Y-m-d')) }}"
+                                   value="{{ old('assign_date', now()->format('Y-m-d')) }}"
                                    autocomplete="off" required>
                             @error('assign_date')<p class="field-error">{{ $message }}</p>@enderror
                         </div>

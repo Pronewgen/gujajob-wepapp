@@ -188,10 +188,15 @@ class AssetDepartmentReceivingController extends Controller
 
         try {
             DB::connection('oracle')->transaction(function () use ($id, $asset, $validated, $subOrgId, $user) {
+                // remain_price=1 triggers พร้อมจำหน่าย (status 3), otherwise ปกติ (status 2)
+                $currentRemain = DB::connection('oracle')->table('ASSET')->where('id', $id)->value('remain_price');
+                $newStatus = ((float) $currentRemain === 1.0) ? '3' : '2';
+
                 Asset::where('id', $id)->update([
                     'ass_trans_date'   => $validated['receive_date'],
                     'ass_trans_remark' => $validated['remark'] ?? null,
                     'sub_org_id'       => $subOrgId,
+                    'ass_status'       => $newStatus,
                     'updated_by'       => $user->id,
                 ]);
                 DB::connection('oracle')->table('ASSET_ASSIGNMENT')

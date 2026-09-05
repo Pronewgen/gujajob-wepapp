@@ -18,7 +18,7 @@
         @endif
 
         <section class="detail-card disposal-create-card">
-            <h3 class="create-title">รายละเอียดการแจ้งขอจำหน่ายครุภัณฑ์</h3>
+            <h3 class="create-title">บันทึกการแจ้งขอจำหน่าย</h3>
 
             <form method="POST"
                   id="disposalCreateForm"
@@ -49,7 +49,7 @@
                                     name="selling_req_date"
                                     type="text"
                                     placeholder="วว-ดด-ปปปป"
-                                    value="{{ old('selling_req_date', date('Y-m-d')) }}"
+                                    value="{{ old('selling_req_date', now()->format('Y-m-d')) }}"
                                     autocomplete="off"
                                     required
                                 >

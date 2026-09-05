@@ -5,6 +5,7 @@ use App\Http\Controllers\AssetDepartmentReceivingController;
 use App\Http\Controllers\AssetDisposalController;
 use App\Http\Controllers\AssetCategoryController;
 use App\Http\Controllers\AssetController;
+use App\Http\Controllers\AssetReportController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DealerController;
 use App\Http\Controllers\MaterialBalanceSettingController;
@@ -743,9 +744,16 @@ Route::delete('/asset/ASS-006-request-asset-disposal/{id}', [AssetDisposalContro
 Route::get('/asset/ASS-006-request-asset-disposal/{requestNo}/edit', [AssetDisposalController::class, 'edit'])->name('asset.disposals.edit');
 Route::put('/asset/ASS-006-request-asset-disposal/{id}', [AssetDisposalController::class, 'update'])->name('asset.disposals.update')->where('id', '[0-9]+');
 Route::get('/asset/ASS-007-approve-asset-disposal', [AssetDisposalController::class, 'approvalIndex'])->name('asset.disposals.approval.index');
+Route::get('/asset/ASS-007-approve-asset-disposal/{id}/consider', [AssetDisposalController::class, 'approvalConsider'])->name('asset.disposals.approval.consider')->where('id', '[0-9]+');
+Route::get('/asset/ASS-007-approve-asset-disposal/{id}/edit', [AssetDisposalController::class, 'approvalEdit'])->name('asset.disposals.approval.edit')->where('id', '[0-9]+');
+Route::put('/asset/ASS-007-approve-asset-disposal/{id}', [AssetDisposalController::class, 'approvalUpdate'])->name('asset.disposals.approval.update')->where('id', '[0-9]+');
 Route::get('/asset/ASS-007-approve-asset-disposal/{id}', [AssetDisposalController::class, 'approvalShow'])->name('asset.disposals.approval.show')->where('id', '[0-9]+');
 Route::post('/asset/ASS-007-approve-asset-disposal/{id}/approve', [AssetDisposalController::class, 'approve'])->name('asset.disposals.approval.approve')->where('id', '[0-9]+');
 Route::post('/asset/ASS-007-approve-asset-disposal/{id}/reject', [AssetDisposalController::class, 'reject'])->name('asset.disposals.approval.reject')->where('id', '[0-9]+');
+Route::get('/asset/ASS-008-record-asset-disposal-result', [AssetDisposalController::class, 'resultIndex'])->name('asset.disposals.results.index');
+Route::get('/asset/ASS-008-record-asset-disposal-result/{id}/create', [AssetDisposalController::class, 'resultCreate'])->name('asset.disposals.results.create')->where('id', '[0-9]+');
+Route::post('/asset/ASS-008-record-asset-disposal-result/{id}', [AssetDisposalController::class, 'resultStore'])->name('asset.disposals.results.store')->where('id', '[0-9]+');
+Route::get('/asset/ASS-008-record-asset-disposal-result/{id}', [AssetDisposalController::class, 'resultShow'])->name('asset.disposals.results.show')->where('id', '[0-9]+');
 
 Route::get('/asset/ASS-005-receive-department-registered-asset', [AssetDepartmentReceivingController::class, 'index'])->name('asset.department-receiving.index');
 Route::get('/asset/ASS-005-receive-department-registered-asset/{id}/receive', [AssetDepartmentReceivingController::class, 'receive'])->name('asset.department-receiving.receive')->where('id', '[0-9]+');
@@ -753,5 +761,14 @@ Route::get('/asset/ASS-005-receive-department-registered-asset/{id}/edit', [Asse
 Route::post('/asset/ASS-005-receive-department-registered-asset/{id}', [AssetDepartmentReceivingController::class, 'store'])->name('asset.department-receiving.store')->where('id', '[0-9]+');
 Route::put('/asset/ASS-005-receive-department-registered-asset/{id}', [AssetDepartmentReceivingController::class, 'update'])->name('asset.department-receiving.update')->where('id', '[0-9]+');
 Route::get('/asset/ASS-005-receive-department-registered-asset/{id}', [AssetDepartmentReceivingController::class, 'show'])->name('asset.department-receiving.show')->where('id', '[0-9]+');
+
+// ASS-009: Print Asset Report
+Route::get('/asset/ASS-009-print-asset-report', [AssetReportController::class, 'index'])->name('asset.reports.index');
+Route::get('/api/asset/categories/search', [AssetReportController::class, 'searchCategories'])->name('asset.api.categories.search');
+Route::get('/api/asset/search', [AssetReportController::class, 'searchAssets'])->name('asset.api.assets.search');
+Route::get('/api/asset/organizations/search', [AssetReportController::class, 'searchOrganizations'])->name('asset.api.organizations.search');
+Route::get('/api/asset/sub-organizations/search', [AssetReportController::class, 'searchSubOrganizations'])->name('asset.api.sub-organizations.search');
+Route::get('/asset/ASS-009-print-asset-report/report-register', [AssetReportController::class, 'reportAssetRegister'])->name('asset.reports.register');
+Route::get('/asset/ASS-009-print-asset-report/report-ledger', [AssetReportController::class, 'reportAssetLedger'])->name('asset.reports.ledger');
 
 }); // end Route::middleware('auth')

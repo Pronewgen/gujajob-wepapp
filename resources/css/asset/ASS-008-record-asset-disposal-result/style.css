@@ -1,0 +1,183 @@
+.result-page .result-toolbar {
+    align-items: end;
+}
+
+.result-page .result-toolbar .field-group {
+    min-width: 170px;
+}
+
+.result-page .result-toolbar .search-type-field {
+    width: 180px;
+}
+
+.result-page .result-toolbar .search-input-field {
+    flex: 1;
+    min-width: 220px;
+}
+
+.result-page .result-toolbar .status-filter-field {
+    width: 170px;
+}
+
+.result-page .result-toolbar .buyer-filter-field {
+    width: 200px;
+}
+
+.result-page .result-table .col-request-no { width: 14%; }
+.result-page .result-table .col-request-date { width: 12%; }
+.result-page .result-table .col-request-org { width: 20%; }
+.result-page .result-table .col-approval-date { width: 12%; }
+.result-page .result-table .col-status { width: 14%; }
+.result-page .result-table .col-buyer { width: 16%; }
+.result-page .result-table .col-actions { width: 12%; }
+
+.result-page .result-table th.action-column,
+.result-page .result-table td.action-column {
+    text-align: center;
+}
+
+.result-page .request-no-link {
+    text-decoration: none;
+}
+
+.result-page .request-no-link .request-no {
+    color: #1d4ed8;
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.result-page .request-no-link:hover .request-no {
+    color: #1e40af;
+}
+
+.result-page .result-summary {
+    font-size: 12px;
+    color: #475569;
+}
+
+.result-page .result-save-btn {
+    min-width: 0;
+    height: 22px;
+    padding: 0 10px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.result-page .result-create-save-btn {
+    min-width: 0;
+    padding: 0 14px;
+}
+
+.result-page .result-done-text {
+    color: #64748b;
+    font-size: 12px;
+}
+
+.result-page .status-pill.approved {
+    color: #1e40af;
+    background: #dbeafe;
+}
+
+.result-page .status-pill.result-sold {
+    color: #047857;
+    background: #d1fae5;
+}
+
+.result-page .status-pill.result-damaged {
+    color: #92400e;
+    background: #fef3c7;
+}
+
+.result-page .status-pill.result-lost {
+    color: #991b1b;
+    background: #fee2e2;
+}
+
+.result-page .result-create-card .required,
+.result-page .result-detail-card .required {
+    color: #b91c1c;
+    font-weight: 700;
+}
+
+.result-page .result-item-search {
+    margin-bottom: 10px;
+}
+
+.result-page .result-item-table {
+    table-layout: fixed;
+}
+
+.result-page .result-item-table th:nth-child(1),
+.result-page .result-item-table td:nth-child(1) {
+    width: 72px;
+}
+
+.result-page .result-item-table th:nth-child(2),
+.result-page .result-item-table td:nth-child(2) {
+    width: 200px;
+}
+
+.result-page .result-item-table th:nth-child(4),
+.result-page .result-item-table td:nth-child(4),
+.result-page .result-item-table th:nth-child(5),
+.result-page .result-item-table td:nth-child(5),
+.result-page .result-item-table th:nth-child(6),
+.result-page .result-item-table td:nth-child(6) {
+    width: 180px;
+}
+
+.result-page .price-input {
+    width: 100%;
+    max-width: 170px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 8px 10px;
+    text-align: right;
+    font-size: 13px;
+    color: #0f172a;
+}
+
+.result-page .price-input:focus {
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.22);
+    outline: none;
+}
+
+.result-page .price-error-msg,
+.result-page .field-error {
+    display: block;
+    margin-top: 6px;
+    color: #b91c1c;
+    font-size: 12px;
+    text-align: left;
+}
+
+.result-page .result-buyer-field input {
+    max-width: none;
+}
+
+@media (max-width: 1100px) {
+    .result-page .result-toolbar .search-input-field {
+        min-width: 180px;
+    }
+
+    .result-page .result-toolbar .buyer-filter-field,
+    .result-page .result-toolbar .status-filter-field,
+    .result-page .result-toolbar .search-type-field {
+        width: 100%;
+    }
+}
+
+@media (max-width: 820px) {
+    .result-page .result-table .col-request-org,
+    .result-page .result-table .col-buyer,
+    .result-page .result-table .col-approval-date {
+        width: auto;
+    }
+
+    .result-page .result-item-table {
+        min-width: 760px;
+    }
+}

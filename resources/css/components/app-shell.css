@@ -1,0 +1,232 @@
+/* Shared outer shell (sidebar + content) used by layouts/app.blade.php.
+   Extracted verbatim from resources/css/asset/ASS-006-request-asset-disposal/style.css
+   so pages without their own copy render an identical navy sidebar. */
+
+* {
+    box-sizing: border-box;
+}
+
+:root {
+    --sidebar-bg: #0f172a;
+    --sidebar-border: #243044;
+    --sidebar-text: #d6deec;
+    --sidebar-muted: #7f8da5;
+    --active-blue: #2548bd;
+    --active-blue-light: #4b7cff;
+
+    --page-bg: #dfe4ea;
+    --primary: #173b8f;
+    --primary-dark: #102d70;
+    --card-border: #173b8f;
+    --line: #d9e0ea;
+    --thead: #edf2f7;
+    --text-main: #334155;
+    --text-muted: #64748b;
+}
+
+html {
+    font-family: "Noto Sans Thai", Arial, Helvetica, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: geometricPrecision;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--page-bg);
+    font-family: "Noto Sans Thai", Arial, Helvetica, sans-serif;
+    color: var(--text-main);
+}
+
+button,
+input,
+select,
+textarea {
+    font-family: inherit;
+}
+
+.svg-sprite,
+svg.svg-sprite {
+    position: absolute !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    clip: rect(0 0 0 0) !important;
+    clip-path: inset(50%) !important;
+    white-space: nowrap !important;
+}
+
+.app-shell {
+    min-height: 100vh;
+    display: flex;
+}
+
+.sidebar {
+    width: 220px;
+    min-width: 220px;
+    max-width: 220px;
+    min-height: 100vh;
+    background: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.brand {
+    height: 72px;
+    padding: 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    border-bottom: 1px solid var(--sidebar-border);
+}
+
+.brand-icon {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    color: #60a5fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.brand-icon svg {
+    width: 24px !important;
+    height: 24px !important;
+    fill: none !important;
+    stroke: currentColor !important;
+    stroke-width: 2.2 !important;
+    stroke-linecap: round !important;
+    stroke-linejoin: round !important;
+}
+
+.brand h1,
+.brand p {
+    margin: 0;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.menu {
+    padding: 18px 0 24px;
+}
+
+.menu-group + .menu-group {
+    margin-top: 22px;
+}
+
+.menu-group-toggle {
+    width: 100%;
+    height: 38px;
+    padding: 0 16px;
+    border: 0;
+    background: transparent;
+    color: var(--sidebar-muted);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.group-chevron {
+    width: 15px !important;
+    height: 15px !important;
+    fill: none !important;
+    stroke: currentColor !important;
+    stroke-width: 2.4 !important;
+    stroke-linecap: round !important;
+    stroke-linejoin: round !important;
+    transition: transform 0.18s ease;
+}
+
+.menu-group.is-collapsed .group-chevron {
+    transform: rotate(-90deg);
+}
+
+.menu-group.is-collapsed .menu-group-panel {
+    display: none;
+}
+
+.menu-item {
+    position: relative;
+    min-height: 38px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    color: var(--sidebar-text);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 400;
+    white-space: nowrap;
+}
+
+.menu-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.menu-item.active {
+    background: var(--active-blue);
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.menu-item.active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--active-blue-light);
+}
+
+.menu-icon {
+    width: 17px !important;
+    height: 17px !important;
+    flex-shrink: 0;
+    fill: none !important;
+    stroke: currentColor !important;
+    stroke-width: 2 !important;
+    stroke-linecap: round !important;
+    stroke-linejoin: round !important;
+}
+
+.content {
+    flex: 1;
+    min-width: 0;
+    min-height: 100vh;
+    background: var(--page-bg);
+}
+
+.page-container {
+    width: 100%;
+    max-width: 1136px;
+    margin: 0 auto;
+    padding: 34px 26px 60px;
+}
+
+.page-header {
+    margin-bottom: 16px;
+}
+
+.page-header h2 {
+    margin: 0 0 12px;
+    color: var(--primary);
+    font-size: 24px;
+    line-height: 1;
+    font-weight: 900;
+    letter-spacing: -0.4px;
+}
+
+.header-line {
+    width: 100%;
+    height: 1px;
+    background: #c4ccd8;
+}

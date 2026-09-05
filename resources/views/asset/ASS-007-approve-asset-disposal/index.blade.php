@@ -4,6 +4,7 @@
     @vite([
         'resources/css/components/pagination.css',
         'resources/css/components/sort-icon.css',
+        'resources/css/components/table-actions.css',
         'resources/css/asset/ASS-006-request-asset-disposal/style.css',
         'resources/css/asset/ASS-007-approve-asset-disposal/approval.css',
     ])
@@ -35,9 +36,10 @@
                 <div class="field-group status-filter-field">
                     <label for="approvalStatus">สถานะ</label>
                     <select id="approvalStatus" name="status">
+                        <option value="" @selected($status === '')>ทั้งหมด</option>
                         <option value="pending" @selected($status === 'pending')>รอการอนุมัติ</option>
-                        <option value="approved" @selected($status === 'approved')>อนุมัติ</option>
                         <option value="rejected" @selected($status === 'rejected')>ไม่อนุมัติ</option>
+                        <option value="approved" @selected($status === 'approved')>อนุมัติแล้ว</option>
                     </select>
                 </div>
                 <button class="search-btn" type="submit">ค้นหา</button>
@@ -60,12 +62,26 @@
                     <tbody>
                         @forelse ($records as $record)
                             <tr>
-                                <td><a class="request-no-link" href="{{ route('asset.disposals.approval.show', $record->id) }}">{{ $record->selling_code ?? '-' }}</a></td>
+                                <td><a class="request-no-link" href="{{ route('asset.disposals.approval.show', $record->id) }}"><span class="request-no">{{ $record->selling_code ?? '-' }}</span></a></td>
                                 <td class="date-text">{{ $record->req_date_th ?? '-' }}</td>
                                 <td>{{ $record->req_org_name ?? '-' }}</td>
-                                <td class="reason-text">{{ $record->remarks ?? ($record->reason ?? '-') }}</td>
+                                <td class="reason-text">{{ $record->reason_label }}</td>
                                 <td class="status-cell"><span class="status-pill {{ $record->status_type }}">{{ $record->status_label }}</span></td>
-                                <td class="action-column"><a class="detail-btn" href="{{ route('asset.disposals.approval.show', $record->id) }}">{{ $record->status_type === 'pending' ? 'พิจารณา' : 'รายละเอียด' }}</a></td>
+                                <td class="action-column">
+                                    <div class="table-action-buttons approval-action-buttons">
+                                        @if ($record->status_type === 'pending')
+                                            <a class="app-page-jump-button approval-consider-btn" href="{{ route('asset.disposals.approval.consider', $record->id) }}">พิจารณา</a>
+                                        @elseif ($record->status_type === 'rejected')
+                                            <a class="table-action-icon table-action-edit"
+                                               aria-label="แก้ไขผลการอนุมัติ" title="แก้ไขผลการอนุมัติ" data-tooltip="แก้ไขผลการอนุมัติ"
+                                               href="{{ route('asset.disposals.approval.edit', $record->id) }}">
+                                                <svg aria-hidden="true"><use href="#icon-square-pen"></use></svg>
+                                            </a>
+                                        @else
+                                            <span class="approval-result-done">บันทึกผลแล้ว</span>
+                                        @endif
+                                    </div>
+                                </td>
                             </tr>
                         @empty
                             <tr><td class="no-data" colspan="6">ไม่พบข้อมูลใบแจ้งขออนุมัติจำหน่ายครุภัณฑ์</td></tr>

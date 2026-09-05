@@ -71,7 +71,7 @@
                             name="receive_date"
                             type="text"
                             class="js-date-picker"
-                            value="{{ old('receive_date') }}"
+                            value="{{ old('receive_date', now()->format('Y-m-d')) }}"
                             placeholder="DD-MM-BBBB"
                             data-required="true"
                             required
@@ -86,18 +86,13 @@
                         <input id="receiverName" type="text" value="{{ $currentUser->user_name ?? '' }}" readonly>
                     </div>
 
-                    <div class="field-group remark-group">
-                        <label for="receiveRemark">หมายเหตุ</label>
-                        <textarea id="receiveRemark" name="remark" rows="3" placeholder="หมายเหตุการรับครุภัณฑ์ (ถ้ามี)">{{ old('remark') }}</textarea>
-                    </div>
-
                     <div class="field-group">
                         <label>หน่วยงานที่รับการจัดสรร</label>
                         <input type="text" value="{{ $asset->target_org_name ?? '-' }}" readonly>
                     </div>
 
                     <div class="field-group">
-                        <label>หน่วยงานย่อยที่รับการจัดสรร <span class="required-mark">*</span></label>
+                        <label>หน่วยงานที่ครุภัณฑ์ประจำห้อง <span class="required-mark">*</span></label>
                         <select name="sub_org_id" required>
                             <option value="">-- เลือกหน่วยงานย่อย --</option>
                             @foreach ($subOrgs as $org)
@@ -107,6 +102,11 @@
                         @error('sub_org_id')
                             <span class="field-error">{{ $message }}</span>
                         @enderror
+                    </div>
+
+                    <div class="field-group remark-group">
+                        <label for="receiveRemark">หมายเหตุ</label>
+                        <textarea id="receiveRemark" name="remark" rows="1" placeholder="หมายเหตุการรับครุภัณฑ์ (ถ้ามี)">{{ old('remark') }}</textarea>
                     </div>
                 </div>
             </form>

@@ -1,0 +1,370 @@
+/* Outer shell (sidebar/header/page-container) comes from components/app-shell.css.
+   Everything below is scoped to the ASS-009 report content only. */
+
+:root {
+    --border-color: #d7e0ea;
+    --input-bg: #edf0f3;
+    --green: #059669;
+    --red: #ef4444;
+    --blue: #2563eb;
+}
+
+.report-card {
+    width: 100%;
+    background: #ffffff;
+    border: 1.5px solid var(--card-border);
+    border-top-width: 4px;
+    border-radius: 8px;
+    padding: 26px 28px;
+    box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
+}
+
+.report-card + .report-card {
+    margin-top: 22px;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 16px;
+    margin-bottom: 20px;
+    border-bottom: 1px dashed #e5e7eb;
+    color: #111827;
+    font-size: 15px;
+    font-weight: 900;
+}
+
+.section-icon {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: var(--primary);
+    stroke-width: 2.3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.report-type-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+@media (max-width: 768px) {
+    .report-type-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.report-type-item {
+    min-height: 120px;
+    padding: 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 7px;
+    background: #ffffff;
+    text-align: left;
+    cursor: pointer;
+    transition: 0.15s ease;
+}
+
+.report-type-item:hover {
+    border-color: #90b4f8;
+    background: #f8fbff;
+}
+
+.report-type-item.active {
+    border: 2px solid var(--primary);
+    background: #eff6ff;
+}
+
+.report-icon-box {
+    width: 36px;
+    height: 36px;
+    margin-bottom: 14px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    background: #dbe5ff;
+    color: var(--primary);
+}
+
+.report-type-item.active .report-icon-box {
+    background: var(--primary);
+    color: #ffffff;
+}
+
+.report-icon-box svg {
+    width: 19px;
+    height: 19px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.report-name {
+    display: block;
+    margin-bottom: 5px;
+    color: #111827;
+    font-size: 14px;
+    font-weight: 900;
+}
+
+.report-description {
+    display: block;
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.45;
+    font-weight: 500;
+}
+
+.condition-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+    .condition-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.field-group label {
+    color: #111827;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.field-hint {
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.report-inline-validation-error {
+    margin: 0 0 14px;
+    padding: 10px 12px;
+    border: 1px solid #fecaca;
+    border-left: 4px solid #dc2626;
+    border-radius: 8px;
+    background: #fef2f2;
+    color: #b91c1c;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+.searchable-input:disabled {
+    background: #f1f5f9;
+    color: #94a3b8;
+    cursor: not-allowed;
+}
+
+.field-group input,
+.field-group select {
+    height: 36px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--input-bg);
+    color: #111827;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 0 12px;
+    outline: none;
+}
+
+.field-group input:focus,
+.field-group select:focus {
+    border-color: var(--primary);
+    background: #ffffff;
+}
+
+.searchable-input-wrapper,
+.searchable-field {
+    position: relative;
+}
+
+.searchable-input {
+    width: 100%;
+    height: 36px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--input-bg);
+    color: #111827;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 0 12px;
+    outline: none;
+}
+
+.searchable-input:focus {
+    border-color: var(--primary);
+    background: #ffffff;
+}
+
+.searchable-input::placeholder {
+    color: #9ca3af;
+}
+
+.dropdown-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 10;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.suggestion-item {
+    padding: 10px 12px;
+    color: #111827;
+    font-size: 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f3f4f6;
+    transition: background 0.1s;
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.suggestion-item:hover {
+    background: #f8fbff;
+    color: var(--primary);
+}
+
+.suggestion-item.selected {
+    background: #dbe5ff;
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.export-panel {
+    min-height: 64px;
+    padding: 14px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    background: #f8fafc;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+.export-format {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.export-label {
+    color: #111827;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.radio-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.radio-label input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--red);
+}
+
+.pdf-radio {
+    color: var(--red);
+}
+
+.excel-radio {
+    color: #059669;
+}
+
+.export-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.preview-btn,
+.download-btn {
+    height: 40px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: 0.15s ease;
+    color: #ffffff;
+    white-space: nowrap;
+}
+
+.preview-btn {
+    background: var(--primary);
+}
+
+.preview-btn:hover {
+    background: #102d70;
+}
+
+.download-btn {
+    background: var(--green);
+}
+
+.download-btn:hover {
+    background: #047857;
+}
+
+.preview-btn svg,
+.download-btn svg {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+@media print {
+    .page-header,
+    .export-panel,
+    .export-actions,
+    .section-title {
+        display: none;
+    }
+
+    .report-card {
+        border: none;
+        box-shadow: none;
+    }
+}

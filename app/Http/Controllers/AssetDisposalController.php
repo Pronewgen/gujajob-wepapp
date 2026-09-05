@@ -18,19 +18,24 @@ class AssetDisposalController extends Controller
 {
     private const PER_PAGE = 10;
 
-    // selling_approval_status: NULL/0 = รอการอนุมัติ, 1 = อนุมัติ, 2 = ไม่อนุมัติ
+    // selling_approval_status: NULL/0 = รอการอนุมัติ, 1 = อนุมัติแล้ว, 2 = ไม่อนุมัติ
     private const STATUS_MAP = [
         0 => ['label' => 'รอการอนุมัติ', 'type' => 'pending'],
-        1 => ['label' => 'อนุมัติ',       'type' => 'approved'],
+        1 => ['label' => 'อนุมัติแล้ว',   'type' => 'approved'],
         2 => ['label' => 'ไม่อนุมัติ',    'type' => 'rejected'],
     ];
 
-    // REASON column is VARCHAR2(1); codes are the single-char keys stored in Oracle.
+    // REASON column is VARCHAR2(1); codes '1','2','3' stored in Oracle.
     private const REASON_OPTIONS = [
-        'C' => 'ชำรุดเสียหาย',
-        'E' => 'หมดอายุการใช้งาน',
-        'N' => 'ไม่มีความจำเป็นต้องใช้งาน',
-        'O' => 'อื่นๆ',
+        '1' => 'หมดอายุการใช้งาน',
+        '2' => 'ชำรุดจนซ่อมแซมไม่ได้',
+        '3' => 'สูญหาย',
+    ];
+
+    private const REASON_TO_ASSET_STATUS = [
+        '1' => '4',
+        '2' => '5',
+        '3' => '6',
     ];
 
     public static function getReasonLabel(string $code): string
@@ -117,7 +122,7 @@ class AssetDisposalController extends Controller
         if (isset($sortMap[$sort])) {
             $query->orderByRaw("{$sortMap[$sort]} {$direction}, s.id ASC");
         } else {
-            $query->orderByRaw('s.selling_req_date DESC NULLS LAST, s.id ASC');
+            $query->orderByRaw('CASE WHEN s.selling_approval_status IS NULL OR s.selling_approval_status = 0 THEN 0 ELSE 1 END ASC, s.selling_req_date DESC NULLS LAST, s.id ASC');
         }
 
         $disposals = $query->paginate(self::PER_PAGE)->withQueryString();
@@ -146,7 +151,7 @@ class AssetDisposalController extends Controller
     {
         $searchBy  = $request->input('search_by', 'all');
         $keyword   = trim($request->string('keyword')->value());
-        $status    = $request->input('status', 'pending');
+        $status    = $request->input('status', '');
         $sort      = $request->input('sort', '');
         $direction = strtolower($request->input('direction', 'asc')) === 'desc' ? 'desc' : 'asc';
         $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
@@ -156,7 +161,13 @@ class AssetDisposalController extends Controller
             ->selectRaw("s.id, s.selling_code, s.selling_req_date,
                 CASE WHEN s.selling_req_date IS NOT NULL THEN TO_CHAR(s.selling_req_date, 'DD-MM-') || TO_CHAR(s.selling_req_date + INTERVAL '543' YEAR(3), 'YYYY') END AS req_date_th,
                 o.org_name AS req_org_name, s.reason, s.remarks, s.selling_approval_status")
-            ->whereIn('s.app_org_id', $visibleOrgIds);
+            ->where(function ($q) use ($visibleOrgIds): void {
+                $q->whereIn('s.app_org_id', $visibleOrgIds)
+                    ->orWhere(function ($sq) use ($visibleOrgIds): void {
+                        $sq->whereNull('s.app_org_id')
+                            ->whereIn('s.req_org_id', $visibleOrgIds);
+                    });
+            });
 
         if ($keyword !== '') {
             $escaped = $this->escapeLike($keyword);
@@ -190,7 +201,7 @@ class AssetDisposalController extends Controller
         if (isset($sortMap[$sort])) {
             $query->orderByRaw("{$sortMap[$sort]} {$direction}, s.id ASC");
         } else {
-            $query->orderByRaw('s.selling_req_date DESC NULLS LAST, s.id ASC');
+            $query->orderByRaw("CASE WHEN s.selling_approval_status IS NULL OR s.selling_approval_status = 0 THEN 1 WHEN s.selling_approval_status = 2 THEN 2 WHEN s.selling_approval_status = 1 THEN 3 ELSE 4 END ASC, s.selling_code ASC, s.id ASC");
         }
 
         $records = $query->paginate(self::PER_PAGE)->withQueryString();
@@ -198,6 +209,7 @@ class AssetDisposalController extends Controller
             $info = self::STATUS_MAP[(int) ($item->selling_approval_status ?? 0)] ?? self::STATUS_MAP[0];
             $item->status_label = $info['label'];
             $item->status_type = $info['type'];
+            $item->reason_label = self::REASON_OPTIONS[$item->reason ?? ''] ?? ($item->reason ?? '-');
             return $item;
         });
 
@@ -206,21 +218,153 @@ class AssetDisposalController extends Controller
         ) + ['pageTitle' => 'อนุมัติแจ้งจำหน่ายครุภัณฑ์']);
     }
 
-    public function approvalShow(Request $request, int $id): View
+    public function approvalShow(int $id): View
+    {
+        $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
+        $record = $this->fetchApprovalRecord($id, $visibleOrgIds);
+        abort_if(! $record, 404);
+
+        $items = $this->fetchApprovalItems($id);
+        $statusInfo = self::STATUS_MAP[(int) ($record->selling_approval_status ?? 0)] ?? self::STATUS_MAP[0];
+        $reasonLabel = self::REASON_OPTIONS[$record->reason ?? ''] ?? ($record->reason ?? '-');
+
+        return view('asset.ASS-007-approve-asset-disposal.detail', compact(
+            'record', 'items', 'statusInfo', 'reasonLabel'
+        ) + ['pageTitle' => 'รายละเอียดการแจ้งขอจำหน่ายครุภัณฑ์']);
+    }
+
+    public function approvalConsider(Request $request, int $id): View
     {
         $itemSearchBy  = $request->input('item_search_by', 'all');
         $itemKeyword   = trim($request->string('item_keyword')->value());
         $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
 
-        $record = DB::connection('oracle')->table('ASSET_SELLING AS s')
+        $record = $this->fetchApprovalRecord($id, $visibleOrgIds);
+        abort_if(! $record, 404);
+        abort_if(! $this->isApprovalPending($record), 403);
+
+        $statusInfo = self::STATUS_MAP[(int) ($record->selling_approval_status ?? 0)] ?? self::STATUS_MAP[0];
+        $reasonLabel = self::REASON_OPTIONS[$record->reason ?? ''] ?? ($record->reason ?? '-');
+        $isLostReason = $this->isLostReason($record);
+        $items = $isLostReason
+            ? $this->fetchApprovalItems($id)
+            : $this->buildApprovalItemsQuery($id, $itemSearchBy, $itemKeyword)->get();
+
+        return view('asset.ASS-007-approve-asset-disposal.show', compact(
+            'record', 'items', 'statusInfo', 'reasonLabel', 'itemSearchBy', 'itemKeyword', 'isLostReason'
+        ) + ['pageTitle' => 'พิจารณาใบแจ้งขอจำหน่าย']);
+    }
+
+    public function approvalEdit(Request $request, int $id): View
+    {
+        $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
+        $record = $this->fetchApprovalRecord($id, $visibleOrgIds);
+        abort_if(! $record, 404);
+        abort_if($this->isApprovalPending($record), 403);
+
+        $items = $this->fetchApprovalItems($id);
+        $statusInfo = self::STATUS_MAP[(int) ($record->selling_approval_status ?? 0)] ?? self::STATUS_MAP[0];
+        $reasonLabel = self::REASON_OPTIONS[$record->reason ?? ''] ?? ($record->reason ?? '-');
+        $isLostReason = $this->isLostReason($record);
+
+        return view('asset.ASS-007-approve-asset-disposal.edit', compact(
+            'record', 'items', 'statusInfo', 'reasonLabel', 'isLostReason'
+        ) + ['pageTitle' => 'แก้ไขผลการอนุมัติ']);
+    }
+
+    public function approve(Request $request, int $id): RedirectResponse
+    {
+        $record = $this->fetchApprovalRecord($id, $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id));
+        abort_if(! $record, 404);
+        abort_if(! $this->isApprovalPending($record), 403);
+
+        $isLostReason = $this->isLostReason($record);
+        $validated = $request->validate($isLostReason ? [] : [
+            'approval_date' => ['required', 'date'],
+            'items'         => ['required', 'array', 'min:1'],
+            'items.*.selling_min_price' => ['required', 'numeric', 'min:0', 'regex:/^\d+(\.\d{1,2})?$/'],
+        ]);
+
+        $approvalDate = $isLostReason ? $record->created_at_input : $validated['approval_date'];
+        $items = $isLostReason ? [] : $validated['items'];
+
+        return $this->finalizeApproval($id, 1, $approvalDate, $items, null);
+    }
+
+    public function reject(Request $request, int $id): RedirectResponse
+    {
+        $record = $this->fetchApprovalRecord($id, $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id));
+        abort_if(! $record, 404);
+        abort_if(! $this->isApprovalPending($record), 403);
+
+        $isLostReason = $this->isLostReason($record);
+        $validated = $request->validate([
+            'approval_date' => [$isLostReason ? 'nullable' : 'required', 'date'],
+            'reject_reason' => ['required', 'string', 'max:500'],
+        ], [
+            'reject_reason.required' => 'กรุณากรอกหมายเหตุหากไม่อนุมัติ',
+        ]);
+
+        $approvalDate = $isLostReason ? $record->created_at_input : $validated['approval_date'];
+
+        return $this->finalizeApproval($id, 2, $approvalDate, [], trim($validated['reject_reason']));
+    }
+
+    public function approvalUpdate(Request $request, int $id): RedirectResponse
+    {
+        $record = $this->fetchApprovalRecord($id, $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id));
+        abort_if(! $record, 404);
+        abort_if($this->isApprovalPending($record), 403);
+
+        $isLostReason = $this->isLostReason($record);
+        $validated = $request->validate([
+            'decision'      => ['required', Rule::in(['1', '2'])],
+            'approval_date' => [$isLostReason ? 'nullable' : 'required', 'date'],
+            'reject_reason' => ['nullable', 'string', 'max:500', 'required_if:decision,2'],
+            'items'         => [$isLostReason ? 'nullable' : 'required_if:decision,1', 'array'],
+            'items.*.selling_min_price' => [$isLostReason ? 'nullable' : 'required_if:decision,1', 'numeric', 'min:0', 'regex:/^\d+(\.\d{1,2})?$/'],
+        ], [
+            'reject_reason.required_if' => 'กรุณากรอกหมายเหตุหากไม่อนุมัติ',
+            'items.*.selling_min_price.required_if' => 'กรุณากรอกราคาขายของทุกรายการ',
+        ]);
+
+        $decision = (int) $validated['decision'];
+        $items = $decision === 1 && ! $isLostReason ? ($validated['items'] ?? []) : [];
+        $rejectReason = $decision === 2 ? trim((string) $validated['reject_reason']) : null;
+        $approvalDate = $isLostReason ? $record->created_at_input : $validated['approval_date'];
+
+        return $this->finalizeApproval($id, $decision, $approvalDate, $items, $rejectReason, false);
+    }
+
+    private function fetchApprovalRecord(int $id, array $visibleOrgIds): ?object
+    {
+        if (empty($visibleOrgIds)) {
+            return null;
+        }
+
+        return DB::connection('oracle')->table('ASSET_SELLING AS s')
             ->leftJoin('GLB_ORGANIZATION AS o', 'o.org_id', '=', 's.req_org_id')
             ->leftJoin('GLB_ORGANIZATION AS aorg', 'aorg.org_id', '=', 's.app_org_id')
-            ->selectRaw("s.*, o.org_name AS req_org_name, aorg.org_name AS app_org_name,
+            ->leftJoin('SYS_USER AS approver', 'approver.id', '=', 's.updated_by')
+            ->selectRaw("s.*, o.org_name AS req_org_name, aorg.org_name AS app_org_name, approver.user_name AS approval_user_name,
                 CASE WHEN s.selling_req_date IS NOT NULL THEN TO_CHAR(s.selling_req_date, 'DD-MM-') || TO_CHAR(s.selling_req_date + INTERVAL '543' YEAR(3), 'YYYY') END AS req_date_th,
-                CASE WHEN s.selling_approval_date IS NOT NULL THEN TO_CHAR(s.selling_approval_date, 'DD-MM-') || TO_CHAR(s.selling_approval_date + INTERVAL '543' YEAR(3), 'YYYY') END AS approval_date_th")
-            ->where('s.id', $id)->whereIn('s.app_org_id', $visibleOrgIds)->first();
-        abort_if(! $record, 404);
+                CASE WHEN s.selling_approval_date IS NOT NULL THEN TO_CHAR(s.selling_approval_date, 'DD-MM-') || TO_CHAR(s.selling_approval_date + INTERVAL '543' YEAR(3), 'YYYY') END AS approval_date_th,
+                CASE WHEN s.created_at IS NOT NULL THEN TO_CHAR(CAST(s.created_at AS DATE), 'DD-MM-') || TO_CHAR(CAST(s.created_at AS DATE) + INTERVAL '543' YEAR(3), 'YYYY') END AS created_at_th,
+                TO_CHAR(CAST(s.created_at AS DATE), 'YYYY-MM-DD') AS created_at_input,
+                TO_CHAR(s.selling_approval_date, 'YYYY-MM-DD') AS approval_date_input")
+            ->where('s.id', $id)
+            ->where(function ($q) use ($visibleOrgIds): void {
+                $q->whereIn('s.app_org_id', $visibleOrgIds)
+                    ->orWhere(function ($sq) use ($visibleOrgIds): void {
+                        $sq->whereNull('s.app_org_id')
+                            ->whereIn('s.req_org_id', $visibleOrgIds);
+                    });
+            })
+            ->first();
+    }
 
+    private function buildApprovalItemsQuery(int $id, string $itemSearchBy = 'all', string $itemKeyword = '')
+    {
         $itemsQuery = DB::connection('oracle')->table('ASSET_SELLING_LIST AS sl')
             ->join('ASSET AS a', 'a.id', '=', 'sl.ass_id')
             ->leftJoin('ASSET_CATEGORY AS c', 'c.id', '=', 'a.asscat_id')
@@ -254,34 +398,415 @@ class AssetDisposalController extends Controller
             }
         }
 
-        $items      = $itemsQuery->orderBy('sl.id')->get();
-        $statusInfo = self::STATUS_MAP[(int) ($record->selling_approval_status ?? 0)] ?? self::STATUS_MAP[0];
-        $reasonLabel = self::REASON_OPTIONS[$record->reason ?? ''] ?? ($record->reason ?? '-');
-
-        return view('asset.ASS-007-approve-asset-disposal.show', compact(
-            'record', 'items', 'statusInfo', 'reasonLabel', 'itemSearchBy', 'itemKeyword'
-        ) + ['pageTitle' => 'พิจารณาแจ้งจำหน่ายครุภัณฑ์']);
+        return $itemsQuery->orderBy('sl.id');
     }
 
-    public function approve(Request $request, int $id): RedirectResponse
+    private function fetchApprovalItems(int $id)
     {
-        $validated = $request->validate([
-            'approval_date' => ['required', 'date'],
-            'items'         => ['required', 'array', 'min:1'],
-            'items.*.selling_min_price' => ['required', 'numeric', 'min:0', 'regex:/^\d+(\.\d{1,2})?$/'],
-        ]);
-
-        return $this->finalizeApproval($id, 1, $validated['approval_date'], $validated['items'], null);
+        return $this->buildApprovalItemsQuery($id)->get();
     }
 
-    public function reject(Request $request, int $id): RedirectResponse
+    private function isApprovalPending(object $record): bool
     {
-        $validated = $request->validate([
-            'approval_date' => ['required', 'date'],
-            'reject_reason' => ['required', 'string', 'max:500'],
+        return $record->selling_approval_status === null || (int) $record->selling_approval_status === 0;
+    }
+
+    private function isLostReason(object|string|null $recordOrReason): bool
+    {
+        $reason = is_object($recordOrReason) ? ($recordOrReason->reason ?? null) : $recordOrReason;
+
+        return (string) $reason === '3';
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    //  RESULT LIST / RECORD / DETAIL (ASS-008)
+    // ──────────────────────────────────────────────────────────────────────
+
+    public function resultIndex(Request $request): View
+    {
+        $searchBy      = $request->string('search_by', 'all')->value();
+        $keyword       = trim($request->string('keyword')->value());
+        $statusFilter  = $request->string('status', '')->value();
+        $buyerKeyword  = trim($request->string('buyer')->value());
+        $sort          = $request->string('sort', '')->value();
+        $direction     = strtolower($request->string('direction', 'desc')->value()) === 'asc' ? 'asc' : 'desc';
+        $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
+
+        $summarySub = DB::connection('oracle')
+            ->table('ASSET_SELLING_LIST AS sl')
+            ->selectRaw('sl.selling_id, COUNT(*) AS total_items, SUM(CASE WHEN sl.selling_real_price IS NOT NULL THEN 1 ELSE 0 END) AS priced_items')
+            ->groupBy('sl.selling_id');
+
+        $query = DB::connection('oracle')
+            ->table('ASSET_SELLING AS s')
+            ->leftJoinSub($summarySub, 'rs', 'rs.selling_id', '=', 's.id')
+            ->leftJoin('GLB_ORGANIZATION AS rorg', 'rorg.org_id', '=', 's.req_org_id')
+            ->leftJoin('SYS_USER AS approver', 'approver.id', '=', 's.updated_by')
+            ->selectRaw("
+                s.id,
+                s.selling_code,
+                s.selling_req_date,
+                s.selling_approval_date,
+                CASE WHEN s.selling_req_date IS NOT NULL THEN
+                    TO_CHAR(s.selling_req_date,'DD-MM-')||TO_CHAR(s.selling_req_date+INTERVAL '543' YEAR(3),'YYYY')
+                END AS req_date_th,
+                CASE WHEN s.selling_approval_date IS NOT NULL THEN
+                    TO_CHAR(s.selling_approval_date,'DD-MM-')||TO_CHAR(s.selling_approval_date+INTERVAL '543' YEAR(3),'YYYY')
+                END AS approval_date_th,
+                s.reason,
+                s.buyer,
+                s.selling_approval_status,
+                rorg.org_name AS req_org_name,
+                approver.user_name AS approval_user_name,
+                NVL(rs.total_items, 0) AS total_items,
+                NVL(rs.priced_items, 0) AS priced_items
+            ")
+            ->where('s.selling_approval_status', 1);
+
+        if (empty($visibleOrgIds)) {
+            $query->whereRaw('1=0');
+        } else {
+            $query->whereIn('s.req_org_id', $visibleOrgIds);
+        }
+
+        if ($keyword !== '') {
+            $escaped = $this->escapeLike($keyword);
+            $searchFieldMap = [
+                'request_no' => 's.selling_code',
+                'org_name'   => 'rorg.org_name',
+            ];
+            if (isset($searchFieldMap[$searchBy])) {
+                $col = $searchFieldMap[$searchBy];
+                $query->whereRaw("UPPER({$col}) LIKE UPPER(?) ESCAPE '\\'", ["%{$escaped}%"]);
+            } else {
+                $query->where(function ($q) use ($escaped): void {
+                    $q->whereRaw("UPPER(s.selling_code) LIKE UPPER(?) ESCAPE '\\'", ["%{$escaped}%"])
+                        ->orWhereRaw("UPPER(rorg.org_name) LIKE UPPER(?) ESCAPE '\\'", ["%{$escaped}%"]);
+                });
+            }
+        }
+
+        if ($buyerKeyword !== '') {
+            $escapedBuyer = $this->escapeLike($buyerKeyword);
+            $query->whereRaw("UPPER(s.buyer) LIKE UPPER(?) ESCAPE '\\'", ["%{$escapedBuyer}%"]);
+        }
+
+        $completedExpr = "(NVL(rs.total_items,0) > 0 AND NVL(rs.priced_items,0) = NVL(rs.total_items,0) AND (s.buyer IS NOT NULL OR s.reason = '3'))";
+
+        if ($statusFilter === 'approved') {
+            $query->whereRaw("NOT {$completedExpr}");
+        } elseif ($statusFilter === '4') {
+            $query->whereRaw($completedExpr)->whereIn('s.reason', ['1', '2']);
+        } elseif ($statusFilter === '6') {
+            $query->whereRaw($completedExpr)->where('s.reason', '3');
+        }
+
+        $sortMap = [
+            'request_no'   => 's.selling_code',
+            'request_date' => 's.selling_req_date',
+            'org_name'     => 'rorg.org_name',
+            'approval_date'=> 's.selling_approval_date',
+            'buyer'        => 's.buyer',
+        ];
+
+        if ($sort === 'status') {
+            $query->orderByRaw("CASE WHEN {$completedExpr} THEN (10 + TO_NUMBER(NVL(s.reason,'9'))) ELSE 1 END {$direction}, s.id ASC");
+        } elseif (isset($sortMap[$sort])) {
+            $query->orderByRaw("{$sortMap[$sort]} {$direction} NULLS LAST, s.id ASC");
+        } else {
+            $query->orderByRaw('s.selling_approval_date DESC NULLS LAST, s.id DESC');
+        }
+
+        $records = $query->paginate(self::PER_PAGE)->withQueryString();
+        $records->getCollection()->transform(function ($row) {
+            $completed = $this->isResultCompleted($row);
+            $statusInfo = $this->resolveResultStatusInfo((string) ($row->reason ?? ''), $completed);
+            $row->result_status_label = $statusInfo['label'];
+            $row->result_status_type  = $statusInfo['type'];
+            $row->can_record_result   = ! $completed;
+            return $row;
+        });
+
+        return view('asset.ASS-008-record-asset-disposal-result.index', [
+            'pageTitle'     => 'บันทึกผลการจำหน่ายครุภัณฑ์',
+            'records'       => $records,
+            'searchBy'      => $searchBy,
+            'keyword'       => $keyword,
+            'statusFilter'  => $statusFilter,
+            'buyerKeyword'  => $buyerKeyword,
+            'sort'          => $sort,
+            'direction'     => $direction,
+        ]);
+    }
+
+    public function resultCreate(Request $request, int $id): View|RedirectResponse
+    {
+        $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
+
+        $record = $this->fetchResultHeader($id, $visibleOrgIds);
+        abort_if(! $record, 404);
+        abort_if((int) ($record->selling_approval_status ?? 0) !== 1, 403);
+
+        if ($this->isResultCompleted($record)) {
+            return redirect()->route('asset.disposals.results.show', $id)
+                ->with('success', 'รายการนี้บันทึกผลการจำหน่ายเรียบร้อยแล้ว');
+        }
+
+        // Create page must always submit all lines, so do not filter item rows.
+        $items = $this->buildResultItemsQuery($id, 'all', '')->get();
+        $statusInfo = $this->resolveResultStatusInfo((string) ($record->reason ?? ''), false);
+        $isLostReason = $this->isLostReason($record);
+
+        return view('asset.ASS-008-record-asset-disposal-result.create', [
+            'pageTitle'      => 'บันทึกผลการจำหน่ายครุภัณฑ์',
+            'record'         => $record,
+            'items'          => $items,
+            'statusInfo'     => $statusInfo,
+            'reasonLabel'    => self::REASON_OPTIONS[$record->reason ?? ''] ?? ($record->reason ?? '-'),
+            'isLostReason'   => $isLostReason,
+        ]);
+    }
+
+    public function resultStore(Request $request, int $id): RedirectResponse
+    {
+        $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
+        $record = $this->fetchResultHeader($id, $visibleOrgIds);
+        abort_if(! $record, 404);
+        abort_if((int) ($record->selling_approval_status ?? 0) !== 1, 403);
+
+        if ($this->isResultCompleted($record)) {
+            return redirect()->route('asset.disposals.results.show', $id)
+                ->withErrors(['_error' => 'รายการนี้ถูกบันทึกผลการจำหน่ายแล้ว']);
+        }
+
+        $isLostReason = $this->isLostReason($record);
+        $validated = $request->validate($isLostReason ? [] : [
+            'buyer'                     => ['required', 'string', 'max:150'],
+            'items'                     => ['required', 'array', 'min:1'],
+            'items.*.selling_real_price'=> ['required', 'numeric', 'min:0', 'regex:/^\d+(\.\d{1,2})?$/'],
+        ], [
+            'buyer.required'                     => 'กรุณากรอกผู้รับซื้อ',
+            'items.required'                     => 'กรุณากรอกราคาที่ขายได้จริง',
+            'items.*.selling_real_price.required'=> 'กรุณากรอกราคาที่ขายได้จริง',
+            'items.*.selling_real_price.numeric' => 'ราคาที่ขายได้จริงต้องเป็นตัวเลข',
+            'items.*.selling_real_price.min'     => 'ราคาที่ขายได้จริงต้องไม่น้อยกว่า 0',
         ]);
 
-        return $this->finalizeApproval($id, 2, $validated['approval_date'], [], trim($validated['reject_reason']));
+        $sellingItems = DB::connection('oracle')
+            ->table('ASSET_SELLING_LIST')
+            ->where('selling_id', $id)
+            ->get(['id', 'ass_id']);
+
+        $validLineIds = $sellingItems->pluck('id')->map(fn ($v) => (int) $v)->sort()->values()->all();
+        if (! $isLostReason) {
+            $submittedLineIds = collect(array_keys((array) $validated['items']))
+                ->map(fn ($v) => (int) $v)
+                ->sort()
+                ->values()
+                ->all();
+
+            if ($validLineIds !== $submittedLineIds) {
+                return back()->withErrors(['_error' => 'รายการครุภัณฑ์ไม่ตรงกับใบแจ้งขอจำหน่าย'])->withInput();
+            }
+        }
+
+        $assetIds = $sellingItems->pluck('ass_id')->map(fn ($v) => (int) $v)->all();
+        $buyer = $isLostReason ? null : trim((string) $validated['buyer']);
+        $userId = (int) Auth::id();
+        $finalAssetStatus = self::REASON_TO_ASSET_STATUS[(string) ($record->reason ?? '')] ?? null;
+
+        try {
+            DB::connection('oracle')->transaction(function () use ($id, $validated, $buyer, $assetIds, $userId, $finalAssetStatus, $isLostReason): void {
+                $header = DB::connection('oracle')
+                    ->table('ASSET_SELLING')
+                    ->where('id', $id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $header || (int) ($header->selling_approval_status ?? 0) !== 1) {
+                    throw new \RuntimeException('invalid_status');
+                }
+
+                DB::connection('oracle')
+                    ->table('ASSET_SELLING')
+                    ->where('id', $id)
+                    ->update([
+                        'buyer'      => $isLostReason ? $header->buyer : $buyer,
+                        'updated_by' => $userId,
+                        'updated_at' => DB::raw('SYSTIMESTAMP'),
+                    ]);
+
+                if ($isLostReason) {
+                    DB::connection('oracle')
+                        ->table('ASSET_SELLING_LIST')
+                        ->where('selling_id', $id)
+                        ->update([
+                            'selling_real_price' => 0,
+                            'updated_by'         => $userId,
+                            'updated_at'         => DB::raw('SYSTIMESTAMP'),
+                        ]);
+                } else {
+                    foreach ($validated['items'] as $lineId => $lineData) {
+                        DB::connection('oracle')
+                            ->table('ASSET_SELLING_LIST')
+                            ->where('id', (int) $lineId)
+                            ->where('selling_id', $id)
+                            ->update([
+                                'selling_real_price' => (float) $lineData['selling_real_price'],
+                                'updated_by'         => $userId,
+                                'updated_at'         => DB::raw('SYSTIMESTAMP'),
+                            ]);
+                    }
+                }
+
+                if ($finalAssetStatus !== null && ! empty($assetIds)) {
+                    DB::connection('oracle')
+                        ->table('ASSET')
+                        ->whereIn('id', $assetIds)
+                        ->update([
+                            'ass_status' => $finalAssetStatus,
+                            'updated_by' => $userId,
+                            'updated_at' => DB::raw('SYSTIMESTAMP'),
+                        ]);
+                }
+            });
+        } catch (Throwable $e) {
+            Log::error('ASS-008 result store failed', ['id' => $id, 'error' => $e->getMessage()]);
+
+            return back()->withErrors(['_error' => 'เกิดข้อผิดพลาดขณะบันทึกผลการจำหน่าย กรุณาลองใหม่'])->withInput();
+        }
+
+        return redirect()->route('asset.disposals.results.index')
+            ->with('success', 'บันทึกผลการจำหน่ายเรียบร้อยแล้ว');
+    }
+
+    public function resultShow(Request $request, int $id): View
+    {
+        $itemSearchBy  = $request->string('item_search_by', 'all')->value();
+        $itemKeyword   = trim($request->string('item_keyword')->value());
+        $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
+
+        $record = $this->fetchResultHeader($id, $visibleOrgIds);
+        abort_if(! $record, 404);
+        abort_if((int) ($record->selling_approval_status ?? 0) !== 1, 403);
+
+        $items = $this->buildResultItemsQuery($id, $itemSearchBy, $itemKeyword)->get();
+        $statusInfo = $this->resolveResultStatusInfo((string) ($record->reason ?? ''), $this->isResultCompleted($record));
+
+        return view('asset.ASS-008-record-asset-disposal-result.show', [
+            'pageTitle'    => 'รายละเอียดผลการจำหน่าย',
+            'record'       => $record,
+            'items'        => $items,
+            'statusInfo'   => $statusInfo,
+            'reasonLabel'  => self::REASON_OPTIONS[$record->reason ?? ''] ?? ($record->reason ?? '-'),
+            'itemSearchBy' => $itemSearchBy,
+            'itemKeyword'  => $itemKeyword,
+        ]);
+    }
+
+    private function buildResultItemsQuery(int $id, string $itemSearchBy, string $itemKeyword)
+    {
+        $itemsQuery = DB::connection('oracle')
+            ->table('ASSET_SELLING_LIST AS sl')
+            ->join('ASSET AS a', 'a.id', '=', 'sl.ass_id')
+            ->leftJoin('ASSET_CATEGORY AS c', 'c.id', '=', 'a.asscat_id')
+            ->selectRaw("
+                sl.id,
+                sl.selling_min_price,
+                sl.selling_real_price,
+                a.id AS asset_id,
+                a.ass_code,
+                a.ass_price,
+                c.asscat_code,
+                c.asscat_name,
+                (SELECT MAX(aa2.status) KEEP (DENSE_RANK LAST ORDER BY aa2.id)
+                 FROM ASSET_ASSIGNMENT_LIST aal2
+                 JOIN ASSET_ASSIGNMENT aa2 ON aa2.id = aal2.ass_assign_id
+                 WHERE aal2.asset_id = a.id) AS aa_status
+            ")
+            ->where('sl.selling_id', $id);
+
+        if ($itemKeyword !== '') {
+            $escaped = $this->escapeLike($itemKeyword);
+            $itemColumnMap = ['code' => 'a.ass_code', 'name' => 'c.asscat_name'];
+            if (isset($itemColumnMap[$itemSearchBy])) {
+                $col = $itemColumnMap[$itemSearchBy];
+                $itemsQuery->whereRaw("UPPER({$col}) LIKE UPPER(?) ESCAPE '\\'", ["%{$escaped}%"]);
+            } else {
+                $itemsQuery->where(function ($q) use ($escaped): void {
+                    $q->whereRaw("UPPER(a.ass_code) LIKE UPPER(?) ESCAPE '\\'", ["%{$escaped}%"])
+                        ->orWhereRaw("UPPER(c.asscat_name) LIKE UPPER(?) ESCAPE '\\'", ["%{$escaped}%"]);
+                });
+            }
+        }
+
+        return $itemsQuery->orderByRaw('sl.id ASC');
+    }
+
+    private function fetchResultHeader(int $id, array $visibleOrgIds): ?object
+    {
+        $summarySub = DB::connection('oracle')
+            ->table('ASSET_SELLING_LIST AS sl')
+            ->selectRaw('sl.selling_id, COUNT(*) AS total_items, SUM(CASE WHEN sl.selling_real_price IS NOT NULL THEN 1 ELSE 0 END) AS priced_items')
+            ->groupBy('sl.selling_id');
+
+        return DB::connection('oracle')
+            ->table('ASSET_SELLING AS s')
+            ->leftJoinSub($summarySub, 'rs', 'rs.selling_id', '=', 's.id')
+            ->leftJoin('GLB_ORGANIZATION AS rorg', 'rorg.org_id', '=', 's.req_org_id')
+            ->leftJoin('GLB_ORGANIZATION AS aorg', 'aorg.org_id', '=', 's.app_org_id')
+            ->leftJoin('SYS_USER AS approver', 'approver.id', '=', 's.updated_by')
+            ->selectRaw("
+                s.id,
+                s.selling_code,
+                s.selling_req_date,
+                s.selling_approval_date,
+                CASE WHEN s.selling_req_date IS NOT NULL THEN
+                    TO_CHAR(s.selling_req_date,'DD-MM-')||TO_CHAR(s.selling_req_date+INTERVAL '543' YEAR(3),'YYYY')
+                END AS req_date_th,
+                CASE WHEN s.selling_approval_date IS NOT NULL THEN
+                    TO_CHAR(s.selling_approval_date,'DD-MM-')||TO_CHAR(s.selling_approval_date+INTERVAL '543' YEAR(3),'YYYY')
+                END AS approval_date_th,
+                s.selling_approval_status,
+                s.reason,
+                s.buyer,
+                s.remarks,
+                rorg.org_name AS req_org_name,
+                aorg.org_name AS app_org_name,
+                approver.user_name AS approval_user_name,
+                NVL(rs.total_items, 0) AS total_items,
+                NVL(rs.priced_items, 0) AS priced_items
+            ")
+            ->where('s.id', $id)
+            ->whereIn('s.req_org_id', $visibleOrgIds)
+            ->first();
+    }
+
+    private function isResultCompleted(object $record): bool
+    {
+        $totalItems = (int) ($record->total_items ?? 0);
+        $pricedItems = (int) ($record->priced_items ?? 0);
+
+        if ($this->isLostReason($record)) {
+            return $totalItems > 0 && $totalItems === $pricedItems;
+        }
+
+        $hasBuyer = trim((string) ($record->buyer ?? '')) !== '';
+
+        return $hasBuyer && $totalItems > 0 && $totalItems === $pricedItems;
+    }
+
+    private function resolveResultStatusInfo(string $reasonCode, bool $completed): array
+    {
+        if (! $completed) {
+            return ['label' => 'อนุมัติแล้ว', 'type' => 'approved'];
+        }
+
+        if ($reasonCode === '3') {
+            return ['label' => 'สูญหาย', 'type' => 'result-lost'];
+        }
+
+        return ['label' => 'จำหน่ายแล้ว', 'type' => 'result-sold'];
     }
 
     /**
@@ -291,25 +816,40 @@ class AssetDisposalController extends Controller
      *
      * @param  array<int, array{selling_min_price?: mixed}>  $items
      */
-    private function finalizeApproval(int $id, int $status, string $approvalDate, array $items, ?string $rejectReason): RedirectResponse
+    private function finalizeApproval(int $id, int $status, string $approvalDate, array $items, ?string $rejectReason, bool $pendingOnly = true): RedirectResponse
     {
         $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
         $userId        = (int) Auth::user()->id;
+        $approverOrgId = (int) Auth::user()->org_id;
 
         try {
-            $updated = DB::connection('oracle')->transaction(function () use ($id, $status, $approvalDate, $items, $rejectReason, $userId, $visibleOrgIds) {
+            $updated = DB::connection('oracle')->transaction(function () use ($id, $status, $approvalDate, $items, $rejectReason, $userId, $visibleOrgIds, $approverOrgId, $pendingOnly) {
                 $header = DB::connection('oracle')->table('ASSET_SELLING')
                     ->where('id', $id)
-                    ->whereIn('app_org_id', $visibleOrgIds)
+                    ->where(function ($q) use ($visibleOrgIds): void {
+                        $q->whereIn('app_org_id', $visibleOrgIds)
+                            ->orWhere(function ($sq) use ($visibleOrgIds): void {
+                                $sq->whereNull('app_org_id')
+                                    ->whereIn('req_org_id', $visibleOrgIds);
+                            });
+                    })
                     ->lockForUpdate()
                     ->first();
 
-                $isPending = $header && ($header->selling_approval_status === null || (int) $header->selling_approval_status === 0);
-                if (! $isPending) {
+                $isEditable = $header && (! $pendingOnly || $this->isApprovalPending($header));
+                if (! $isEditable) {
                     return 0;
                 }
 
-                if ($status === 1) {
+                if ($status === 1 && $this->isLostReason($header)) {
+                    DB::connection('oracle')->table('ASSET_SELLING_LIST')
+                        ->where('selling_id', $id)
+                        ->update([
+                            'selling_min_price' => 0,
+                            'updated_by'         => $userId,
+                            'updated_at'         => now(),
+                        ]);
+                } elseif ($status === 1) {
                     $validItemIds = DB::connection('oracle')->table('ASSET_SELLING_LIST')
                         ->where('selling_id', $id)->pluck('id')->map(fn ($v) => (int) $v)->all();
 
@@ -331,6 +871,7 @@ class AssetDisposalController extends Controller
                 return DB::connection('oracle')->table('ASSET_SELLING')
                     ->where('id', $id)
                     ->update([
+                        'app_org_id'              => $header->app_org_id ?: $approverOrgId,
                         'selling_approval_status' => $status,
                         'selling_approval_date'   => $approvalDate,
                         'reject_reason'           => $rejectReason,
@@ -574,17 +1115,23 @@ class AssetDisposalController extends Controller
 
         // Validate new assets are eligible (existing items are grandfathered)
         if (! empty($toAdd)) {
-            $validNew = DB::connection('oracle')
+            $reason = $validated['reason'];
+
+            $newQuery = DB::connection('oracle')
                 ->table('ASSET')
                 ->whereIn('id', $toAdd)
-                ->where('ass_status', '1')
-                ->whereIn('org_id', $visibleOrgIds)
-                ->pluck('id')
+                ->whereIn('org_id', $visibleOrgIds);
+
+            if ($reason === '1') {
+                $newQuery->where('remain_price', 1);
+            }
+
+            $validNew = $newQuery->pluck('id')
                 ->map(fn ($v) => (int) $v)
                 ->toArray();
 
             if (count($validNew) !== count($toAdd)) {
-                return back()->withErrors(['_error' => 'ครุภัณฑ์บางรายการไม่ถูกต้องหรือไม่อยู่ใน Scope ที่อนุญาต'])->withInput();
+                return back()->withErrors(['_error' => 'ครุภัณฑ์บางรายการไม่ถูกต้อง ไม่อยู่ใน Scope หรือไม่ผ่านเงื่อนไขเหตุผลที่เลือก'])->withInput();
             }
 
             $alreadyInOtherDisposal = DB::connection('oracle')
@@ -667,18 +1214,21 @@ class AssetDisposalController extends Controller
         $reason        = $request->input('reason');
         $remarks       = $request->filled('remarks') ? trim($request->input('remarks')) : null;
 
-        // Validate assets belong to visible scope and are active
-        $validAssets = DB::connection('oracle')
+        $validQuery = DB::connection('oracle')
             ->table('ASSET')
             ->whereIn('id', $assetIds)
-            ->where('ass_status', '1')
-            ->whereIn('org_id', $visibleOrgIds)
-            ->pluck('id')
+            ->whereIn('org_id', $visibleOrgIds);
+
+        if ($reason === '1') {
+            $validQuery->where('remain_price', 1);
+        }
+
+        $validAssets = $validQuery->pluck('id')
             ->map(fn ($id) => (int) $id)
             ->toArray();
 
         if (count($validAssets) !== count($assetIds)) {
-            return back()->withErrors(['_error' => 'ครุภัณฑ์บางรายการไม่ถูกต้องหรือไม่อยู่ใน Scope ที่อนุญาต'])->withInput();
+            return back()->withErrors(['_error' => 'ครุภัณฑ์บางรายการไม่ถูกต้อง ไม่อยู่ใน Scope หรือไม่ผ่านเงื่อนไขเหตุผลที่เลือก'])->withInput();
         }
 
         // Guard: assets must not be in an active/pending disposal
@@ -712,6 +1262,7 @@ class AssetDisposalController extends Controller
                     'reason'                  => $reason,
                     'remarks'                 => $remarks,
                     'req_org_id'              => $orgId,
+                    'app_org_id'              => $orgId,
                     'selling_approval_status' => 0,
                     'created_by'              => $userId,
                     'updated_by'              => $userId,
@@ -751,6 +1302,7 @@ class AssetDisposalController extends Controller
         $keyword       = trim($request->string('q', '')->value());
         $limit         = min((int) $request->input('limit', 20), 50);
         $disposalId    = (int) $request->input('disposal_id', 0);
+        $reason        = $request->string('reason', '')->value();
         $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
 
         if (empty($visibleOrgIds)) {
@@ -777,10 +1329,14 @@ class AssetDisposalController extends Controller
             ->table('ASSET AS a')
             ->join('ASSET_CATEGORY AS c', 'a.asscat_id', '=', 'c.id')
             ->selectRaw("a.id, a.ass_code, c.asscat_name AS asset_name, a.ass_price")
-            ->where('a.ass_status', '1')
             ->whereIn('a.org_id', $visibleOrgIds)
             ->orderBy('a.ass_code')
             ->limit($limit);
+
+        // reason='1' (หมดอายุการใช้งาน) requires remaining value = 1 exactly
+        if ($reason === '1') {
+            $query->where('a.remain_price', 1);
+        }
 
         if (!empty($inDisposalIds)) {
             $query->whereNotIn('a.id', $inDisposalIds);
