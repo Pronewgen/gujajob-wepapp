@@ -9,14 +9,21 @@ class SearchableDropdown {
         if (!this.input) return;
         
         this.debounceTimer = null;
+        this.requestId = 0;
         this.init();
     }
     
     init() {
         this.input.addEventListener('input', () => this.handleInput());
         this.input.addEventListener('focus', () => {
+            if (this.options.isBlocked?.()) {
+                return;
+            }
+
             if (this.input.value.length > 0) {
-                this.suggestionsContainer.style.display = 'block';
+                this.fetchSuggestions(this.input.value.trim());
+            } else if (this.options.loadOnFocus) {
+                this.fetchSuggestions('');
             }
         });
         
@@ -36,7 +43,12 @@ class SearchableDropdown {
         this.hiddenInput.value = '';
         this.options.onChange?.();
         
-        if (query.length === 0 || this.options.isBlocked?.()) {
+        if (this.options.isBlocked?.()) {
+            this.suggestionsContainer.style.display = 'none';
+            return;
+        }
+
+        if (query.length === 0 && !this.options.loadOnFocus) {
             this.suggestionsContainer.style.display = 'none';
             return;
         }
@@ -47,12 +59,18 @@ class SearchableDropdown {
     }
     
     fetchSuggestions(query) {
+        const requestId = ++this.requestId;
         const params = new URLSearchParams({ q: query, ...(this.options.extraParams?.() ?? {}) });
         
         fetch(`${this.apiUrl}?${params.toString()}`)
             .then(response => response.json())
-            .then(payload => this.renderSuggestions(Array.isArray(payload) ? payload : payload?.data))
+            .then(payload => {
+                if (requestId === this.requestId) {
+                    this.renderSuggestions(Array.isArray(payload) ? payload : payload?.data);
+                }
+            })
             .catch(error => {
+                if (requestId !== this.requestId) return;
                 console.error('Error fetching suggestions:', error);
                 this.suggestionsContainer.style.display = 'none';
             });
@@ -62,7 +80,15 @@ class SearchableDropdown {
         this.suggestionsContainer.innerHTML = '';
         
         if (!Array.isArray(data) || data.length === 0) {
-            this.suggestionsContainer.style.display = 'none';
+            if (this.options.emptyMessage) {
+                const emptyItem = document.createElement('div');
+                emptyItem.className = 'suggestion-item suggestion-empty';
+                emptyItem.textContent = this.options.emptyMessage;
+                this.suggestionsContainer.appendChild(emptyItem);
+                this.suggestionsContainer.style.display = 'block';
+            } else {
+                this.suggestionsContainer.style.display = 'none';
+            }
             return;
         }
         
@@ -78,7 +104,9 @@ class SearchableDropdown {
     }
     
     formatSuggestion(item) {
-        if (item.code && item.name) {
+        if (item.label) {
+            return item.label;
+        } else if (item.code && item.name) {
             return `${item.code} - ${item.name}`;
         } else if (item.name) {
             return item.name;
@@ -96,6 +124,7 @@ class SearchableDropdown {
     clear() {
         if (!this.input) return;
         clearTimeout(this.debounceTimer);
+        this.requestId++;
         this.input.value = '';
         this.hiddenInput.value = '';
         this.suggestionsContainer.innerHTML = '';
@@ -192,15 +221,6 @@ function initPreviewButton() {
     });
 }
 
-// Download button (placeholder)
-function initDownloadButton() {
-    const downloadBtn = document.getElementById('downloadReportButton');
-    
-    downloadBtn?.addEventListener('click', () => {
-        alert('ฟีเจอร์ดาวน์โหลดจะเพิ่มเติมในอนาคต');
-    });
-}
-
 // Initialize on page load
 const dropdowns = {};
 
@@ -220,6 +240,8 @@ document.addEventListener('DOMContentLoaded', () => {
     dropdowns.asset = new SearchableDropdown('#assetSearch', '#assetSuggestions', '#assetId', '/api/asset/search', {
         isBlocked: () => !document.getElementById('categoryId').value,
         extraParams: () => ({ category_id: document.getElementById('categoryId').value }),
+        emptyMessage: 'ไม่พบรหัสครุภัณฑ์ในประเภทที่เลือก',
+        loadOnFocus: true,
     });
     dropdowns.org = new SearchableDropdown('#orgSearch', '#orgSuggestions', '#orgId', '/api/asset/organizations/search', {
         onSelect: () => dropdowns.subOrg?.clear(),
@@ -233,5 +255,4 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Initialize buttons
     initPreviewButton();
-    initDownloadButton();
 });

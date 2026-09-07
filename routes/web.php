@@ -769,6 +769,8 @@ Route::get('/api/asset/search', [AssetReportController::class, 'searchAssets'])-
 Route::get('/api/asset/organizations/search', [AssetReportController::class, 'searchOrganizations'])->name('asset.api.organizations.search');
 Route::get('/api/asset/sub-organizations/search', [AssetReportController::class, 'searchSubOrganizations'])->name('asset.api.sub-organizations.search');
 Route::get('/asset/ASS-009-print-asset-report/report-register', [AssetReportController::class, 'reportAssetRegister'])->name('asset.reports.register');
+Route::get('/asset/ASS-009-print-asset-report/report-register/download', [AssetReportController::class, 'downloadAssetRegister'])->name('asset.reports.register.download');
 Route::get('/asset/ASS-009-print-asset-report/report-ledger', [AssetReportController::class, 'reportAssetLedger'])->name('asset.reports.ledger');
+Route::get('/asset/ASS-009-print-asset-report/report-ledger/download', [AssetReportController::class, 'downloadAssetLedger'])->name('asset.reports.ledger.download');
 
 }); // end Route::middleware('auth')

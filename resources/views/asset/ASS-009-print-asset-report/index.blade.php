@@ -122,12 +122,7 @@
                 <div class="export-actions">
                     <button class="preview-btn" type="button" id="previewReportButton">
                         <svg><use href="#icon-printer"></use></svg>
-                        <span>พิมพ์รายงาน / พรีวิว</span>
-                    </button>
-
-                    <button class="download-btn" type="button" id="downloadReportButton">
-                        <svg><use href="#icon-download-report"></use></svg>
-                        <span>ดาวน์โหลดไฟล์</span>
+                        <span>พรีวิว</span>
                     </button>
                 </div>
             </div>

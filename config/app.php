@@ -43,6 +43,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | PDF Test Mode
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, PDF-generating endpoints save the file under storage/app
+    | instead of streaming it to the browser, so PDFs can be inspected in
+    | VS Code during development without triggering a real download.
+    |
+    */
+
+    'pdf_test_mode' => (bool) env('PDF_TEST_MODE', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application URL
     |--------------------------------------------------------------------------
     |
