@@ -161,10 +161,22 @@ class AssetDepartmentReceivingController extends Controller
         }
 
         $validated = $request->validate([
+            'ass_code'     => ['required', 'string', 'max:15'],
             'receive_date' => 'required|date',
             'sub_org_id'   => 'required|integer',
             'remark'       => 'nullable|string|max:500',
         ]);
+
+        $assCode = trim($validated['ass_code']);
+        $duplicate = DB::connection('oracle')->table('ASSET')
+            ->whereRaw('UPPER(ass_code) = UPPER(?)', [$assCode])
+            ->where('id', '!=', $id)
+            ->exists();
+        if ($duplicate) {
+            return back()->withInput()->withErrors([
+                'ass_code' => 'รหัสครุภัณฑ์ประจำหน่วยงานนี้มีอยู่แล้ว กรุณาใช้รหัสอื่น',
+            ]);
+        }
 
         $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
         $subOrgId = (int) $validated['sub_org_id'];
@@ -187,12 +199,13 @@ class AssetDepartmentReceivingController extends Controller
         $user = Auth::user();
 
         try {
-            DB::connection('oracle')->transaction(function () use ($id, $asset, $validated, $subOrgId, $user) {
+            DB::connection('oracle')->transaction(function () use ($id, $asset, $validated, $assCode, $subOrgId, $user) {
                 // remain_price=1 triggers พร้อมจำหน่าย (status 3), otherwise ปกติ (status 2)
                 $currentRemain = DB::connection('oracle')->table('ASSET')->where('id', $id)->value('remain_price');
                 $newStatus = ((float) $currentRemain === 1.0) ? '3' : '2';
 
                 Asset::where('id', $id)->update([
+                    'ass_code'         => $assCode,
                     'ass_trans_date'   => $validated['receive_date'],
                     'ass_trans_remark' => $validated['remark'] ?? null,
                     'sub_org_id'       => $subOrgId,
@@ -254,10 +267,22 @@ class AssetDepartmentReceivingController extends Controller
         }
 
         $validated = $request->validate([
+            'ass_code'     => ['required', 'string', 'max:15'],
             'receive_date' => 'required|date',
             'sub_org_id'   => 'required|integer',
             'remark'       => 'nullable|string|max:500',
         ]);
+
+        $assCode = trim($validated['ass_code']);
+        $duplicate = DB::connection('oracle')->table('ASSET')
+            ->whereRaw('UPPER(ass_code) = UPPER(?)', [$assCode])
+            ->where('id', '!=', $id)
+            ->exists();
+        if ($duplicate) {
+            return back()->withInput()->withErrors([
+                'ass_code' => 'รหัสครุภัณฑ์ประจำหน่วยงานนี้มีอยู่แล้ว กรุณาใช้รหัสอื่น',
+            ]);
+        }
 
         $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
         $subOrgId = (int) $validated['sub_org_id'];
@@ -280,8 +305,9 @@ class AssetDepartmentReceivingController extends Controller
         $user = Auth::user();
 
         try {
-            DB::connection('oracle')->transaction(function () use ($id, $asset, $validated, $subOrgId, $user) {
+            DB::connection('oracle')->transaction(function () use ($id, $asset, $validated, $assCode, $subOrgId, $user) {
                 Asset::where('id', $id)->update([
+                    'ass_code'         => $assCode,
                     'ass_trans_date'   => $validated['receive_date'],
                     'ass_trans_remark' => $validated['remark'] ?? null,
                     'sub_org_id'       => $subOrgId,

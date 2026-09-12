@@ -26,7 +26,7 @@
 
             <div class="asset-summary">
                 <div class="summary-item">
-                    <span>รหัสครุภัณฑ์</span>
+                    <span>รหัสครุภัณฑ์ประจำหน่วยงาน</span>
                     <strong>{{ $asset->ass_code ?? '-' }}</strong>
                 </div>
                 <div class="summary-item">
@@ -65,6 +65,33 @@
                 @csrf
                 <div class="receive-grid">
                     <div class="field-group">
+                        <label>หน่วยงานที่รับการจัดสรร</label>
+                        <input type="text" value="{{ $asset->target_org_name ?? '-' }}" readonly>
+                    </div>
+
+                    <div class="field-group">
+                        <label>หน่วยงานที่ครุภัณฑ์ประจำห้อง <span class="required-mark">*</span></label>
+                        <select name="sub_org_id" required>
+                            <option value="">-- เลือกหน่วยงานย่อย --</option>
+                            @foreach ($subOrgs as $org)
+                                <option value="{{ $org->org_id }}" @selected(old('sub_org_id') == $org->org_id)>{{ $org->org_name }}</option>
+                            @endforeach
+                        </select>
+                        @error('sub_org_id')
+                            <span class="field-error">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <div class="field-group">
+                        <label for="assCode">รหัสครุภัณฑ์ประจำหน่วยงาน <span class="required-mark">*</span></label>
+                        <input id="assCode" name="ass_code" type="text" maxlength="15"
+                               value="{{ old('ass_code', $asset->ass_code ?? '') }}" required>
+                        @error('ass_code')
+                            <span class="field-error">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <div class="field-group">
                         <label for="receiveDate">วันที่รับ <span class="required-mark">*</span></label>
                         <input
                             id="receiveDate"
@@ -87,24 +114,6 @@
                     </div>
 
                     <div class="field-group">
-                        <label>หน่วยงานที่รับการจัดสรร</label>
-                        <input type="text" value="{{ $asset->target_org_name ?? '-' }}" readonly>
-                    </div>
-
-                    <div class="field-group">
-                        <label>หน่วยงานที่ครุภัณฑ์ประจำห้อง <span class="required-mark">*</span></label>
-                        <select name="sub_org_id" required>
-                            <option value="">-- เลือกหน่วยงานย่อย --</option>
-                            @foreach ($subOrgs as $org)
-                                <option value="{{ $org->org_id }}" @selected(old('sub_org_id') == $org->org_id)>{{ $org->org_name }}</option>
-                            @endforeach
-                        </select>
-                        @error('sub_org_id')
-                            <span class="field-error">{{ $message }}</span>
-                        @enderror
-                    </div>
-
-                    <div class="field-group remark-group">
                         <label for="receiveRemark">หมายเหตุ</label>
                         <textarea id="receiveRemark" name="remark" rows="1" placeholder="หมายเหตุการรับครุภัณฑ์ (ถ้ามี)">{{ old('remark') }}</textarea>
                     </div>

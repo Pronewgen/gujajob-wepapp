@@ -49,10 +49,10 @@
 
                 <div class="form-row four-col">
                     <div class="form-field">
-                        <label for="assCode">รหัสทะเบียนครุภัณฑ์ <span class="required">*</span></label>
-                        <input id="assCode" name="ass_code" type="text" maxlength="50"
-                               placeholder="กรอกรหัสทะเบียนครุภัณฑ์"
-                               value="{{ old('ass_code') }}" autocomplete="off">
+                           <label for="assCode">รหัสครุภัณฑ์ประจำหน่วยงาน</label>
+                           <input id="assCode" type="text" maxlength="15"
+                               placeholder="-" value="{{ old('ass_code') }}" readonly>
+                           <input type="hidden" name="ass_code" value="{{ old('ass_code') }}">
                         @error('ass_code')<span class="field-error" style="color:#dc2626;font-size:11px;">{{ $message }}</span>@enderror
                     </div>
                 </div>

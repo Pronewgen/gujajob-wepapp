@@ -1,5 +1,5 @@
 @php
-    $assetCode = collect([$asset->asscat_code, $asset->ass_code])->filter()->implode('-');
+    $assetCode = app(\App\Services\AssetDisplayService::class)->displayCode($asset);
     $descriptionLines = collect([
         $asset->ass_desc,
         $asset->ass_model ? 'รุ่น: ' . $asset->ass_model : null,

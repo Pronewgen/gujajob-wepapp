@@ -25,7 +25,7 @@
 
             <div class="asset-summary">
                 <div class="summary-item">
-                    <span>รหัสครุภัณฑ์</span>
+                    <span>รหัสครุภัณฑ์ประจำหน่วยงาน</span>
                     <strong>{{ $asset->ass_code ?? '-' }}</strong>
                 </div>
                 <div class="summary-item">

@@ -77,11 +77,7 @@
                             <tr>
                                 <td>
                                     <a class="code-link" href="{{ route('asset.department-receiving.show', $asset->id) }}">
-                                        @if ($asset->aa_status === '2')
-                                            {{ ($asset->asscat_code ?? '') . $asset->ass_code }}
-                                        @else
-                                            {{ $asset->ass_code ?? '-' }}
-                                        @endif
+                                        {{ app(\App\Services\AssetDisplayService::class)->displayCode($asset) }}
                                     </a>
                                 </td>
                                 <td>{{ $asset->asscat_name ?? '-' }}</td>

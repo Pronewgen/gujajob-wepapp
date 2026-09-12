@@ -112,11 +112,7 @@
                                 <td>
                                     <a class="ass-code-link" href="{{ route('asset.registrations.show', $asset->id) }}">
                                         <span class="asset-code">
-                                            @if ($asset->aa_status === '2')
-                                                {{ ($asset->asscat_code ?? '') . $asset->ass_code }}
-                                            @else
-                                                {{ $asset->ass_code ?? '-' }}
-                                            @endif
+                                            {{ app(\App\Services\AssetDisplayService::class)->displayCode($asset) }}
                                         </span>
                                     </a>
                                 </td>

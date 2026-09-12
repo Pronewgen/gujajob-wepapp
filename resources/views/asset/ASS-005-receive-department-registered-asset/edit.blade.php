@@ -23,7 +23,7 @@
 
             <div class="asset-summary">
                 <div class="summary-item">
-                    <span>รหัสครุภัณฑ์</span>
+                    <span>รหัสครุภัณฑ์ประจำหน่วยงาน</span>
                     <strong>{{ $asset->ass_code ?? '-' }}</strong>
                 </div>
                 <div class="summary-item">
@@ -62,6 +62,36 @@
                 @method('PUT')
                 <div class="receive-grid">
                     <div class="field-group">
+                        <label>หน่วยงานที่รับการจัดสรร</label>
+                        <input type="text" value="{{ $asset->target_org_name ?? '-' }}" readonly>
+                    </div>
+
+                    <div class="field-group">
+                        <label>หน่วยงานที่ครุภัณฑ์ประจำห้อง <span class="required-mark">*</span></label>
+                        <div class="guja-autocomplete" data-server-select
+                             data-endpoint="{{ route('search.suggestions') }}?entity=assign_org&limit=20&q="
+                             data-initial-label="{{ old('_sub_org_label', $asset->sub_org_name ?? '') }}">
+                            <div class="guja-autocomplete__wrap">
+                                <input type="text" class="guja-autocomplete__input" placeholder="ค้นหาหน่วยงานย่อย..." autocomplete="off" data-required="true">
+                                <input type="hidden" class="guja-autocomplete__value" name="sub_org_id" value="{{ old('sub_org_id', $asset->sub_org_id ?? '') }}">
+                                <button type="button" class="guja-autocomplete__arrow" tabindex="-1" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                            </div>
+                            <ul class="guja-autocomplete__items" role="listbox"></ul>
+                        </div>
+                        @error('sub_org_id')
+                            <span class="field-error">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <div class="field-group">
+                        <label for="assCode">รหัสครุภัณฑ์ประจำหน่วยงาน <span class="required-mark">*</span></label>
+                        <input id="assCode" name="ass_code" type="text" maxlength="15" value="{{ old('ass_code', $asset->ass_code ?? '') }}" required>
+                        @error('ass_code')
+                            <span class="field-error">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <div class="field-group">
                         <label for="receiveDate">วันที่รับ <span class="required-mark">*</span></label>
                         <input
                             id="receiveDate"
@@ -83,46 +113,14 @@
                         <input type="text" value="{{ $asset->ass_trans_person ?? '-' }}" readonly>
                     </div>
 
-                    <div class="field-group remark-group">
+                    <div class="field-group">
+                        <label>ชื่อผู้รับ</label>
+                        <input type="text" value="{{ $asset->ass_trans_person ?? '-' }}" readonly>
+                    </div>
+
+                    <div class="field-group">
                         <label for="editRemark">หมายเหตุ</label>
                         <textarea id="editRemark" name="remark" rows="3" placeholder="หมายเหตุการรับครุภัณฑ์ (ถ้ามี)">{{ old('remark', $asset->ass_trans_remark ?? '') }}</textarea>
-                    </div>
-
-                    <div class="field-group">
-                        <label>หน่วยงานที่รับการจัดสรร</label>
-                        <input type="text" value="{{ $asset->target_org_name ?? '-' }}" readonly>
-                    </div>
-
-                    <div class="field-group">
-                        <label>หน่วยงานย่อยที่รับการจัดสรร <span class="required-mark">*</span></label>
-                        <div class="guja-autocomplete" data-server-select
-                             data-endpoint="{{ route('search.suggestions') }}?entity=assign_org&limit=20&q="
-                             data-initial-label="{{ old('_sub_org_label', $asset->sub_org_name ?? '') }}">
-                            <div class="guja-autocomplete__wrap">
-                                <input
-                                    type="text"
-                                    class="guja-autocomplete__input"
-                                    placeholder="ค้นหาหน่วยงานย่อย..."
-                                    autocomplete="off"
-                                    data-required="true"
-                                >
-                                <input
-                                    type="hidden"
-                                    class="guja-autocomplete__value"
-                                    name="sub_org_id"
-                                    value="{{ old('sub_org_id', $asset->sub_org_id ?? '') }}"
-                                >
-                                <button type="button" class="guja-autocomplete__arrow" tabindex="-1" aria-hidden="true">
-                                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                                        <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-                                    </svg>
-                                </button>
-                            </div>
-                            <ul class="guja-autocomplete__items" role="listbox"></ul>
-                        </div>
-                        @error('sub_org_id')
-                            <span class="field-error">{{ $message }}</span>
-                        @enderror
                     </div>
                 </div>
             </form>

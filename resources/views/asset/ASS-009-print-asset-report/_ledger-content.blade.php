@@ -29,7 +29,7 @@
         <tbody>
             @forelse ($assets as $asset)
                 @php
-                    $assetCode = collect([$asset->asscat_code, $asset->ass_code])->filter()->implode('-');
+                    $assetCode = app(\App\Services\AssetDisplayService::class)->displayCode($asset);
                 @endphp
                 <tr>
                     <td class="center-cell">{{ $loop->iteration }}</td>

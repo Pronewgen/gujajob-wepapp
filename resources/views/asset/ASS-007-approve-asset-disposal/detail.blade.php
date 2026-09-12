@@ -61,11 +61,7 @@
                                     <tr>
                                         <td class="center">{{ $i + 1 }}</td>
                                         <td class="code-cell">
-                                            @if ($item->aa_status === '2')
-                                                {{ ($item->asscat_code ?? '') . $item->ass_code }}
-                                            @else
-                                                {{ $item->ass_code ?? '-' }}
-                                            @endif
+                                            {{ app(\App\Services\AssetDisplayService::class)->displayCode($item) }}
                                         </td>
                                         <td>{{ $item->asscat_name ?? '-' }}</td>
                                         <td class="center">{{ $item->ass_price !== null ? number_format((float) $item->ass_price, 2) : '-' }}</td>

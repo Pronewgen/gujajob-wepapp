@@ -19,8 +19,8 @@
 
             <div class="form-row one-col short-row">
                 <div class="form-field">
-                    <label>รหัสทะเบียนครุภัณฑ์</label>
-                    <input type="text" value="{{ $asset->ass_code ?? '-' }}" readonly>
+                    <label>รหัสครุภัณฑ์ประจำหน่วยงาน</label>
+                    <input type="text" value="{{ app(\App\Services\AssetDisplayService::class)->displayCode($asset) }}" readonly>
                 </div>
             </div>
 
@@ -109,7 +109,7 @@
                             <input type="text" readonly value="{{ $asset->subOrganization->org_name ?? ($asset->sub_org_id ? '-' : '') }}">
                         </div>
                         <div class="form-field">
-                            @php $statusInfo = \App\Http\Controllers\AssetController::assetStatusLabel($asset->ass_status ?? ''); @endphp
+                            @php $statusInfo = $displayStatus ?? \App\Http\Controllers\AssetController::assetStatusLabel($asset->ass_status ?? ''); @endphp
                             <label>สถานะ</label>
                             <input type="text" readonly value="{{ $statusInfo['label'] }}">
                         </div>

@@ -30,8 +30,8 @@
 
                 <div class="form-row one-col short-row">
                     <div class="form-field">
-                        <label for="assCode">รหัสทะเบียนครุภัณฑ์ <span class="required">*</span></label>
-                        <input id="assCode" name="ass_code" type="text" maxlength="50"
+                        <label for="assCode">รหัสครุภัณฑ์ประจำหน่วยงาน <span class="required">*</span></label>
+                        <input id="assCode" name="ass_code" type="text" maxlength="15"
                                value="{{ old('ass_code', $asset->ass_code ?? '') }}" autocomplete="off">
                         @error('ass_code')<span class="field-error" style="color:#dc2626;font-size:11px;">{{ $message }}</span>@enderror
                     </div>

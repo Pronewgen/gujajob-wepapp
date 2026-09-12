@@ -8,6 +8,7 @@ use App\Models\AssetImage;
 use App\Models\Dealer;
 use App\Models\GlbOrganization;
 use App\Services\OrganizationVisibilityService;
+use App\Services\AssetDisplayService;
 use App\Services\ReplacementBudgetForecastService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -45,7 +46,10 @@ class AssetController extends Controller
         return self::ASSET_STATUS[$status] ?? ['label' => ($status ?: '-'), 'class' => ''];
     }
 
-    public function __construct(private readonly OrganizationVisibilityService $orgVisibility) {}
+    public function __construct(
+        private readonly OrganizationVisibilityService $orgVisibility,
+        private readonly AssetDisplayService $assetDisplay,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -57,17 +61,25 @@ class AssetController extends Controller
 
         $visibleOrgIds = $this->orgVisibility->visibleOrgIds((int) Auth::user()->org_id);
 
-        $completedDamagedDisposals = DB::connection('oracle')
+        $completedDisposals = DB::connection('oracle')
             ->table('ASSET_SELLING AS s')
             ->join('ASSET_SELLING_LIST AS sl', 'sl.selling_id', '=', 's.id')
-            ->distinct()
-            ->select('sl.ass_id')
-            ->where('s.reason', '2')
+            ->selectRaw("sl.ass_id, CASE WHEN s.reason = '3' THEN '6' ELSE '4' END AS final_status")
+            ->whereIn('s.reason', ['1', '2'])
             ->where('s.selling_approval_status', 1)
-            ->whereRaw('TRIM(s.buyer) IS NOT NULL')
-            ->whereRaw('NOT EXISTS (SELECT 1 FROM ASSET_SELLING_LIST unpriced WHERE unpriced.selling_id = s.id AND unpriced.selling_real_price IS NULL)');
+            ->groupBy('s.id', 'sl.ass_id', 's.reason', 's.buyer')
+            ->havingRaw("COUNT(*) > 0 AND COUNT(*) = COUNT(sl.selling_real_price) AND TRIM(s.buyer) IS NOT NULL")
+            ->unionAll(
+                DB::connection('oracle')->table('ASSET_SELLING AS s')
+                    ->join('ASSET_SELLING_LIST AS sl', 'sl.selling_id', '=', 's.id')
+                    ->selectRaw("sl.ass_id, '6' AS final_status")
+                    ->where('s.reason', '3')
+                    ->where('s.selling_approval_status', 1)
+                    ->groupBy('s.id', 'sl.ass_id', 's.reason')
+                    ->havingRaw('COUNT(*) > 0 AND COUNT(*) = COUNT(sl.selling_real_price)')
+            );
 
-        $effectiveStatusSql = "CASE WHEN a.ass_status = '5' AND completed_damaged.ass_id IS NOT NULL THEN '4' ELSE a.ass_status END";
+        $effectiveStatusSql = "CASE WHEN completed_disposals.final_status IS NOT NULL THEN completed_disposals.final_status ELSE a.ass_status END";
 
         $allowedSorts = [
             'code'         => 'a.ass_code',
@@ -81,7 +93,7 @@ class AssetController extends Controller
         $query = DB::connection('oracle')->table('ASSET AS a')
             ->join('ASSET_CATEGORY AS c', 'a.asscat_id', '=', 'c.id')
             ->leftJoin('GLB_ORGANIZATION AS org', 'a.org_id', '=', 'org.org_id')
-            ->leftJoinSub($completedDamagedDisposals, 'completed_damaged', 'completed_damaged.ass_id', '=', 'a.id')
+            ->leftJoinSub($completedDisposals, 'completed_disposals', 'completed_disposals.ass_id', '=', 'a.id')
             ->select([
                 'a.id',
                 'a.ass_code',
@@ -242,7 +254,7 @@ class AssetController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'ass_code'         => ['required', 'string', 'max:50'],
+            'ass_code'         => ['required', 'string', 'max:15'],
             'asscat_id'        => ['required', 'integer', 'exists:oracle.ASSET_CATEGORY,id'],
             'ass_desc'         => ['nullable', 'string', 'max:500'],
             'ass_model'        => ['nullable', 'string', 'max:100'],
@@ -259,8 +271,8 @@ class AssetController extends Controller
             'asset_images'     => ['nullable', 'array', 'max:3'],
             'asset_images.*'   => ['nullable', 'image', 'mimes:jpeg,jpg,png,gif', 'max:1024'],
         ], [
-            'ass_code.required'  => 'กรุณากรอกรหัสทะเบียนครุภัณฑ์',
-            'ass_code.max'       => 'รหัสทะเบียนครุภัณฑ์ต้องไม่เกิน 50 ตัวอักษร',
+            'ass_code.required'  => 'กรุณากรอกรหัสครุภัณฑ์ประจำหน่วยงาน',
+            'ass_code.max'       => 'รหัสครุภัณฑ์ประจำหน่วยงานต้องไม่เกิน 15 ตัวอักษร',
             'asscat_id.required' => 'กรุณาเลือกประเภทครุภัณฑ์',
             'asscat_id.exists'   => 'ประเภทครุภัณฑ์ที่เลือกไม่ถูกต้อง',
             'ass_status.in'      => 'สถานะที่เลือกไม่ถูกต้อง',
@@ -343,6 +355,13 @@ class AssetController extends Controller
             ->whereIn('org_id', $visibleOrgIds)
             ->findOrFail($id);
 
+        $asset->aa_status = DB::connection('oracle')
+            ->table('ASSET_ASSIGNMENT_LIST AS aal')
+            ->join('ASSET_ASSIGNMENT AS aa', 'aa.id', '=', 'aal.ass_assign_id')
+            ->where('aal.asset_id', $id)
+            ->orderByDesc('aa.id')
+            ->value('aa.status');
+
         $images = DB::connection('oracle')->table('ASSET_IMAGE')
             ->where('ass_id', $id)->orderBy('id')
             ->get(['id', 'ass_image'])
@@ -354,6 +373,9 @@ class AssetController extends Controller
             'pageTitle' => 'จัดการทะเบียนครุภัณฑ์',
             'asset'     => $asset,
             'images'    => $images,
+            'displayStatus' => $this->assetDisplay->statusInfo(
+                $this->assetDisplay->completedDisposalStatuses([$asset])[$asset->id] ?? (string) $asset->ass_status
+            ),
         ]);
     }
 
@@ -388,7 +410,7 @@ class AssetController extends Controller
         $asset = Asset::query()->whereIn('org_id', $visibleOrgIds)->findOrFail($id);
 
         $validated = $request->validate([
-            'ass_code'           => ['required', 'string', 'max:50'],
+            'ass_code'           => ['required', 'string', 'max:15'],
             'asscat_id'          => ['required', 'integer', 'exists:oracle.ASSET_CATEGORY,id'],
             'ass_desc'           => ['nullable', 'string', 'max:500'],
             'ass_model'          => ['nullable', 'string', 'max:100'],
@@ -407,8 +429,8 @@ class AssetController extends Controller
             'remove_image_ids'   => ['nullable', 'array'],
             'remove_image_ids.*' => ['integer'],
         ], [
-            'ass_code.required'  => 'กรุณากรอกรหัสทะเบียนครุภัณฑ์',
-            'ass_code.max'       => 'รหัสทะเบียนครุภัณฑ์ต้องไม่เกิน 50 ตัวอักษร',
+            'ass_code.required'  => 'กรุณากรอกรหัสครุภัณฑ์ประจำหน่วยงาน',
+            'ass_code.max'       => 'รหัสครุภัณฑ์ประจำหน่วยงานต้องไม่เกิน 15 ตัวอักษร',
             'asscat_id.required' => 'กรุณาเลือกประเภทครุภัณฑ์',
             'asscat_id.exists'   => 'ประเภทครุภัณฑ์ที่เลือกไม่ถูกต้อง',
             'ass_status.required' => 'กรุณาเลือกสถานะ',

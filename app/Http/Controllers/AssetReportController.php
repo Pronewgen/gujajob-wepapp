@@ -80,7 +80,11 @@ class AssetReportController extends Controller
         $assets = DB::connection('oracle')
             ->table('ASSET')
             ->join('ASSET_CATEGORY', 'ASSET.asscat_id', '=', 'ASSET_CATEGORY.id')
-            ->selectRaw("ASSET.id, ASSET.asscat_id AS category_id, ASSET.ass_code, ASSET_CATEGORY.asscat_name, ASSET_CATEGORY.asscat_code")
+            ->selectRaw("ASSET.id, ASSET.asscat_id AS category_id, ASSET.ass_code, ASSET_CATEGORY.asscat_name, ASSET_CATEGORY.asscat_code,
+                (SELECT MAX(aa2.status) KEEP (DENSE_RANK LAST ORDER BY aa2.id)
+                 FROM ASSET_ASSIGNMENT_LIST aal2
+                 JOIN ASSET_ASSIGNMENT aa2 ON aa2.id = aal2.ass_assign_id
+                 WHERE aal2.asset_id = ASSET.id) AS aa_status")
             ->whereIn('ASSET.org_id', $visibleOrgIds)
             ->where('ASSET.asscat_id', $categoryId);
 
@@ -102,7 +106,9 @@ class AssetReportController extends Controller
             'category_id' => $a->category_id,
             'code'  => $a->ass_code,
             'name'  => $a->asscat_name,
-            'label' => "{$a->asscat_code}{$a->ass_code} — {$a->asscat_name}",
+            'label' => ((string) ($a->aa_status ?? '') === '2' && trim((string) $a->ass_code) !== '')
+                ? "{$a->asscat_code} {$a->ass_code} — {$a->asscat_name}"
+                : "{$a->asscat_code} — {$a->asscat_name}",
         ]);
 
         return response()->json(['data' => $data]);
@@ -267,6 +273,10 @@ class AssetReportController extends Controller
                 ASSET.ass_price, ASSET.ass_lifetime, ASSET.ass_contact_no,
                 TO_CHAR(ASSET.ass_contact_date, 'DD/MM/YYYY') AS ass_contact_date_th,
                 ASSET.ass_trans_remark, ASSET.remarks, ASSET.remain_price, ASSET.ass_status,
+                (SELECT MAX(aa2.status) KEEP (DENSE_RANK LAST ORDER BY aa2.id)
+                 FROM ASSET_ASSIGNMENT_LIST aal2
+                 JOIN ASSET_ASSIGNMENT aa2 ON aa2.id = aal2.ass_assign_id
+                 WHERE aal2.asset_id = ASSET.id) AS aa_status,
                 ORG.org_name, ORG.zone_flg AS org_zone_flg, SUB_ORG.org_name AS sub_org_name,
                 DEALER.dealer_name
             ")
@@ -351,6 +361,10 @@ class AssetReportController extends Controller
                 ASSET.ass_price,
                 ASSET.remarks,
                 ASSET.ass_status,
+                (SELECT MAX(aa2.status) KEEP (DENSE_RANK LAST ORDER BY aa2.id)
+                 FROM ASSET_ASSIGNMENT_LIST aal2
+                 JOIN ASSET_ASSIGNMENT aa2 ON aa2.id = aal2.ass_assign_id
+                 WHERE aal2.asset_id = ASSET.id) AS aa_status,
                 ASSET.inspect_date,
                 TO_CHAR(ASSET.inspect_date, 'DD/MM/') || TO_CHAR(ASSET.inspect_date + INTERVAL '543' YEAR(3), 'YYYY') AS inspect_date_th,
                 ASSET_CATEGORY.asscat_code,
